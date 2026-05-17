@@ -9,6 +9,9 @@ await loadDotEnv();
 
 const port = Number(process.env.PORT || 4173);
 const botToken = process.env.BOT_TOKEN || "";
+const adminPassword = process.env.ADMIN_PASSWORD || "";
+const adminCookieName = "green_admin";
+const adminCookieSecret = process.env.ADMIN_COOKIE_SECRET || botToken || adminPassword || "green-farm-local-admin";
 const dataFile = join(root, ".data", "players.json");
 
 const contentTypes = {
@@ -41,6 +44,10 @@ const server = http.createServer(async (request, response) => {
       return sendJson(response, 405, { error: "Method not allowed" });
     }
 
+    if (url.pathname === "/admin" || url.pathname === "/admin/") {
+      return serveStatic("/admin.html", response);
+    }
+
     return serveStatic(url.pathname, response);
   } catch (error) {
     console.error(error);
@@ -61,6 +68,56 @@ async function handleApi(request, response, url) {
     });
   }
 
+  if (request.method === "GET" && url.pathname === "/api/admin/session") {
+    return sendJson(response, 200, {
+      ok: true,
+      configured: Boolean(adminPassword),
+      authenticated: isAdminAuthenticated(request)
+    });
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/admin/login") {
+    if (!adminPassword) {
+      return sendJson(response, 503, {
+        error: "Admin password is not configured."
+      });
+    }
+
+    const body = await readBody(request);
+    if (!safeSecretCompare(String(body.password || ""), adminPassword)) {
+      return sendJson(response, 401, { error: "Wrong password." });
+    }
+
+    logEvent("admin_login", { label: "Admin dashboard opened" });
+    await saveDatabase();
+
+    return sendJson(
+      response,
+      200,
+      { ok: true },
+      { "Set-Cookie": createAdminCookie(request) }
+    );
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/admin/logout") {
+    return sendJson(
+      response,
+      200,
+      { ok: true },
+      { "Set-Cookie": clearAdminCookie(request) }
+    );
+  }
+
+  if (url.pathname.startsWith("/api/admin/")) {
+    if (!isAdminAuthenticated(request)) {
+      return sendJson(response, 401, { error: "Admin login required." });
+    }
+
+    if (request.method === "GET" && url.pathname === "/api/admin/overview") {
+      return sendJson(response, 200, adminOverview());
+    }
+  }
+
   if (request.method === "GET" && url.pathname === "/api/leaderboard") {
     return sendJson(response, 200, leaderboardResponse());
   }
@@ -73,12 +130,14 @@ async function handleApi(request, response, url) {
       return sendJson(response, 401, { error: auth.error });
     }
 
-    const player = upsertPlayer({
+    const result = upsertPlayer({
       clientId: body.clientId,
       user: auth.user,
       state: body.state,
       verified: auth.verified
     });
+    const { player } = result;
+    logPlayerProgress(result);
     await saveDatabase();
 
     return sendJson(response, 200, {
@@ -95,6 +154,7 @@ function upsertPlayer({ clientId, user, state, verified }) {
   const now = new Date().toISOString();
   const id = user?.id ? `tg:${user.id}` : `guest:${safeId(clientId)}`;
   const existing = db.players[id] || {};
+  const isNew = !db.players[id];
   const score = safeNumber(state?.score);
   const energy = safeNumber(state?.energy);
   const resonance = safeNumber(state?.resonance);
@@ -118,7 +178,13 @@ function upsertPlayer({ clientId, user, state, verified }) {
   };
 
   db.players[id] = player;
-  return player;
+  return {
+    player,
+    isNew,
+    scoreDelta: Math.max(0, player.score - safeNumber(existing.score)),
+    resonanceDelta: Math.max(0, player.resonance - safeNumber(existing.resonance)),
+    sessionDelta: Math.max(0, player.sessions - safeNumber(existing.sessions))
+  };
 }
 
 function leaderboardResponse(currentPlayerId = null) {
@@ -139,6 +205,127 @@ function leaderboardResponse(currentPlayerId = null) {
     leaderboard: players.slice(0, 10),
     rank: currentPlayerId ? players.findIndex((player) => player.id === currentPlayerId) + 1 || null : null
   };
+}
+
+function adminOverview() {
+  const rankedPlayers = Object.values(db.players)
+    .sort((a, b) => b.score - a.score || String(a.name).localeCompare(String(b.name)));
+  const rankById = new Map(rankedPlayers.map((player, index) => [player.id, index + 1]));
+  const playersByActivity = [...rankedPlayers].sort(
+    (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+  );
+  const now = Date.now();
+  const active24h = playersByActivity.filter((player) => {
+    const updatedAt = new Date(player.updatedAt).getTime();
+    return Number.isFinite(updatedAt) && now - updatedAt < 24 * 60 * 60 * 1000;
+  }).length;
+  const totals = rankedPlayers.reduce(
+    (accumulator, player) => {
+      accumulator.score += safeNumber(player.score);
+      accumulator.energy += safeNumber(player.energy);
+      accumulator.resonance += safeNumber(player.resonance);
+      accumulator.sessions += safeNumber(player.sessions);
+      return accumulator;
+    },
+    { score: 0, energy: 0, resonance: 0, sessions: 0 }
+  );
+
+  return {
+    ok: true,
+    generatedAt: new Date().toISOString(),
+    stats: {
+      players: rankedPlayers.length,
+      telegramPlayers: rankedPlayers.filter((player) => player.telegramId).length,
+      verifiedPlayers: rankedPlayers.filter((player) => player.verified).length,
+      guests: rankedPlayers.filter((player) => !player.telegramId).length,
+      active24h,
+      totalScore: totals.score,
+      totalEnergy: totals.energy,
+      totalResonance: totals.resonance,
+      totalSessions: totals.sessions,
+      topScore: rankedPlayers[0]?.score || 0,
+      lastActiveAt: playersByActivity[0]?.updatedAt || null,
+      telegramValidation: Boolean(botToken),
+      adminPasswordConfigured: Boolean(adminPassword),
+      eventCount: db.events.length
+    },
+    rooms: [
+      {
+        id: "farm",
+        name: "Farm",
+        status: "Prototype",
+        focus: "Вирощування мікрокультур і перший ресурсний цикл",
+        next: "Зберігати повний прогрес кожної капсули"
+      },
+      {
+        id: "lab",
+        name: "Lab",
+        status: "Concept + visual shell",
+        focus: "Мутації, артефакти, рідкість і майбутні NFT-продукти",
+        next: "Описати формулу шансів і інвентар артефактів"
+      },
+      {
+        id: "zen",
+        name: "Zen",
+        status: "Core product direction",
+        focus: "Медитація, звук, Zen energy, головна цінність проекту",
+        next: "Почати логувати старт/кінець Zen-сесій"
+      }
+    ],
+    players: playersByActivity.slice(0, 100).map((player) => ({
+      rank: rankById.get(player.id) || null,
+      id: player.id,
+      telegramId: player.telegramId,
+      username: player.username,
+      name: player.name,
+      score: player.score,
+      energy: player.energy,
+      resonance: player.resonance,
+      sessions: player.sessions,
+      artifact: player.artifact,
+      verified: player.verified,
+      createdAt: player.createdAt,
+      updatedAt: player.updatedAt
+    })),
+    leaderboard: leaderboardResponse().leaderboard,
+    events: db.events.slice(0, 80)
+  };
+}
+
+function logPlayerProgress({ player, isNew, scoreDelta, resonanceDelta, sessionDelta }) {
+  if (isNew) {
+    logEvent("player_created", {
+      playerId: player.id,
+      name: player.name,
+      username: player.username,
+      score: player.score,
+      verified: player.verified
+    });
+    return;
+  }
+
+  if (scoreDelta > 0 || resonanceDelta > 0 || sessionDelta > 0) {
+    logEvent("player_progress", {
+      playerId: player.id,
+      name: player.name,
+      score: player.score,
+      scoreDelta,
+      resonance: player.resonance,
+      resonanceDelta,
+      sessions: player.sessions,
+      sessionDelta
+    });
+  }
+}
+
+function logEvent(type, details = {}) {
+  db.events.unshift({
+    id: crypto.randomUUID(),
+    type,
+    createdAt: new Date().toISOString(),
+    ...details
+  });
+  db.events = db.events.slice(0, 200);
 }
 
 function validateTelegramInitData(initData) {
@@ -203,9 +390,9 @@ async function serveStatic(pathname, response) {
 
 async function readDatabase() {
   try {
-    return JSON.parse(await readFile(dataFile, "utf8"));
+    return normalizeDatabase(JSON.parse(await readFile(dataFile, "utf8")));
   } catch {
-    return { players: {} };
+    return normalizeDatabase({});
   }
 }
 
@@ -214,34 +401,108 @@ async function saveDatabase() {
   await writeFile(dataFile, JSON.stringify(db, null, 2));
 }
 
-function sendJson(response, status, value) {
+function normalizeDatabase(value) {
+  return {
+    players: value?.players && typeof value.players === "object" ? value.players : {},
+    events: Array.isArray(value?.events) ? value.events : []
+  };
+}
+
+function sendJson(response, status, value, headers = {}) {
   response.writeHead(status, {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type",
-    "Content-Type": "application/json; charset=utf-8"
+    "Content-Type": "application/json; charset=utf-8",
+    ...headers
   });
   response.end(status === 204 ? "" : JSON.stringify(value));
 }
 
+function isAdminAuthenticated(request) {
+  const token = parseCookies(request.headers.cookie || "")[adminCookieName];
+  if (!token) return false;
+
+  const [expiresAt, signature] = token.split(".");
+  const expires = Number(expiresAt);
+  if (!Number.isFinite(expires) || expires < Date.now() || !signature) return false;
+
+  const expected = signAdminSession(expiresAt);
+  return safeSecretCompare(signature, expected);
+}
+
+function createAdminCookie(request) {
+  const expiresAt = String(Date.now() + 24 * 60 * 60 * 1000);
+  const token = `${expiresAt}.${signAdminSession(expiresAt)}`;
+  return [
+    `${adminCookieName}=${token}`,
+    "Path=/",
+    "HttpOnly",
+    "SameSite=Lax",
+    "Max-Age=86400",
+    shouldUseSecureCookie(request) ? "Secure" : ""
+  ]
+    .filter(Boolean)
+    .join("; ");
+}
+
+function clearAdminCookie(request) {
+  return [
+    `${adminCookieName}=`,
+    "Path=/",
+    "HttpOnly",
+    "SameSite=Lax",
+    "Max-Age=0",
+    shouldUseSecureCookie(request) ? "Secure" : ""
+  ]
+    .filter(Boolean)
+    .join("; ");
+}
+
+function signAdminSession(value) {
+  return crypto.createHmac("sha256", adminCookieSecret).update(value).digest("hex");
+}
+
+function shouldUseSecureCookie(request) {
+  return request.headers["x-forwarded-proto"] === "https" || String(request.headers.host || "").includes("onrender.com");
+}
+
+function parseCookies(rawCookie) {
+  return rawCookie.split(";").reduce((cookies, part) => {
+    const separator = part.indexOf("=");
+    if (separator === -1) return cookies;
+    const key = part.slice(0, separator).trim();
+    const value = part.slice(separator + 1).trim();
+    if (key) cookies[key] = value;
+    return cookies;
+  }, {});
+}
+
+function safeSecretCompare(left, right) {
+  const leftBuffer = Buffer.from(String(left));
+  const rightBuffer = Buffer.from(String(right));
+  if (leftBuffer.length !== rightBuffer.length) return false;
+  return crypto.timingSafeEqual(leftBuffer, rightBuffer);
+}
+
 function readBody(request) {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     let raw = "";
     request.on("data", (chunk) => {
       raw += chunk;
       if (raw.length > 1_000_000) {
         request.destroy();
-        reject(new Error("Request too large"));
+        resolve({});
       }
     });
     request.on("end", () => {
       try {
         resolve(raw ? JSON.parse(raw) : {});
       } catch (error) {
-        reject(error);
+        resolve({});
       }
     });
-    request.on("error", reject);
+    request.on("error", () => resolve({}));
   });
 }
 

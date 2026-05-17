@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="uk">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#071210">
+    <title>Green Farm Control</title>
+    <link rel="stylesheet" href="/admin.css">
+    <script src="/admin.js?v=1" defer></script>
+  </head>
+  <body>
+    <main class="admin-shell">
+      <section class="login-panel" id="loginPanel">
+        <div class="login-card">
+          <span class="eyebrow">Private dashboard</span>
+          <h1>Green Farm Control</h1>
+          <p>
+            Це закрита панель для контролю гравців, сервера, кімнат і подій.
+          </p>
+          <form id="loginForm">
+            <label for="adminPassword">Пароль адміністратора</label>
+            <div class="password-row">
+              <input id="adminPassword" name="password" type="password" autocomplete="current-password" placeholder="Введи пароль">
+              <button type="submit">Увійти</button>
+            </div>
+          </form>
+          <div class="login-message" id="loginMessage"></div>
+        </div>
+      </section>
+
+      <section class="dashboard hidden" id="dashboard">
+        <header class="admin-header">
+          <div>
+            <span class="eyebrow">Control center</span>
+            <h1>Green Farm Tycoon</h1>
+            <p id="lastUpdated">Очікую дані...</p>
+          </div>
+          <div class="header-actions">
+            <button id="refreshBtn" type="button">Оновити</button>
+            <button id="logoutBtn" class="ghost" type="button">Вийти</button>
+          </div>
+        </header>
+
+        <section class="status-grid" aria-label="Main stats">
+          <article class="stat-card">
+            <span>Гравців</span>
+            <strong id="statPlayers">0</strong>
+            <small id="statTelegram">0 Telegram</small>
+          </article>
+          <article class="stat-card">
+            <span>Активні 24 год</span>
+            <strong id="statActive">0</strong>
+            <small>хто заходив сьогодні</small>
+          </article>
+          <article class="stat-card">
+            <span>Рейтинг разом</span>
+            <strong id="statScore">0</strong>
+            <small id="statTop">топ: 0</small>
+          </article>
+          <article class="stat-card">
+            <span>Zen сесії</span>
+            <strong id="statSessions">0</strong>
+            <small id="statResonance">Zen: 0</small>
+          </article>
+        </section>
+
+        <section class="system-panel">
+          <div>
+            <h2>Стан системи</h2>
+            <p>Ланцюг зараз такий: Telegram bot -> Render server -> гра -> спільний рейтинг -> ця панель.</p>
+          </div>
+          <div class="system-badges">
+            <span id="badgeServer">Server: online</span>
+            <span id="badgeTelegram">Telegram: check</span>
+            <span id="badgeEvents">Events: 0</span>
+          </div>
+        </section>
+
+        <section class="rooms-grid" id="roomsGrid" aria-label="Rooms"></section>
+
+        <section class="content-grid">
+          <article class="panel players-panel">
+            <div class="panel-head">
+              <div>
+                <h2>Гравці</h2>
+                <p>Останні активні зверху. Тут видно Telegram ID, рейтинг і базову статистику.</p>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Rank</th>
+                    <th>Гравець</th>
+                    <th>Score</th>
+                    <th>Zen</th>
+                    <th>Сесії</th>
+                    <th>Оновлено</th>
+                  </tr>
+                </thead>
+                <tbody id="playersTable"></tbody>
+              </table>
+            </div>
+          </article>
+
+          <article class="panel events-panel">
+            <div class="panel-head">
+              <div>
+                <h2>Журнал подій</h2>
+                <p>Тут буде видно, що реально відбувається у грі.</p>
+              </div>
+            </div>
+            <div class="events-list" id="eventsList"></div>
+          </article>
+        </section>
+      </section>
+    </main>
+  </body>
+</html>
