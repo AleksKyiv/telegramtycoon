@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#071210">
     <title>Green Farm Control</title>
-    <link rel="stylesheet" href="/admin.css">
-    <script src="/admin.js?v=1" defer></script>
+    <link rel="stylesheet" href="/admin.css?v=2">
+    <script src="/admin.js?v=2" defer></script>
   </head>
   <body>
     <main class="admin-shell">
@@ -73,6 +73,111 @@
             <span id="badgeServer">Server: online</span>
             <span id="badgeTelegram">Telegram: check</span>
             <span id="badgeEvents">Events: 0</span>
+          </div>
+        </section>
+
+        <section class="control-visuals" aria-label="Project visualization">
+          <article class="panel command-map">
+            <div class="panel-head">
+              <div>
+                <h2>Карта процесу</h2>
+                <p>Тут видно, як дані мають пройти весь шлях від Telegram до адмінки.</p>
+              </div>
+              <strong id="mapReadiness">0%</strong>
+            </div>
+            <div class="pipeline-map" id="pipelineMap">
+              <div class="pipeline-node done" data-step="Telegram">
+                <i></i>
+                <span>Telegram</span>
+                <b id="pipeTelegram">check</b>
+              </div>
+              <div class="pipeline-link"></div>
+              <div class="pipeline-node done" data-step="Game">
+                <i></i>
+                <span>Game</span>
+                <b>online</b>
+              </div>
+              <div class="pipeline-link"></div>
+              <div class="pipeline-node active" data-step="Server">
+                <i></i>
+                <span>Server</span>
+                <b id="pipeServer">online</b>
+              </div>
+              <div class="pipeline-link"></div>
+              <div class="pipeline-node" data-step="Data">
+                <i></i>
+                <span>Data</span>
+                <b id="pipeData">waiting</b>
+              </div>
+              <div class="pipeline-link"></div>
+              <div class="pipeline-node" data-step="Admin">
+                <i></i>
+                <span>Admin</span>
+                <b id="pipeAdmin">visible</b>
+              </div>
+            </div>
+          </article>
+
+          <article class="panel analytics-panel">
+            <div class="panel-head">
+              <div>
+                <h2>Ефективність</h2>
+                <p>Швидкі індикатори, які покажуть, чи люди доходять до потрібних дій.</p>
+              </div>
+            </div>
+            <div class="metric-bars">
+              <div class="metric-bar">
+                <span>Telegram users</span>
+                <strong id="metricTelegramLabel">0%</strong>
+                <i><b id="metricTelegramBar"></b></i>
+              </div>
+              <div class="metric-bar">
+                <span>Active 24h</span>
+                <strong id="metricActiveLabel">0%</strong>
+                <i><b id="metricActiveBar"></b></i>
+              </div>
+              <div class="metric-bar">
+                <span>Zen touched</span>
+                <strong id="metricZenLabel">0%</strong>
+                <i><b id="metricZenBar"></b></i>
+              </div>
+              <div class="metric-bar">
+                <span>Event signal</span>
+                <strong id="metricEventsLabel">0</strong>
+                <i><b id="metricEventsBar"></b></i>
+              </div>
+            </div>
+          </article>
+        </section>
+
+        <section class="panel roadmap-panel" aria-label="Development roadmap">
+          <div class="panel-head">
+            <div>
+              <h2>Що будуємо далі</h2>
+              <p>Це не ігровий екран, а твоя карта контролю розробки.</p>
+            </div>
+          </div>
+          <div class="roadmap-steps">
+            <div class="roadmap-step done">
+              <span>01</span>
+              <strong>Bot + Render</strong>
+              <small>Гра відкривається через Telegram і сервер.</small>
+            </div>
+            <div class="roadmap-step done">
+              <span>02</span>
+              <strong>Players + Rating</strong>
+              <small>Гравці зберігаються, рейтинг видно між телефонами.</small>
+            </div>
+            <div class="roadmap-step active">
+              <span>03</span>
+              <strong>Action Tracking</strong>
+              <small>Наступне: записувати кліки Farm, Lab, Zen, Stars.</small>
+            </div>
+            <div class="roadmap-step">
+              <span>04</span>
+              <strong>Stars MVP</strong>
+              <small>Після трекінгу підключаємо оплату Telegram Stars.</small>
+            </div>
           </div>
         </section>
 

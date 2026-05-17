@@ -17,6 +17,19 @@ const elements = {
   badgeServer: document.getElementById("badgeServer"),
   badgeTelegram: document.getElementById("badgeTelegram"),
   badgeEvents: document.getElementById("badgeEvents"),
+  mapReadiness: document.getElementById("mapReadiness"),
+  pipeTelegram: document.getElementById("pipeTelegram"),
+  pipeServer: document.getElementById("pipeServer"),
+  pipeData: document.getElementById("pipeData"),
+  pipeAdmin: document.getElementById("pipeAdmin"),
+  metricTelegramLabel: document.getElementById("metricTelegramLabel"),
+  metricTelegramBar: document.getElementById("metricTelegramBar"),
+  metricActiveLabel: document.getElementById("metricActiveLabel"),
+  metricActiveBar: document.getElementById("metricActiveBar"),
+  metricZenLabel: document.getElementById("metricZenLabel"),
+  metricZenBar: document.getElementById("metricZenBar"),
+  metricEventsLabel: document.getElementById("metricEventsLabel"),
+  metricEventsBar: document.getElementById("metricEventsBar"),
   roomsGrid: document.getElementById("roomsGrid"),
   playersTable: document.getElementById("playersTable"),
   eventsList: document.getElementById("eventsList")
@@ -114,9 +127,41 @@ function renderOverview(overview) {
   elements.badgeTelegram.textContent = stats.telegramValidation ? "Telegram: protected" : "Telegram: test mode";
   elements.badgeEvents.textContent = `Events: ${formatNumber(stats.eventCount)}`;
 
+  renderVisualAnalytics(overview);
   renderRooms(overview.rooms);
   renderPlayers(overview.players);
   renderEvents(overview.events);
+}
+
+function renderVisualAnalytics(overview) {
+  const { stats, players } = overview;
+  const playerCount = Math.max(1, stats.players);
+  const telegramPercent = Math.round((stats.telegramPlayers / playerCount) * 100);
+  const activePercent = Math.round((stats.active24h / playerCount) * 100);
+  const zenPlayers = players.filter((player) => Number(player.sessions) > 0 || Number(player.resonance) > 0).length;
+  const zenPercent = Math.round((zenPlayers / playerCount) * 100);
+  const eventSignal = Math.min(100, Math.round((stats.eventCount / Math.max(1, stats.players * 4)) * 100));
+  const readiness = Math.min(
+    100,
+    34 + (stats.telegramValidation ? 16 : 7) + (stats.players > 0 ? 16 : 0) + (stats.eventCount > 0 ? 14 : 0) + 12
+  );
+
+  elements.mapReadiness.textContent = `${readiness}%`;
+  elements.mapReadiness.style.setProperty("--ready", `${readiness}%`);
+  elements.pipeTelegram.textContent = stats.telegramValidation ? "protected" : "test";
+  elements.pipeServer.textContent = "online";
+  elements.pipeData.textContent = stats.players > 0 ? `${formatNumber(stats.players)} players` : "waiting";
+  elements.pipeAdmin.textContent = stats.eventCount > 0 ? `${formatNumber(stats.eventCount)} events` : "visible";
+
+  updateMetric(elements.metricTelegramLabel, elements.metricTelegramBar, `${telegramPercent}%`, telegramPercent);
+  updateMetric(elements.metricActiveLabel, elements.metricActiveBar, `${activePercent}%`, activePercent);
+  updateMetric(elements.metricZenLabel, elements.metricZenBar, `${zenPercent}%`, zenPercent);
+  updateMetric(elements.metricEventsLabel, elements.metricEventsBar, formatNumber(stats.eventCount), eventSignal);
+}
+
+function updateMetric(label, bar, text, percent) {
+  if (label) label.textContent = text;
+  if (bar) bar.style.setProperty("--value", `${Math.min(100, Math.max(0, percent))}%`);
 }
 
 function renderRooms(rooms) {

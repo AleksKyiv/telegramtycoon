@@ -240,6 +240,202 @@ input:focus {
   white-space: nowrap;
 }
 
+.control-visuals {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.65fr);
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.command-map,
+.analytics-panel,
+.roadmap-panel {
+  background:
+    radial-gradient(circle at 18% 0%, rgba(92, 255, 207, 0.12), transparent 34%),
+    var(--panel);
+}
+
+.command-map .panel-head strong {
+  display: grid;
+  place-items: center;
+  width: 66px;
+  height: 66px;
+  border: 1px solid rgba(92, 255, 207, 0.32);
+  border-radius: 50%;
+  color: var(--accent);
+  background: conic-gradient(var(--accent) var(--ready, 0%), rgba(255, 255, 255, 0.08) 0);
+  box-shadow: 0 0 28px rgba(92, 255, 207, 0.16);
+}
+
+.pipeline-map {
+  display: grid;
+  grid-template-columns: 1fr 28px 1fr 28px 1fr 28px 1fr 28px 1fr;
+  gap: 8px;
+  align-items: center;
+  margin-top: 6px;
+}
+
+.pipeline-node {
+  min-height: 122px;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.045);
+  text-align: center;
+}
+
+.pipeline-node i {
+  width: 26px;
+  height: 26px;
+  border: 1px solid rgba(92, 255, 207, 0.24);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.pipeline-node span {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.pipeline-node b {
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.pipeline-node.done {
+  border-color: rgba(92, 255, 207, 0.34);
+  background: rgba(92, 255, 207, 0.08);
+}
+
+.pipeline-node.done i {
+  background: var(--accent);
+  box-shadow: 0 0 20px rgba(92, 255, 207, 0.45);
+}
+
+.pipeline-node.active {
+  border-color: rgba(255, 209, 102, 0.34);
+  background: rgba(255, 209, 102, 0.08);
+}
+
+.pipeline-node.active i {
+  background: var(--warn);
+  box-shadow: 0 0 20px rgba(255, 209, 102, 0.38);
+}
+
+.pipeline-link {
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(92, 255, 207, 0.2), rgba(92, 255, 207, 0.66));
+}
+
+.metric-bars {
+  display: grid;
+  gap: 14px;
+}
+
+.metric-bar {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 7px 12px;
+  align-items: center;
+}
+
+.metric-bar span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.metric-bar strong {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.metric-bar i {
+  grid-column: 1 / -1;
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.metric-bar b {
+  display: block;
+  width: var(--value, 0%);
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  transition: width 260ms ease;
+}
+
+.roadmap-panel {
+  margin-bottom: 14px;
+}
+
+.roadmap-steps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.roadmap-step {
+  min-height: 132px;
+  display: grid;
+  gap: 8px;
+  align-content: start;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 14px;
+}
+
+.roadmap-step span {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.roadmap-step strong {
+  color: var(--text);
+}
+
+.roadmap-step small {
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.roadmap-step.done {
+  border-color: rgba(92, 255, 207, 0.26);
+  background: rgba(92, 255, 207, 0.06);
+}
+
+.roadmap-step.done span {
+  color: #06211b;
+  background: var(--accent);
+}
+
+.roadmap-step.active {
+  border-color: rgba(255, 209, 102, 0.34);
+  background: rgba(255, 209, 102, 0.08);
+}
+
+.roadmap-step.active span {
+  color: #1d1605;
+  background: var(--warn);
+}
+
 .rooms-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   margin-bottom: 14px;
@@ -392,7 +588,9 @@ td {
 @media (max-width: 920px) {
   .status-grid,
   .rooms-grid,
-  .content-grid {
+  .content-grid,
+  .control-visuals,
+  .roadmap-steps {
     grid-template-columns: 1fr;
   }
 
@@ -403,6 +601,17 @@ td {
 
   .system-badges {
     justify-content: flex-start;
+  }
+
+  .pipeline-map {
+    grid-template-columns: 1fr;
+  }
+
+  .pipeline-link {
+    width: 2px;
+    height: 22px;
+    justify-self: center;
+    background: linear-gradient(180deg, rgba(92, 255, 207, 0.2), rgba(92, 255, 207, 0.66));
   }
 }
 
