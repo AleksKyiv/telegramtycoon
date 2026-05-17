@@ -72,6 +72,18 @@ const rooms = {
 let audioContext;
 let autoCollectTimer;
 let zenAmbient;
+const API_BASE = (window.GREEN_FARM_API_URL || "").replace(/\/$/, "");
+const CLIENT_ID = getClientId();
+let backendState = {
+  available: false,
+  status: "Local",
+  syncing: false,
+  lastSyncAt: 0,
+  lastSnapshot: "",
+  playerId: null,
+  rank: null,
+  leaderboard: []
+};
 
 function playTone(type = "tap") {
   if (!state.soundOn) return;
@@ -264,6 +276,15 @@ function saveState() {
   localStorage.setItem("green-farm-mvp", JSON.stringify(state));
 }
 
+function getClientId() {
+  const key = "green-farm-client-id";
+  const existing = localStorage.getItem(key);
+  if (existing) return existing;
+  const id = window.crypto?.randomUUID ? window.crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  localStorage.setItem(key, id);
+  return id;
+}
+
 function telegramUserLabel(user) {
   if (!user) return "No Telegram user";
   const name = [user.first_name, user.last_name].filter(Boolean).join(" ") || user.username || "Telegram user";
@@ -280,6 +301,92 @@ function renderTelegramStatus() {
   setText("#telegramUserText", userText);
   setClass("#telegramStatus", "connected", isTelegram);
   setClass("#telegramStatus", "preview", !isTelegram);
+}
+
+function apiUrl(path) {
+  return `${API_BASE}${path}`;
+}
+
+function playerSnapshot() {
+  return JSON.stringify({
+    score: state.score,
+    energy: state.energy,
+    resonance: state.resonance,
+    sessions: state.sessions,
+    artifact: state.artifact
+  });
+}
+
+function renderLeaderboard() {
+  setText("#backendState", backendState.status);
+  const rows = $("#leaderboardRows");
+  if (!rows) return;
+
+  const players = backendState.leaderboard.length
+    ? backendState.leaderboard
+    : [
+        { rank: 1, id: "mock:nova", name: "Nova", score: 920 },
+        { rank: backendState.rank || Math.max(2, 12 - Math.floor(state.score / 80)), id: backendState.playerId || "local", name: state.playerName, score: state.score }
+      ];
+
+  rows.innerHTML = players.map((player) => {
+    const isYou = player.id === backendState.playerId || (!backendState.playerId && player.name === state.playerName);
+    const rank = String(player.rank).padStart(2, "0");
+    const username = player.username ? ` @${player.username}` : "";
+    return `
+      <div class="leader-row ${isYou ? "you" : ""}">
+        <span>${rank}</span>
+        <b>${player.name}${username}</b>
+        <strong>${player.score}</strong>
+      </div>
+    `;
+  }).join("");
+}
+
+function scheduleBackendSync(force = false) {
+  const now = Date.now();
+  const snapshot = playerSnapshot();
+  if (backendState.syncing) return;
+  if (!force && snapshot === backendState.lastSnapshot && now - backendState.lastSyncAt < 15_000) return;
+  if (!force && now - backendState.lastSyncAt < 5_000) return;
+  backendState.syncing = true;
+  backendState.lastSyncAt = now;
+  backendState.lastSnapshot = snapshot;
+  syncPlayer().finally(() => {
+    backendState.syncing = false;
+  });
+}
+
+async function syncPlayer() {
+  try {
+    const response = await fetch(apiUrl("/api/player/sync"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        clientId: CLIENT_ID,
+        initData: tg?.initData || "",
+        state: {
+          score: state.score,
+          energy: state.energy,
+          resonance: state.resonance,
+          sessions: state.sessions,
+          artifact: state.artifact
+        }
+      })
+    });
+    if (!response.ok) throw new Error("Backend sync failed");
+    const data = await response.json();
+    backendState.available = true;
+    backendState.status = data.player?.verified ? "Live TG" : "Live";
+    backendState.playerId = data.player?.id || backendState.playerId;
+    backendState.rank = data.rank || backendState.rank;
+    backendState.leaderboard = data.leaderboard || backendState.leaderboard;
+    renderLeaderboard();
+  } catch {
+    backendState.available = false;
+    backendState.status = "Local";
+    renderLeaderboard();
+  }
 }
 
 function clamp(value, min, max) {
@@ -526,7 +633,7 @@ function render() {
   setText("#mainActionIcon", action[0]);
   setText("#mainActionText", action[1]);
   setText("#leaderScore", state.score);
-  setText("#rankValue", rank);
+  setText("#rankValue", backendState.rank || rank);
   setText("#playerName", state.playerName);
   setText("#leaderName", state.playerName);
   setText("#avatar", state.playerName.slice(0, 1).toUpperCase());
@@ -545,6 +652,8 @@ function render() {
   setText("#soundIcon", state.soundOn ? "\u266a" : "\u2022");
   setText("#soundState", state.soundOn ? "On" : "Off");
   renderTelegramStatus();
+  renderLeaderboard();
+  scheduleBackendSync();
 
   setFarmStageClass(stage);
   saveState();

@@ -4,7 +4,8 @@
   "private": true,
   "description": "Prototype 0 visual MVP for a Telegram Mini App green farm tycoon.",
   "scripts": {
-    "start": "npx http-server . -p 4173",
+    "start": "node server.mjs",
+    "static": "npx http-server . -p 4173",
     "telegram:menu": "node scripts/configure-telegram-bot.mjs"
   }
 }

@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 
-loadDotEnv();
+await loadDotEnv();
 
 const botToken = process.env.BOT_TOKEN;
 const publicAppUrl = process.env.PUBLIC_APP_URL;
