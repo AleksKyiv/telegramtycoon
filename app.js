@@ -84,6 +84,11 @@ let backendState = {
   rank: null,
   leaderboard: []
 };
+let visualState = {
+  currentRoom: "Farm",
+  lastAction: "Loaded",
+  sync: "Waiting"
+};
 
 function playTone(type = "tap") {
   if (!state.soundOn) return;
@@ -343,6 +348,42 @@ function renderLeaderboard() {
   }).join("");
 }
 
+function markAction(label) {
+  visualState.lastAction = label;
+  renderProcessVisualizer();
+}
+
+function setFlowState(selector, status) {
+  const node = $(selector);
+  if (!node) return;
+  node.classList.remove("done", "active");
+  if (status) node.classList.add(status);
+}
+
+function renderProcessVisualizer() {
+  const isTelegram = Boolean(tg?.initData || tg?.initDataUnsafe?.user);
+  const serverReady = backendState.available;
+  const dataReady = serverReady && (Boolean(backendState.playerId) || backendState.leaderboard.length > 0);
+  const progress = clamp(
+    25 + (serverReady ? 25 : backendState.syncing ? 12 : 0) + (dataReady ? 18 : 0) + (isTelegram ? 18 : 8) + (serverReady ? 8 : 0),
+    0,
+    94
+  );
+
+  setText("#visualizerProgress", `${progress}%`);
+  setText("#visualizerRoom", visualState.currentRoom);
+  setText("#visualizerTelegram", isTelegram ? "Connected" : "Preview");
+  setText("#visualizerServer", backendState.syncing ? "Sync..." : backendState.status);
+  setText("#visualizerLast", visualState.lastAction);
+  setText("#visualizerNext", "Action Tracking V2");
+  setStyle("#visualizerTrack", "--visualizer-progress", `${progress}%`);
+
+  setFlowState("#flowGame", "done");
+  setFlowState("#flowServer", serverReady ? "done" : backendState.syncing ? "active" : "");
+  setFlowState("#flowData", dataReady ? "done" : serverReady ? "active" : "");
+  setFlowState("#flowAdmin", serverReady ? "active" : "");
+}
+
 function scheduleBackendSync(force = false) {
   const now = Date.now();
   const snapshot = playerSnapshot();
@@ -350,10 +391,13 @@ function scheduleBackendSync(force = false) {
   if (!force && snapshot === backendState.lastSnapshot && now - backendState.lastSyncAt < 15_000) return;
   if (!force && now - backendState.lastSyncAt < 5_000) return;
   backendState.syncing = true;
+  visualState.sync = "Syncing";
+  renderProcessVisualizer();
   backendState.lastSyncAt = now;
   backendState.lastSnapshot = snapshot;
   syncPlayer().finally(() => {
     backendState.syncing = false;
+    renderProcessVisualizer();
   });
 }
 
@@ -381,11 +425,15 @@ async function syncPlayer() {
     backendState.playerId = data.player?.id || backendState.playerId;
     backendState.rank = data.rank || backendState.rank;
     backendState.leaderboard = data.leaderboard || backendState.leaderboard;
+    visualState.sync = "Live";
     renderLeaderboard();
+    renderProcessVisualizer();
   } catch {
     backendState.available = false;
     backendState.status = "Local";
+    visualState.sync = "Local";
     renderLeaderboard();
+    renderProcessVisualizer();
   }
 }
 
@@ -653,6 +701,7 @@ function render() {
   setText("#soundState", state.soundOn ? "On" : "Off");
   renderTelegramStatus();
   renderLeaderboard();
+  renderProcessVisualizer();
   scheduleBackendSync();
 
   setFarmStageClass(stage);
@@ -671,6 +720,7 @@ function collectHarvest(auto = false) {
   state.plantVariant = (state.plantVariant + 1 + state.artifact) % PLANT_VARIANTS.length;
   playTone("collect");
   toast(auto ? `Auto +${harvest} \u2726` : `+${harvest} \u2726`);
+  markAction(auto ? "Auto collect" : "Collect");
   render();
 }
 
@@ -693,6 +743,7 @@ function farmAction() {
 
   if (state.energy <= 0) {
     toast("Need \u26a1");
+    markAction("Need energy");
     return;
   }
 
@@ -702,11 +753,13 @@ function farmAction() {
     state.plantedAt = Date.now();
     playTone("grow");
     toast("Planted");
+    markAction("Farm grow");
   } else {
     state.plantedAt -= BOOST_MS + state.artifact * 450;
     state.boostUntil = Date.now() + 2_800;
     playTone("boost");
     toast("Boost");
+    markAction("Farm boost");
   }
   render();
 }
@@ -715,12 +768,14 @@ function mockStarsBuy() {
   state.energy += 12;
   playTone("stars");
   toast("Mock \u2605 +12 \u26a1");
+  markAction("Stars click");
   render();
 }
 
 function synthArtifact() {
   if (state.energy < 5) {
     toast("Need 5 \u26a1");
+    markAction("Lab blocked");
     return;
   }
   state.energy -= 5;
@@ -729,6 +784,7 @@ function synthArtifact() {
   state.score += 8;
   playTone("lab");
   toast("Artifact +1");
+  markAction("Lab artifact");
   render();
 }
 
@@ -740,6 +796,7 @@ function meditate() {
     playTone("zen");
     startZenAmbient();
     toast("Zen started");
+    markAction("Zen start");
     render();
     return;
   }
@@ -750,6 +807,7 @@ function meditate() {
     playTone("tap");
     startZenAmbient();
     toast("Zen resumed");
+    markAction("Zen resume");
     render();
     return;
   }
@@ -759,11 +817,14 @@ function meditate() {
   playTone("tap");
   stopZenAmbient(0.8);
   toast("Zen paused");
+  markAction("Zen pause");
   render();
 }
 
 function switchRoom(name) {
   playTone("nav");
+  visualState.currentRoom = name.charAt(0).toUpperCase() + name.slice(1);
+  markAction(`${visualState.currentRoom} open`);
   const app = $(".app");
   if (app) {
     app.classList.remove("room-farm", "room-lab", "room-zen");
@@ -785,12 +846,14 @@ $("#autoCollectBtn")?.addEventListener("click", () => {
   state.autoCollect = !state.autoCollect;
   playTone("tap");
   toast(state.autoCollect ? "Auto collect on" : "Auto collect off");
+  markAction(state.autoCollect ? "Auto on" : "Auto off");
   render();
 });
 $("#mutationAutoBtn")?.addEventListener("click", () => {
   state.mutationAuto = !state.mutationAuto;
   playTone("tap");
   toast(state.mutationAuto ? "Mutation auto on" : "Mutation auto off");
+  markAction(state.mutationAuto ? "Lab auto on" : "Lab auto off");
   render();
 });
 $("#synthBtn")?.addEventListener("click", synthArtifact);
@@ -803,6 +866,7 @@ document.querySelectorAll(".zen-mode").forEach((button) => {
     state.zenPausedAt = 0;
     state.zenElapsed = 0;
     playTone("tap");
+    markAction(`Zen ${button.textContent}`);
     render();
   });
 });
@@ -814,12 +878,14 @@ $("#soundBtn")?.addEventListener("click", () => {
   }
   playTone("tap");
   toast(state.soundOn ? "Sound on" : "Sound off");
+  markAction(state.soundOn ? "Sound on" : "Sound off");
   render();
 });
 $("#resetBtn")?.addEventListener("click", () => {
   state = { ...defaultState, soundOn: state.soundOn, playerName: state.playerName };
   playTone("tap");
   toast("Reset");
+  markAction("Reset");
   render();
 });
 

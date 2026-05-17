@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#06110f">
     <title>Green Farm Tycoon</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=13">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="app.js?v=12" defer></script>
+    <script src="app.js?v=13" defer></script>
   </head>
   <body>
     <main class="app room-farm" aria-label="Green Farm Tycoon MVP">
@@ -33,6 +33,30 @@
         <div class="process-meter" id="processMeter"><strong id="processPercent">0%</strong></div>
         <span id="processState">Idle</span>
         <i id="processPulse" aria-hidden="true"></i>
+      </aside>
+
+      <aside class="process-visualizer" aria-label="Project live status">
+        <div class="visualizer-head">
+          <span>Live control</span>
+          <strong id="visualizerProgress">0%</strong>
+        </div>
+        <div class="visualizer-track" aria-hidden="true"><i id="visualizerTrack"></i></div>
+        <div class="visualizer-flow" aria-label="System chain">
+          <div class="flow-step done" id="flowGame"><i></i><span>Game</span></div>
+          <div class="flow-step" id="flowServer"><i></i><span>Server</span></div>
+          <div class="flow-step" id="flowData"><i></i><span>Data</span></div>
+          <div class="flow-step" id="flowAdmin"><i></i><span>Admin</span></div>
+        </div>
+        <div class="visualizer-grid">
+          <span>Room</span><strong id="visualizerRoom">Farm</strong>
+          <span>Telegram</span><strong id="visualizerTelegram">Preview</strong>
+          <span>Server</span><strong id="visualizerServer">Local</strong>
+          <span>Last</span><strong id="visualizerLast">Loaded</strong>
+        </div>
+        <div class="visualizer-next">
+          <span>Next</span>
+          <strong id="visualizerNext">Action Tracking V2</strong>
+        </div>
       </aside>
 
       <section class="room active" id="farmRoom" aria-label="Farm room">
