@@ -1,0 +1,270 @@
+﻿<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#06110f">
+    <title>Green Farm Tycoon</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="app.js?v=12" defer></script>
+  </head>
+  <body>
+    <main class="app room-farm" aria-label="Green Farm Tycoon MVP">
+      <section class="resource-row" aria-label="Resources">
+        <div class="resource leaf-resource"><span>☘</span><strong id="scoreValue">0</strong></div>
+        <div class="resource water"><span>◌</span><strong id="energyValue">10</strong></div>
+        <div class="resource power"><span>⚡</span><strong id="resonanceValue">0</strong></div>
+        <button class="resource stars-wallet" id="resetBtn" title="Reset progress" aria-label="Reset progress">
+          <span>★</span><strong>10</strong><b>＋</b>
+        </button>
+        <button class="resource sound-toggle" id="soundBtn" title="Sound" aria-label="Toggle sound">
+          <span id="soundIcon">♪</span><strong id="soundState">On</strong>
+        </button>
+      </section>
+
+      <section class="telegram-status" id="telegramStatus" aria-label="Telegram connection status">
+        <span id="telegramStatusDot"></span>
+        <strong id="telegramStatusText">Browser preview</strong>
+        <b id="telegramUserText">No Telegram user</b>
+      </section>
+
+      <aside class="process-rail" aria-label="Process status">
+        <div class="process-meter" id="processMeter"><strong id="processPercent">0%</strong></div>
+        <span id="processState">Idle</span>
+        <i id="processPulse" aria-hidden="true"></i>
+      </aside>
+
+      <section class="room active" id="farmRoom" aria-label="Farm room">
+        <div class="room-title">
+          <span>Farm</span>
+          <strong id="plantStage">Seed</strong>
+        </div>
+
+        <section class="capsule" id="plantCapsule" aria-label="Growth capsule">
+          <div class="capsule-dome" aria-hidden="true"></div>
+          <div class="capsule-glass"></div>
+          <div class="capsule-light top" aria-hidden="true"></div>
+          <div class="capsule-light base" aria-hidden="true"></div>
+          <div class="growth-ring" id="growthRing"><span id="growthPercent">0%</span></div>
+          <div class="plant" id="plantVisual" aria-hidden="true">
+            <i class="stem"></i>
+            <i class="stem stem-b"></i>
+            <i class="stem stem-c"></i>
+            <i class="stem stem-d"></i>
+            <i class="filament filament-a"></i>
+            <i class="filament filament-b"></i>
+            <i class="filament filament-c"></i>
+            <i class="filament filament-d"></i>
+            <i class="filament filament-e"></i>
+            <i class="filament filament-f"></i>
+            <i class="leaf leaf-a"></i>
+            <i class="leaf leaf-b"></i>
+            <i class="leaf leaf-c"></i>
+            <i class="leaf leaf-d"></i>
+            <i class="leaf leaf-e"></i>
+            <i class="leaf leaf-f"></i>
+            <i class="leaf leaf-g"></i>
+            <i class="leaf leaf-h"></i>
+            <i class="leaf leaf-i"></i>
+            <i class="nano-core"></i>
+            <i class="nano-ring nano-ring-a"></i>
+            <i class="nano-ring nano-ring-b"></i>
+            <i class="root root-a"></i>
+            <i class="root root-b"></i>
+            <i class="root root-c"></i>
+            <i class="spark spark-a"></i>
+            <i class="spark spark-b"></i>
+            <i class="spark spark-c"></i>
+            <i class="spark spark-d"></i>
+            <i class="glow"></i>
+          </div>
+          <div class="growth-stream" aria-hidden="true">
+            <span id="growthBubbleA">+1%</span>
+            <span id="growthBubbleB">+2%</span>
+            <span id="growthBubbleC">+3%</span>
+          </div>
+          <div class="specimen-grid" id="specimenGrid" aria-label="Plant chambers">
+            <button class="specimen-pod" data-pod="0" aria-label="Plant chamber 1">
+              <span class="pod-sun"><i>☼</i><b id="podSun0">72</b></span>
+              <span class="pod-plant">
+                <i class="pod-stem"></i><i class="pod-stem side-a"></i><i class="pod-stem side-b"></i>
+                <i class="pod-leaf leaf-1"></i><i class="pod-leaf leaf-2"></i><i class="pod-leaf leaf-3"></i>
+                <i class="pod-core"></i>
+              </span>
+              <span class="pod-artifact"><i>◇</i><b id="podArtifact0">12%</b></span>
+              <span class="pod-id" id="podId0">001</span>
+            </button>
+            <button class="specimen-pod" data-pod="1" aria-label="Plant chamber 2">
+              <span class="pod-sun"><i>☼</i><b id="podSun1">68</b></span>
+              <span class="pod-plant">
+                <i class="pod-stem"></i><i class="pod-stem side-a"></i><i class="pod-stem side-b"></i>
+                <i class="pod-leaf leaf-1"></i><i class="pod-leaf leaf-2"></i><i class="pod-leaf leaf-3"></i>
+                <i class="pod-core"></i>
+              </span>
+              <span class="pod-artifact"><i>◇</i><b id="podArtifact1">15%</b></span>
+              <span class="pod-id" id="podId1">014</span>
+            </button>
+            <button class="specimen-pod" data-pod="2" aria-label="Plant chamber 3">
+              <span class="pod-sun"><i>☼</i><b id="podSun2">81</b></span>
+              <span class="pod-plant">
+                <i class="pod-stem"></i><i class="pod-stem side-a"></i><i class="pod-stem side-b"></i>
+                <i class="pod-leaf leaf-1"></i><i class="pod-leaf leaf-2"></i><i class="pod-leaf leaf-3"></i>
+                <i class="pod-core"></i>
+              </span>
+              <span class="pod-artifact"><i>◇</i><b id="podArtifact2">18%</b></span>
+              <span class="pod-id" id="podId2">027</span>
+            </button>
+            <button class="specimen-pod" data-pod="3" aria-label="Plant chamber 4">
+              <span class="pod-sun"><i>☼</i><b id="podSun3">76</b></span>
+              <span class="pod-plant">
+                <i class="pod-stem"></i><i class="pod-stem side-a"></i><i class="pod-stem side-b"></i>
+                <i class="pod-leaf leaf-1"></i><i class="pod-leaf leaf-2"></i><i class="pod-leaf leaf-3"></i>
+                <i class="pod-core"></i>
+              </span>
+              <span class="pod-artifact"><i>◇</i><b id="podArtifact3">21%</b></span>
+              <span class="pod-id" id="podId3">040</span>
+            </button>
+          </div>
+          <div class="root-network" aria-hidden="true">
+            <i class="root-line root-line-a"></i>
+            <i class="root-line root-line-b"></i>
+            <i class="root-line root-line-c"></i>
+            <i class="root-line root-line-d"></i>
+            <i class="root-pulse root-pulse-a"></i>
+            <i class="root-pulse root-pulse-b"></i>
+            <i class="root-pulse root-pulse-c"></i>
+          </div>
+          <div class="capsule-base" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          <div class="particles" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+          <div class="capsule-modules" aria-label="Capsule modules">
+            <div class="capsule-node water-node"><span>◌</span><b id="waterModule">72</b></div>
+            <div class="capsule-node light-node"><span>☼</span><b id="lightModule">88</b></div>
+            <div class="capsule-node time-node"><span>⏱</span><b id="timeModule">--</b></div>
+          </div>
+        </section>
+
+        <section class="action-dock" aria-label="Farm actions">
+          <button class="primary-action grow-card" id="mainActionBtn">
+            <span id="mainActionIcon">●</span>
+            <strong id="mainActionText">Grow</strong>
+          </button>
+          <div class="meter-card water-card" aria-hidden="true"><span>💧</span><i></i></div>
+          <div class="meter-card power-card" aria-hidden="true"><span>⚡</span><i></i></div>
+          <button class="meter-card auto-card" id="autoCollectBtn" aria-label="Toggle auto collect">
+            <span>⟳</span><b id="autoCollectState">Off</b>
+          </button>
+          <button class="stars-action" id="starsBtn" aria-label="Buy energy with Stars">
+            <span>★</span>
+            <strong>10</strong>
+          </button>
+        </section>
+
+        <section class="top-card" aria-label="Leaderboard preview">
+          <div class="card-head"><span>Top</span><strong>#<b id="rankValue">12</b></strong></div>
+          <div class="leader-row"><span>01</span><b>Nova</b><strong>920</strong></div>
+          <div class="leader-row you"><span>12</span><b id="leaderName">You</b><strong id="leaderScore">0</strong></div>
+        </section>
+      </section>
+
+      <section class="room" id="labRoom" aria-label="Lab mutation room">
+        <div class="room-title"><span>Lab</span><strong id="artifactLabel">Empty</strong></div>
+        <section class="mutation-lab" aria-label="Mutation lab">
+          <div class="lab-machine-top" aria-hidden="true"><i></i><b>▽</b></div>
+
+          <div class="fusion-panel lab-panel">
+            <span>Fusion process</span>
+            <strong id="fusionProgressLabel">55%</strong>
+            <i><b id="fusionProgressBar"></b></i>
+            <em id="fusionDnaA">DNA A: Neon Lettuce</em>
+            <em id="fusionDnaB">DNA B: Crystal Sprout</em>
+          </div>
+
+          <div class="mutation-capsule" id="mutationCapsule" aria-hidden="true">
+            <div class="capsule-shell"></div>
+            <div class="dna-helix">
+              <i></i><i></i><i></i><i></i><i></i><i></i>
+              <i></i><i></i><i></i><i></i><i></i><i></i>
+            </div>
+            <div class="helix-glow"></div>
+          </div>
+
+          <div class="odds-panel lab-panel">
+            <span>Mutation odds</span>
+            <strong id="rareChance">12%</strong>
+            <em id="mutationTier">Rare chance</em>
+          </div>
+
+          <div class="lab-machine-base" aria-hidden="true">
+            <i></i><i></i><i></i>
+            <strong>LAB LEVEL <b id="labLevelValue">4</b></strong>
+          </div>
+
+          <section class="mutation-actions" aria-label="Mutation actions">
+            <button class="mutation-confirm" id="synthBtn">
+              <span>Confirm mutation</span>
+              <strong>★ 150</strong>
+              <b>Nano boost (x5)</b>
+            </button>
+            <button class="mutation-auto" id="mutationAutoBtn" aria-label="Toggle mutation auto mode">
+              <i><b></b></i>
+              <span>Auto</span>
+              <strong id="mutationAutoState">Off</strong>
+            </button>
+          </section>
+        </section>
+      </section>
+
+      <section class="room" id="zenRoom" aria-label="Meditation room">
+        <div class="room-title"><span>Zen</span><strong id="zenState">Calm</strong></div>
+        <section class="zen-space" aria-label="Zen breathing session">
+          <div class="zen-atmosphere" aria-hidden="true">
+            <i></i><i></i><i></i><i></i><i></i><i></i>
+          </div>
+          <div class="zen-horizon" aria-hidden="true">
+            <span></span><span></span><span></span>
+          </div>
+          <div class="zen-orb" id="zenOrb">
+            <i class="zen-ring outer"></i>
+            <i class="zen-ring middle"></i>
+            <i class="zen-ring inner"></i>
+            <span class="zen-core"></span>
+            <span class="zen-aura"></span>
+            <b class="zen-dot"></b>
+            <strong id="zenTimer">05:00</strong>
+            <em id="zenPhase">Breathe</em>
+          </div>
+          <div class="zen-roots" aria-hidden="true">
+            <i></i><i></i><i></i><i></i><i></i>
+          </div>
+          <div class="zen-current" aria-hidden="true">
+            <i></i><i></i><i></i>
+          </div>
+          <div class="zen-modes" aria-label="Meditation duration">
+            <button class="zen-mode active" data-zen-duration="300000">5m</button>
+            <button class="zen-mode" data-zen-duration="180000">3m</button>
+            <button class="zen-mode" data-zen-duration="600000">10m</button>
+          </div>
+          <button class="primary-action compact zen-action" id="meditateBtn">
+            <span id="zenActionIcon">◎</span>
+            <strong id="zenActionText">Start</strong>
+          </button>
+          <div class="breath-line"><span id="zenBreathLine"></span></div>
+          <div class="zen-metrics" aria-label="Zen session metrics">
+            <span><b id="zenDepthValue">0</b><small>Depth</small></span>
+            <span><b id="zenFlowValue">Quiet</b><small>Flow</small></span>
+            <span><b id="zenRewardValue">+3</b><small>Zen</small></span>
+          </div>
+        </section>
+      </section>
+
+      <nav class="nav" aria-label="Rooms">
+        <button class="nav-item active" data-room="farm"><span>🌿</span><b>Farm</b></button>
+        <button class="nav-item" data-room="lab"><span>⚗</span><b>Lab</b></button>
+        <button class="nav-item" data-room="zen"><span>◎</span><b>Zen</b></button>
+      </nav>
+    </main>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  </body>
+</html>
