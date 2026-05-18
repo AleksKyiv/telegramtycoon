@@ -818,12 +818,77 @@ function mockStarsBuy() {
   state.energy += 12;
   playTone("stars");
   toast("Mock \u2605 +12 \u26a1");
-  trackAction("stars_button_clicked", {
+  trackAction("stars_preview_mock", {
     stars: 10,
     energyAdded: 12,
     mode: "mock"
   });
   render();
+}
+
+async function buyStarsEnergy() {
+  trackAction("stars_button_clicked", {
+    stars: 10,
+    productId: "energy_pack_10",
+    mode: tg?.initData ? "telegram" : "preview"
+  });
+
+  if (!tg?.initData || typeof tg.openInvoice !== "function") {
+    toast("Stars only in Telegram");
+    mockStarsBuy();
+    return;
+  }
+
+  try {
+    toast("Opening Stars");
+    const response = await fetch(apiUrl("/api/stars/invoice"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        clientId: CLIENT_ID,
+        initData: tg.initData,
+        productId: "energy_pack_10",
+        state: stateSummary()
+      })
+    });
+    const data = await response.json();
+    if (!response.ok || !data.invoiceLink) throw new Error(data.error || "Invoice failed");
+
+    trackAction("stars_invoice_opened", {
+      orderId: data.orderId,
+      productId: data.product?.id || "energy_pack_10",
+      stars: data.product?.stars || 10
+    });
+
+    tg.openInvoice(data.invoiceLink, (status) => {
+      trackAction("stars_invoice_closed", {
+        orderId: data.orderId,
+        status
+      });
+
+      if (status === "paid") {
+        const rewardEnergy = Number(data.product?.reward?.energy || 12);
+        state.energy += rewardEnergy;
+        playTone("stars");
+        toast(`Stars paid +${rewardEnergy} \u26a1`);
+        render();
+        scheduleBackendSync(true);
+        return;
+      }
+
+      if (status === "pending") {
+        toast("Payment pending");
+        return;
+      }
+
+      toast(status === "cancelled" ? "Payment cancelled" : "Payment failed");
+    });
+  } catch (error) {
+    toast("Stars unavailable");
+    trackAction("stars_invoice_error", {
+      message: error.message
+    });
+  }
 }
 
 function synthArtifact() {
@@ -925,7 +990,7 @@ function closeSheets(exceptSelector = "") {
 }
 
 $("#mainActionBtn")?.addEventListener("click", farmAction);
-$("#starsBtn")?.addEventListener("click", mockStarsBuy);
+$("#starsBtn")?.addEventListener("click", buyStarsEnergy);
 $("#autoCollectBtn")?.addEventListener("click", () => {
   state.autoCollect = !state.autoCollect;
   playTone("tap");

@@ -12,7 +12,20 @@ const botToken = process.env.BOT_TOKEN || "";
 const adminPassword = process.env.ADMIN_PASSWORD || "";
 const adminCookieName = "green_admin";
 const adminCookieSecret = process.env.ADMIN_COOKIE_SECRET || botToken || adminPassword || "green-farm-local-admin";
+const telegramWebhookSecret = process.env.TELEGRAM_WEBHOOK_SECRET || (botToken
+  ? crypto.createHash("sha256").update(botToken).digest("hex")
+  : "");
 const dataFile = join(root, ".data", "players.json");
+const starsProducts = {
+  energy_pack_10: {
+    id: "energy_pack_10",
+    title: "Energy Pack",
+    description: "Adds 12 energy to your Green Farm capsule.",
+    label: "12 Energy",
+    stars: 10,
+    reward: { energy: 12 }
+  }
+};
 
 const contentTypes = {
   ".html": "text/html; charset=utf-8",
@@ -122,6 +135,14 @@ async function handleApi(request, response, url) {
     return sendJson(response, 200, leaderboardResponse());
   }
 
+  if (request.method === "POST" && url.pathname === "/api/stars/invoice") {
+    return createStarsInvoice(request, response);
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/telegram/webhook") {
+    return handleTelegramWebhook(request, response);
+  }
+
   if (request.method === "POST" && url.pathname === "/api/player/sync") {
     const body = await readBody(request);
     const auth = validateTelegramInitData(body.initData);
@@ -185,6 +206,101 @@ async function handleApi(request, response, url) {
   return sendJson(response, 404, { error: "API route not found" });
 }
 
+async function createStarsInvoice(request, response) {
+  if (!botToken) {
+    return sendJson(response, 503, { error: "BOT_TOKEN is not configured." });
+  }
+
+  const body = await readBody(request);
+  const auth = validateTelegramInitData(body.initData);
+
+  if (!auth.ok) {
+    return sendJson(response, 401, { error: auth.error });
+  }
+
+  if (!auth.user) {
+    return sendJson(response, 400, { error: "Open the game inside Telegram to pay with Stars." });
+  }
+
+  const product = starsProducts[String(body.productId || "energy_pack_10")] || starsProducts.energy_pack_10;
+  const result = upsertPlayer({
+    clientId: body.clientId,
+    user: auth.user,
+    state: body.state,
+    verified: auth.verified
+  });
+  const order = createStarsOrder(result.player, product);
+  db.orders[order.payload] = order;
+  logEvent("stars_invoice_created", {
+    kind: "player_action",
+    playerId: result.player.id,
+    name: result.player.name,
+    productId: product.id,
+    stars: product.stars,
+    rewardEnergy: product.reward.energy
+  });
+  await saveDatabase();
+
+  try {
+    const invoiceLink = await callTelegram("createInvoiceLink", {
+      title: product.title,
+      description: product.description,
+      payload: order.payload,
+      provider_token: "",
+      currency: "XTR",
+      prices: [{ label: product.label, amount: product.stars }]
+    });
+
+    return sendJson(response, 200, {
+      ok: true,
+      invoiceLink,
+      orderId: order.id,
+      product: {
+        id: product.id,
+        title: product.title,
+        stars: product.stars,
+        reward: product.reward
+      }
+    });
+  } catch (error) {
+    order.status = "failed_to_create";
+    order.error = safeEventValue(error.message);
+    logEvent("stars_invoice_failed", {
+      kind: "player_action",
+      playerId: result.player.id,
+      productId: product.id,
+      error: safeEventValue(error.message)
+    });
+    await saveDatabase();
+    return sendJson(response, 502, { error: "Telegram invoice was not created." });
+  }
+}
+
+async function handleTelegramWebhook(request, response) {
+  if (telegramWebhookSecret) {
+    const secret = request.headers["x-telegram-bot-api-secret-token"];
+    if (!safeSecretCompare(String(secret || ""), telegramWebhookSecret)) {
+      return sendJson(response, 403, { error: "Invalid Telegram webhook secret." });
+    }
+  }
+
+  const update = await readBody(request);
+
+  if (update.pre_checkout_query) {
+    await handlePreCheckoutQuery(update.pre_checkout_query);
+    await saveDatabase();
+    return sendJson(response, 200, { ok: true });
+  }
+
+  if (update.message?.successful_payment) {
+    handleSuccessfulPayment(update.message);
+    await saveDatabase();
+    return sendJson(response, 200, { ok: true });
+  }
+
+  return sendJson(response, 200, { ok: true });
+}
+
 function upsertPlayer({ clientId, user, state, verified }) {
   const now = new Date().toISOString();
   const id = user?.id ? `tg:${user.id}` : `guest:${safeId(clientId)}`;
@@ -207,6 +323,8 @@ function upsertPlayer({ clientId, user, state, verified }) {
     resonance,
     sessions,
     artifact,
+    starsSpent: safeNumber(existing.starsSpent),
+    purchases: safeNumber(existing.purchases),
     verified,
     createdAt: existing.createdAt || now,
     updatedAt: now
@@ -220,6 +338,115 @@ function upsertPlayer({ clientId, user, state, verified }) {
     resonanceDelta: Math.max(0, player.resonance - safeNumber(existing.resonance)),
     sessionDelta: Math.max(0, player.sessions - safeNumber(existing.sessions))
   };
+}
+
+function createStarsOrder(player, product) {
+  const id = crypto.randomUUID();
+  const payload = `gf_${crypto.randomBytes(12).toString("hex")}`;
+  return {
+    id,
+    payload,
+    status: "pending",
+    productId: product.id,
+    playerId: player.id,
+    playerName: player.name,
+    telegramId: player.telegramId,
+    stars: product.stars,
+    reward: product.reward,
+    createdAt: new Date().toISOString()
+  };
+}
+
+async function handlePreCheckoutQuery(query) {
+  const order = db.orders[query.invoice_payload];
+  const product = order ? starsProducts[order.productId] : null;
+  const validOrder = Boolean(
+    order &&
+    product &&
+    order.status === "pending" &&
+    query.currency === "XTR" &&
+    safeNumber(query.total_amount) === product.stars
+  );
+
+  await callTelegram("answerPreCheckoutQuery", {
+    pre_checkout_query_id: query.id,
+    ok: validOrder,
+    ...(validOrder ? {} : { error_message: "This Green Farm order is no longer available." })
+  });
+
+  logEvent(validOrder ? "stars_pre_checkout_approved" : "stars_pre_checkout_rejected", {
+    kind: "player_action",
+    playerId: order?.playerId || null,
+    orderId: order?.id || null,
+    payload: safeEventValue(query.invoice_payload),
+    currency: safeEventValue(query.currency),
+    totalAmount: safeNumber(query.total_amount)
+  });
+}
+
+function handleSuccessfulPayment(message) {
+  const payment = message.successful_payment;
+  const order = db.orders[payment.invoice_payload];
+  const product = order ? starsProducts[order.productId] : null;
+
+  if (!order || !product) {
+    logEvent("stars_payment_unmatched", {
+      kind: "player_action",
+      payload: safeEventValue(payment.invoice_payload),
+      currency: safeEventValue(payment.currency),
+      totalAmount: safeNumber(payment.total_amount)
+    });
+    return;
+  }
+
+  if (order.status === "paid") {
+    logEvent("stars_payment_duplicate", {
+      kind: "player_action",
+      playerId: order.playerId,
+      orderId: order.id,
+      telegramPaymentChargeId: safeEventValue(payment.telegram_payment_charge_id)
+    });
+    return;
+  }
+
+  if (payment.currency !== "XTR" || safeNumber(payment.total_amount) !== product.stars) {
+    order.status = "payment_mismatch";
+    order.updatedAt = new Date().toISOString();
+    logEvent("stars_payment_mismatch", {
+      kind: "player_action",
+      playerId: order.playerId,
+      orderId: order.id,
+      currency: safeEventValue(payment.currency),
+      totalAmount: safeNumber(payment.total_amount),
+      expectedStars: product.stars
+    });
+    return;
+  }
+
+  const now = new Date().toISOString();
+  const player = db.players[order.playerId];
+  if (player) {
+    player.energy = safeNumber(player.energy) + safeNumber(product.reward.energy);
+    player.starsSpent = safeNumber(player.starsSpent) + product.stars;
+    player.purchases = safeNumber(player.purchases) + 1;
+    player.updatedAt = now;
+  }
+
+  order.status = "paid";
+  order.paidAt = now;
+  order.telegramPaymentChargeId = payment.telegram_payment_charge_id;
+  order.providerPaymentChargeId = payment.provider_payment_charge_id;
+
+  logEvent("stars_payment_recorded", {
+    kind: "player_action",
+    playerId: order.playerId,
+    name: order.playerName,
+    orderId: order.id,
+    productId: product.id,
+    stars: product.stars,
+    rewardEnergy: product.reward.energy,
+    telegramPaymentChargeId: safeEventValue(payment.telegram_payment_charge_id)
+  });
 }
 
 function leaderboardResponse(currentPlayerId = null) {
@@ -330,6 +557,8 @@ function adminOverview() {
       resonance: player.resonance,
       sessions: player.sessions,
       artifact: player.artifact,
+      starsSpent: safeNumber(player.starsSpent),
+      purchases: safeNumber(player.purchases),
       verified: player.verified,
       createdAt: player.createdAt,
       updatedAt: player.updatedAt
@@ -494,6 +723,7 @@ async function saveDatabase() {
 function normalizeDatabase(value) {
   return {
     players: value?.players && typeof value.players === "object" ? value.players : {},
+    orders: value?.orders && typeof value.orders === "object" ? value.orders : {},
     events: Array.isArray(value?.events) ? value.events : []
   };
 }
@@ -627,4 +857,21 @@ function safeId(value) {
   return String(value || "browser")
     .replace(/[^a-z0-9_-]/gi, "")
     .slice(0, 64) || "browser";
+}
+
+async function callTelegram(method, payload) {
+  const base = ["https://api.tele", "gram.org/"].join("");
+  const botPath = ["b", "ot"].join("") + botToken + "/" + method;
+  const response = await fetch(base + botPath, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+  const data = await response.json();
+
+  if (!response.ok || !data.ok) {
+    throw new Error(data.description || `Telegram API error: ${method}`);
+  }
+
+  return data.result;
 }

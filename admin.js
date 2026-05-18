@@ -286,6 +286,18 @@ function eventTitle(event) {
     zen_completed: "Zen completed",
     zen_duration_selected: "Zen duration",
     stars_button_clicked: "Stars clicked",
+    stars_preview_mock: "Stars preview",
+    stars_invoice_created: "Stars invoice",
+    stars_invoice_opened: "Stars opened",
+    stars_invoice_closed: "Stars closed",
+    stars_invoice_error: "Stars error",
+    stars_invoice_failed: "Stars failed",
+    stars_pre_checkout_approved: "Stars approved",
+    stars_pre_checkout_rejected: "Stars rejected",
+    stars_payment_recorded: "Stars paid",
+    stars_payment_unmatched: "Stars unmatched",
+    stars_payment_duplicate: "Stars duplicate",
+    stars_payment_mismatch: "Stars mismatch",
     sound_toggled: "Sound toggled",
     progress_reset_clicked: "Progress reset"
   };

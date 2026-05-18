@@ -82,19 +82,31 @@ Files likely needed:
 
 Result:
 
-- button `Buy Zen Energy`;
-- bot creates Stars invoice;
-- user pays test Stars;
+- button `★ 10`;
+- backend creates a Telegram Stars invoice with `currency: XTR`;
+- Mini App opens the invoice with `Telegram.WebApp.openInvoice`;
+- backend answers `pre_checkout_query` through the Telegram webhook;
 - backend receives `successful_payment`;
-- backend credits `zenEnergy`;
+- backend credits the player's internal energy;
 - frontend syncs updated balance.
 
 Minimal test product:
 
 ```txt
-Product: +10 Zen Energy
-Price: 1-10 Stars for test
+Product: +12 Energy
+Price: 10 Stars for test
 Currency: XTR
+```
+
+Current MVP endpoints:
+
+- `POST /api/stars/invoice` creates an invoice link.
+- `POST /api/telegram/webhook` receives `pre_checkout_query` and `successful_payment`.
+
+To configure the live bot after deploy:
+
+```bash
+node scripts/configure-telegram-bot.mjs
 ```
 
 ## Sprint 3: Progress Save

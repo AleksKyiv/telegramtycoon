@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import { readFile } from "node:fs/promises";
 
 await loadDotEnv();
@@ -5,6 +6,9 @@ await loadDotEnv();
 const botToken = process.env.BOT_TOKEN;
 const publicAppUrl = process.env.PUBLIC_APP_URL;
 const menuText = process.env.BOT_MENU_TEXT || "Open Green Farm";
+const webhookSecret = process.env.TELEGRAM_WEBHOOK_SECRET || (botToken
+  ? crypto.createHash("sha256").update(botToken).digest("hex")
+  : "");
 
 if (!botToken || botToken.includes("replace-with")) {
   fail("BOT_TOKEN is missing. Put it in .env or environment variables.");
@@ -28,10 +32,16 @@ await callTelegram("setChatMenuButton", {
     web_app: { url: publicAppUrl }
   }
 });
+await callTelegram("setWebhook", {
+  url: `${publicAppUrl.replace(/\/$/, "")}/api/telegram/webhook`,
+  secret_token: webhookSecret,
+  allowed_updates: ["message", "pre_checkout_query"]
+});
 
 console.log(`Configured @${bot.username}`);
 console.log(`Menu button: ${menuText}`);
 console.log(`Mini App URL: ${publicAppUrl}`);
+console.log(`Payments webhook: ${publicAppUrl.replace(/\/$/, "")}/api/telegram/webhook`);
 
 async function callTelegram(method, payload) {
   const base = ["https://api.tele", "gram.org/"].join("");
