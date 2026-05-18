@@ -42,6 +42,12 @@ const elements = {
   paymentPending: document.getElementById("paymentPending"),
   paymentSupport: document.getElementById("paymentSupport"),
   paymentsTable: document.getElementById("paymentsTable"),
+  botStarsStatus: document.getElementById("botStarsStatus"),
+  botStarsBalance: document.getElementById("botStarsBalance"),
+  botStarsAvailableAt: document.getElementById("botStarsAvailableAt"),
+  botStarsTransactionCount: document.getElementById("botStarsTransactionCount"),
+  botStarsUpdatedAt: document.getElementById("botStarsUpdatedAt"),
+  botStarsTransactions: document.getElementById("botStarsTransactions"),
   roomsGrid: document.getElementById("roomsGrid"),
   playersTable: document.getElementById("playersTable"),
   eventsList: document.getElementById("eventsList")
@@ -142,6 +148,7 @@ function renderOverview(overview) {
   renderVisualAnalytics(overview);
   renderActionTracking(overview);
   renderPayments(overview);
+  renderBotStars(overview.botStars);
   renderRooms(overview.rooms);
   renderPlayers(overview.players);
   renderEvents(overview.events);
@@ -239,6 +246,43 @@ function renderPayments(overview) {
         </tr>
       `
     )
+    .join("");
+}
+
+function renderBotStars(botStars = {}) {
+  const transactions = botStars.transactions || [];
+  elements.botStarsStatus.textContent = botStars.ok ? (botStars.cached ? "cached" : "live") : "error";
+  elements.botStarsStatus.classList.toggle("bad", !botStars.ok);
+  elements.botStarsBalance.textContent = formatNumber(botStars.balanceAmount);
+  elements.botStarsAvailableAt.textContent = botStars.nextAvailableAt ? formatDateShort(botStars.nextAvailableAt) : "-";
+  elements.botStarsTransactionCount.textContent = formatNumber(botStars.transactionCount);
+  elements.botStarsUpdatedAt.textContent = botStars.updatedAt ? formatTimeOnly(botStars.updatedAt) : "-";
+
+  if (!botStars.ok) {
+    elements.botStarsTransactions.innerHTML = `<div class="empty-state">Telegram Stars API unavailable: ${escapeHtml(botStars.error || "unknown error")}</div>`;
+    return;
+  }
+
+  if (!transactions.length) {
+    elements.botStarsTransactions.innerHTML = `<div class="empty-state">No Telegram Star transactions returned yet.</div>`;
+    return;
+  }
+
+  elements.botStarsTransactions.innerHTML = transactions
+    .map((transaction) => {
+      const partner = transaction.sourceUser || transaction.receiverUser;
+      const partnerLabel = partner?.username || partner?.name || transaction.sourceType || transaction.receiverType || "Telegram";
+      return `
+        <div class="bot-stars-row">
+          <span class="payment-status ${transaction.estimatedAvailableAt ? "pending" : "neutral"}">${escapeHtml(transaction.sourceType || "stars")}</span>
+          <strong>${formatNumber(transaction.amount)} Stars</strong>
+          <b>${escapeHtml(partnerLabel)}</b>
+          <small>${formatDateTime(transaction.date)}</small>
+          <em>${transaction.estimatedAvailableAt ? `available ~ ${formatDateShort(transaction.estimatedAvailableAt)}` : "no hold estimate"}</em>
+          <i class="mono">${escapeHtml(transaction.shortId || "-")}</i>
+        </div>
+      `;
+    })
     .join("");
 }
 
@@ -440,6 +484,22 @@ function formatDateTime(value) {
   return new Intl.DateTimeFormat("uk-UA", {
     day: "2-digit",
     month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(new Date(value));
+}
+
+function formatDateShort(value) {
+  if (!value) return "-";
+  return new Intl.DateTimeFormat("uk-UA", {
+    day: "2-digit",
+    month: "2-digit"
+  }).format(new Date(value));
+}
+
+function formatTimeOnly(value) {
+  if (!value) return "-";
+  return new Intl.DateTimeFormat("uk-UA", {
     hour: "2-digit",
     minute: "2-digit"
   }).format(new Date(value));

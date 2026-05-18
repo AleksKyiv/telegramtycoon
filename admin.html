@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#071210">
     <title>Green Farm Control</title>
-    <link rel="stylesheet" href="/admin.css?v=4">
-    <script src="/admin.js?v=4" defer></script>
+    <link rel="stylesheet" href="/admin.css?v=5">
+    <script src="/admin.js?v=5" defer></script>
   </head>
   <body>
     <main class="admin-shell">
@@ -229,6 +229,39 @@
               <tbody id="paymentsTable"></tbody>
             </table>
           </div>
+        </section>
+
+        <section class="panel bot-stars-panel" aria-label="Bot Stars balance">
+          <div class="panel-head">
+            <div>
+              <h2>Bot Stars Balance</h2>
+              <p>Real Telegram bot balance and recent Star transactions. Availability dates are estimated as payment date + 21 days.</p>
+            </div>
+            <strong id="botStarsStatus">checking</strong>
+          </div>
+          <div class="bot-stars-grid">
+            <article class="payment-card stars">
+              <span>Bot balance</span>
+              <strong id="botStarsBalance">0</strong>
+              <small>Stars currently reported by Telegram</small>
+            </article>
+            <article class="payment-card pending">
+              <span>Next available</span>
+              <strong id="botStarsAvailableAt">-</strong>
+              <small>estimated after 21 days</small>
+            </article>
+            <article class="payment-card paid">
+              <span>Transactions</span>
+              <strong id="botStarsTransactionCount">0</strong>
+              <small>recent Telegram Star records</small>
+            </article>
+            <article class="payment-card support">
+              <span>Updated</span>
+              <strong id="botStarsUpdatedAt">-</strong>
+              <small>cached for 60 seconds</small>
+            </article>
+          </div>
+          <div class="bot-stars-list" id="botStarsTransactions"></div>
         </section>
 
         <section class="panel roadmap-panel" aria-label="Development roadmap">

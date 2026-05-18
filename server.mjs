@@ -27,6 +27,11 @@ const starsProducts = {
     reward: { energy: 12 }
   }
 };
+const STARS_WITHDRAWAL_HOLD_DAYS = 21;
+const botStarsCache = {
+  expiresAt: 0,
+  data: null
+};
 
 const contentTypes = {
   ".html": "text/html; charset=utf-8",
@@ -128,7 +133,7 @@ async function handleApi(request, response, url) {
     }
 
     if (request.method === "GET" && url.pathname === "/api/admin/overview") {
-      return sendJson(response, 200, adminOverview());
+      return sendJson(response, 200, await adminOverview());
     }
   }
 
@@ -550,7 +555,7 @@ function leaderboardResponse(currentPlayerId = null) {
   };
 }
 
-function adminOverview() {
+async function adminOverview() {
   const rankedPlayers = Object.values(db.players)
     .sort((a, b) => b.score - a.score || String(a.name).localeCompare(String(b.name)));
   const rankById = new Map(rankedPlayers.map((player, index) => [player.id, index + 1]));
@@ -575,6 +580,7 @@ function adminOverview() {
   const actionEvents = db.events.filter((event) => event.kind === "player_action");
   const actionCounts = countEvents(actionEvents);
   const payments = paymentRecords();
+  const botStars = await botStarsSnapshot();
   const paymentStats = payments.reduce(
     (accumulator, payment) => {
       accumulator.total += 1;
@@ -662,9 +668,122 @@ function adminOverview() {
       updatedAt: player.updatedAt
     })),
     payments: payments.slice(0, 80),
+    botStars,
     leaderboard: leaderboardResponse().leaderboard,
     events: db.events.slice(0, 80)
   };
+}
+
+async function botStarsSnapshot() {
+  const now = Date.now();
+  if (botStarsCache.data && botStarsCache.expiresAt > now) {
+    return { ...botStarsCache.data, cached: true };
+  }
+
+  if (!botToken) {
+    return {
+      ok: false,
+      cached: false,
+      error: "BOT_TOKEN is not configured.",
+      balanceAmount: 0,
+      balanceNano: 0,
+      transactionCount: 0,
+      nextAvailableAt: null,
+      updatedAt: new Date().toISOString(),
+      transactions: []
+    };
+  }
+
+  try {
+    const [balance, starTransactions] = await Promise.all([
+      callTelegram("getMyStarBalance", {}),
+      callTelegram("getStarTransactions", { limit: 20 })
+    ]);
+    const rawTransactions = Array.isArray(starTransactions?.transactions) ? starTransactions.transactions : [];
+    const transactions = rawTransactions.map(normalizeStarTransaction);
+    const nextAvailableAt = transactions
+      .filter((transaction) => transaction.estimatedAvailableAt)
+      .map((transaction) => transaction.estimatedAvailableAt)
+      .sort()[0] || null;
+    const data = {
+      ok: true,
+      cached: false,
+      error: "",
+      balanceAmount: starAmount(balance).amount,
+      balanceNano: starAmount(balance).nano,
+      transactionCount: transactions.length,
+      nextAvailableAt,
+      updatedAt: new Date().toISOString(),
+      transactions
+    };
+    botStarsCache.data = data;
+    botStarsCache.expiresAt = now + 60_000;
+    return data;
+  } catch (error) {
+    const data = {
+      ok: false,
+      cached: false,
+      error: safeEventValue(error.message),
+      balanceAmount: 0,
+      balanceNano: 0,
+      transactionCount: 0,
+      nextAvailableAt: null,
+      updatedAt: new Date().toISOString(),
+      transactions: []
+    };
+    botStarsCache.data = data;
+    botStarsCache.expiresAt = now + 30_000;
+    return data;
+  }
+}
+
+function normalizeStarTransaction(transaction) {
+  const amount = starAmount(transaction.amount);
+  const date = transaction.date ? new Date(transaction.date * 1000) : null;
+  const sourceUser = transaction.source?.user || null;
+  const receiverUser = transaction.receiver?.user || null;
+  const isIncomingUserPayment = transaction.source?.type === "user" && amount.amount > 0;
+  return {
+    id: transaction.id || "",
+    shortId: shortTransactionId(transaction.id || ""),
+    amount: amount.amount,
+    nano: amount.nano,
+    date: date ? date.toISOString() : null,
+    estimatedAvailableAt: isIncomingUserPayment && date
+      ? new Date(date.getTime() + STARS_WITHDRAWAL_HOLD_DAYS * 24 * 60 * 60 * 1000).toISOString()
+      : null,
+    sourceType: transaction.source?.type || "",
+    receiverType: transaction.receiver?.type || "",
+    sourceUser: sourceUser ? publicTelegramUser(sourceUser) : null,
+    receiverUser: receiverUser ? publicTelegramUser(receiverUser) : null
+  };
+}
+
+function starAmount(value) {
+  if (value && typeof value === "object") {
+    return {
+      amount: safeNumber(value.amount),
+      nano: safeNumber(value.nanostar_amount)
+    };
+  }
+  return {
+    amount: safeNumber(value),
+    nano: 0
+  };
+}
+
+function publicTelegramUser(user) {
+  return {
+    id: user.id ? `${String(user.id).slice(0, 3)}***` : "",
+    username: user.username ? `@${user.username}` : "",
+    name: [user.first_name, user.last_name].filter(Boolean).join(" ")
+  };
+}
+
+function shortTransactionId(value) {
+  const text = String(value || "");
+  if (text.length <= 14) return text;
+  return `${text.slice(0, 7)}...${text.slice(-5)}`;
 }
 
 function paymentRecords() {

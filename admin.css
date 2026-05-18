@@ -438,7 +438,16 @@ input:focus {
     var(--panel);
 }
 
-.payments-panel .panel-head > strong {
+.bot-stars-panel {
+  margin-bottom: 14px;
+  background:
+    radial-gradient(circle at 14% 0%, rgba(255, 209, 102, 0.14), transparent 34%),
+    radial-gradient(circle at 88% 12%, rgba(92, 255, 207, 0.08), transparent 34%),
+    var(--panel);
+}
+
+.payments-panel .panel-head > strong,
+.bot-stars-panel .panel-head > strong {
   align-self: start;
   border: 1px solid rgba(255, 209, 102, 0.3);
   border-radius: 999px;
@@ -448,7 +457,14 @@ input:focus {
   font-size: 12px;
 }
 
-.payment-grid {
+.bot-stars-panel .panel-head > strong.bad {
+  border-color: rgba(255, 123, 138, 0.38);
+  background: rgba(255, 123, 138, 0.1);
+  color: var(--bad);
+}
+
+.payment-grid,
+.bot-stars-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
@@ -522,6 +538,49 @@ input:focus {
   border-color: rgba(255, 123, 138, 0.38);
   background: rgba(255, 123, 138, 0.1);
   color: var(--bad);
+}
+
+.bot-stars-list {
+  display: grid;
+  gap: 8px;
+}
+
+.bot-stars-row {
+  display: grid;
+  grid-template-columns: 108px 94px minmax(0, 1fr) 82px 140px 100px;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 10px;
+}
+
+.bot-stars-row strong {
+  color: var(--warn);
+  font-size: 14px;
+}
+
+.bot-stars-row b {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bot-stars-row small,
+.bot-stars-row em {
+  color: var(--muted);
+  font-size: 12px;
+  font-style: normal;
+}
+
+.bot-stars-row i {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .mono {
@@ -781,8 +840,19 @@ td {
   .roadmap-steps,
   .action-grid,
   .payment-grid,
+  .bot-stars-grid,
   .action-summary {
     grid-template-columns: 1fr;
+  }
+
+  .bot-stars-row {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .bot-stars-row b,
+  .bot-stars-row em,
+  .bot-stars-row i {
+    grid-column: 1 / -1;
   }
 
   .admin-header,
