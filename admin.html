@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#071210">
     <title>Green Farm Control</title>
-    <link rel="stylesheet" href="/admin.css?v=2">
-    <script src="/admin.js?v=2" defer></script>
+    <link rel="stylesheet" href="/admin.css?v=3">
+    <script src="/admin.js?v=3" defer></script>
   </head>
   <body>
     <main class="admin-shell">
@@ -148,6 +148,39 @@
               </div>
             </div>
           </article>
+        </section>
+
+        <section class="panel action-panel" aria-label="Action tracking">
+          <div class="panel-head">
+            <div>
+              <h2>Action Tracking</h2>
+              <p>Live picture of what players actually press inside Farm, Lab, Zen and Stars.</p>
+            </div>
+            <strong id="actionTotal">0 actions</strong>
+          </div>
+          <div class="action-grid">
+            <article class="action-card farm">
+              <span>Farm</span>
+              <strong id="actionFarm">0</strong>
+              <small>grow, boost, collect, auto</small>
+            </article>
+            <article class="action-card lab">
+              <span>Lab</span>
+              <strong id="actionLab">0</strong>
+              <small>mutation, artifact, lab auto</small>
+            </article>
+            <article class="action-card zen">
+              <span>Zen</span>
+              <strong id="actionZen">0</strong>
+              <small>start, pause, complete</small>
+            </article>
+            <article class="action-card stars">
+              <span>Stars</span>
+              <strong id="actionStars">0</strong>
+              <small>payment button attempts</small>
+            </article>
+          </div>
+          <div class="action-summary" id="actionSummary"></div>
         </section>
 
         <section class="panel roadmap-panel" aria-label="Development roadmap">

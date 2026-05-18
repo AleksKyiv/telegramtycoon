@@ -374,6 +374,95 @@ input:focus {
   transition: width 260ms ease;
 }
 
+.action-panel {
+  margin-bottom: 14px;
+  background:
+    radial-gradient(circle at 84% 0%, rgba(255, 209, 102, 0.12), transparent 32%),
+    var(--panel);
+}
+
+.action-panel .panel-head > strong {
+  align-self: start;
+  border: 1px solid rgba(92, 255, 207, 0.24);
+  border-radius: 999px;
+  padding: 9px 12px;
+  color: var(--accent);
+  background: rgba(92, 255, 207, 0.08);
+  font-size: 12px;
+}
+
+.action-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.action-card {
+  min-height: 116px;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.045);
+  padding: 14px;
+}
+
+.action-card span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.action-card strong {
+  color: var(--text);
+  font-size: 34px;
+  line-height: 1;
+}
+
+.action-card small {
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.action-card.farm { border-color: rgba(92, 255, 207, 0.22); }
+.action-card.lab { border-color: rgba(88, 220, 255, 0.22); }
+.action-card.zen { border-color: rgba(200, 255, 106, 0.22); }
+.action-card.stars { border-color: rgba(255, 209, 102, 0.28); }
+
+.action-summary {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.action-pill {
+  min-width: 0;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 999px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.action-pill span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.action-pill strong {
+  color: var(--text);
+}
+
 .roadmap-panel {
   margin-bottom: 14px;
 }
@@ -590,7 +679,9 @@ td {
   .rooms-grid,
   .content-grid,
   .control-visuals,
-  .roadmap-steps {
+  .roadmap-steps,
+  .action-grid,
+  .action-summary {
     grid-template-columns: 1fr;
   }
 

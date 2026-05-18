@@ -30,6 +30,12 @@ const elements = {
   metricZenBar: document.getElementById("metricZenBar"),
   metricEventsLabel: document.getElementById("metricEventsLabel"),
   metricEventsBar: document.getElementById("metricEventsBar"),
+  actionTotal: document.getElementById("actionTotal"),
+  actionFarm: document.getElementById("actionFarm"),
+  actionLab: document.getElementById("actionLab"),
+  actionZen: document.getElementById("actionZen"),
+  actionStars: document.getElementById("actionStars"),
+  actionSummary: document.getElementById("actionSummary"),
   roomsGrid: document.getElementById("roomsGrid"),
   playersTable: document.getElementById("playersTable"),
   eventsList: document.getElementById("eventsList")
@@ -128,6 +134,7 @@ function renderOverview(overview) {
   elements.badgeEvents.textContent = `Events: ${formatNumber(stats.eventCount)}`;
 
   renderVisualAnalytics(overview);
+  renderActionTracking(overview);
   renderRooms(overview.rooms);
   renderPlayers(overview.players);
   renderEvents(overview.events);
@@ -140,7 +147,7 @@ function renderVisualAnalytics(overview) {
   const activePercent = Math.round((stats.active24h / playerCount) * 100);
   const zenPlayers = players.filter((player) => Number(player.sessions) > 0 || Number(player.resonance) > 0).length;
   const zenPercent = Math.round((zenPlayers / playerCount) * 100);
-  const eventSignal = Math.min(100, Math.round((stats.eventCount / Math.max(1, stats.players * 4)) * 100));
+  const eventSignal = Math.min(100, Math.round((stats.actionEventCount / Math.max(1, stats.players * 4)) * 100));
   const readiness = Math.min(
     100,
     34 + (stats.telegramValidation ? 16 : 7) + (stats.players > 0 ? 16 : 0) + (stats.eventCount > 0 ? 14 : 0) + 12
@@ -156,12 +163,37 @@ function renderVisualAnalytics(overview) {
   updateMetric(elements.metricTelegramLabel, elements.metricTelegramBar, `${telegramPercent}%`, telegramPercent);
   updateMetric(elements.metricActiveLabel, elements.metricActiveBar, `${activePercent}%`, activePercent);
   updateMetric(elements.metricZenLabel, elements.metricZenBar, `${zenPercent}%`, zenPercent);
-  updateMetric(elements.metricEventsLabel, elements.metricEventsBar, formatNumber(stats.eventCount), eventSignal);
+  updateMetric(elements.metricEventsLabel, elements.metricEventsBar, formatNumber(stats.actionEventCount), eventSignal);
 }
 
 function updateMetric(label, bar, text, percent) {
   if (label) label.textContent = text;
   if (bar) bar.style.setProperty("--value", `${Math.min(100, Math.max(0, percent))}%`);
+}
+
+function renderActionTracking(overview) {
+  const { stats, actionSummary = [] } = overview;
+  elements.actionTotal.textContent = `${formatNumber(stats.actionEventCount)} actions`;
+  elements.actionFarm.textContent = formatNumber(stats.farmActionCount);
+  elements.actionLab.textContent = formatNumber(stats.labActionCount);
+  elements.actionZen.textContent = formatNumber(stats.zenActionCount);
+  elements.actionStars.textContent = formatNumber(stats.starsActionCount);
+
+  if (!actionSummary.length) {
+    elements.actionSummary.innerHTML = `<div class="empty-state">No tracked actions yet. Open the game and press Grow, Lab, Zen or Stars.</div>`;
+    return;
+  }
+
+  elements.actionSummary.innerHTML = actionSummary
+    .map(
+      (item) => `
+        <div class="action-pill">
+          <span>${escapeHtml(actionLabel(item.type))}</span>
+          <strong>${formatNumber(item.count)}</strong>
+        </div>
+      `
+    )
+    .join("");
 }
 
 function renderRooms(rooms) {
@@ -236,7 +268,26 @@ function eventTitle(event) {
   const titles = {
     admin_login: "Вхід в адмінку",
     player_created: "Новий гравець",
-    player_progress: "Прогрес гравця"
+    player_progress: "Прогрес гравця",
+    app_opened: "App opened",
+    room_opened: "Room opened",
+    farm_grow_clicked: "Farm grow",
+    farm_boost_clicked: "Farm boost",
+    farm_collected: "Farm collected",
+    farm_auto_collected: "Auto collected",
+    farm_auto_collect_toggled: "Auto collect",
+    farm_blocked_no_energy: "Farm no energy",
+    lab_mutation_clicked: "Lab mutation",
+    lab_auto_toggled: "Lab auto",
+    lab_blocked_no_energy: "Lab no energy",
+    zen_started: "Zen started",
+    zen_paused: "Zen paused",
+    zen_resumed: "Zen resumed",
+    zen_completed: "Zen completed",
+    zen_duration_selected: "Zen duration",
+    stars_button_clicked: "Stars clicked",
+    sound_toggled: "Sound toggled",
+    progress_reset_clicked: "Progress reset"
   };
   return titles[event.type] || event.type;
 }
@@ -251,7 +302,23 @@ function eventText(event) {
       event.resonanceDelta
     )} Zen, +${formatNumber(event.sessionDelta)} sessions.`;
   }
+  if (event.kind === "player_action") {
+    const details = actionDetailsText(event.details || {});
+    return `${escapeHtml(event.name || "Guest")} did ${escapeHtml(actionLabel(event.type))}${details ? ` - ${details}` : ""}.`;
+  }
   return escapeHtml(JSON.stringify(event));
+}
+
+function actionLabel(type) {
+  return eventTitle({ type });
+}
+
+function actionDetailsText(details) {
+  const preferred = ["room", "enabled", "harvest", "reward", "durationMs", "stars", "energyAdded", "mode"];
+  return preferred
+    .filter((key) => Object.prototype.hasOwnProperty.call(details, key))
+    .map((key) => `${key}: ${escapeHtml(details[key])}`)
+    .join(", ");
 }
 
 function showLogin(message = "") {

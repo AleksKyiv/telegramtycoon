@@ -147,6 +147,41 @@ async function handleApi(request, response, url) {
     });
   }
 
+  if (request.method === "POST" && url.pathname === "/api/player/event") {
+    const body = await readBody(request);
+    const auth = validateTelegramInitData(body.initData);
+
+    if (!auth.ok) {
+      return sendJson(response, 401, { error: auth.error });
+    }
+
+    const result = upsertPlayer({
+      clientId: body.clientId,
+      user: auth.user,
+      state: body.state,
+      verified: auth.verified
+    });
+    const { player } = result;
+    const eventType = safeEventType(body.type);
+
+    logEvent(eventType, {
+      kind: "player_action",
+      playerId: player.id,
+      name: player.name,
+      username: player.username,
+      verified: player.verified,
+      details: safeEventDetails(body.details),
+      state: safeStateSummary(body.state)
+    });
+    await saveDatabase();
+
+    return sendJson(response, 200, {
+      ok: true,
+      playerId: player.id,
+      eventType
+    });
+  }
+
   return sendJson(response, 404, { error: "API route not found" });
 }
 
@@ -229,6 +264,8 @@ function adminOverview() {
     },
     { score: 0, energy: 0, resonance: 0, sessions: 0 }
   );
+  const actionEvents = db.events.filter((event) => event.kind === "player_action");
+  const actionCounts = countEvents(actionEvents);
 
   return {
     ok: true,
@@ -247,8 +284,18 @@ function adminOverview() {
       lastActiveAt: playersByActivity[0]?.updatedAt || null,
       telegramValidation: Boolean(botToken),
       adminPasswordConfigured: Boolean(adminPassword),
-      eventCount: db.events.length
+      eventCount: db.events.length,
+      actionEventCount: actionEvents.length,
+      farmActionCount: countActionPrefix(actionEvents, "farm_"),
+      labActionCount: countActionPrefix(actionEvents, "lab_"),
+      zenActionCount: countActionPrefix(actionEvents, "zen_"),
+      starsActionCount: countActionPrefix(actionEvents, "stars_"),
+      roomOpenCount: actionEvents.filter((event) => event.type === "room_opened").length
     },
+    actionSummary: Object.entries(actionCounts)
+      .sort(([, left], [, right]) => right - left)
+      .slice(0, 10)
+      .map(([type, count]) => ({ type, count })),
     rooms: [
       {
         id: "farm",
@@ -326,6 +373,49 @@ function logEvent(type, details = {}) {
     ...details
   });
   db.events = db.events.slice(0, 200);
+}
+
+function countEvents(events) {
+  return events.reduce((counts, event) => {
+    counts[event.type] = (counts[event.type] || 0) + 1;
+    return counts;
+  }, {});
+}
+
+function countActionPrefix(events, prefix) {
+  return events.filter((event) => event.type.startsWith(prefix)).length;
+}
+
+function safeEventType(value) {
+  return String(value || "player_action")
+    .replace(/[^a-z0-9_:-]/gi, "_")
+    .slice(0, 64) || "player_action";
+}
+
+function safeEventDetails(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  return Object.fromEntries(
+    Object.entries(value)
+      .slice(0, 12)
+      .map(([key, item]) => [safeEventType(key), safeEventValue(item)])
+  );
+}
+
+function safeEventValue(value) {
+  if (typeof value === "number") return safeNumber(value);
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") return value.slice(0, 160);
+  return String(value ?? "").slice(0, 160);
+}
+
+function safeStateSummary(state) {
+  return {
+    score: safeNumber(state?.score),
+    energy: safeNumber(state?.energy),
+    resonance: safeNumber(state?.resonance),
+    sessions: safeNumber(state?.sessions),
+    artifact: safeNumber(state?.artifact)
+  };
 }
 
 function validateTelegramInitData(initData) {

@@ -389,6 +389,33 @@ async function syncPlayer() {
   }
 }
 
+function stateSummary() {
+  return {
+    score: state.score,
+    energy: state.energy,
+    resonance: state.resonance,
+    sessions: state.sessions,
+    artifact: state.artifact
+  };
+}
+
+function trackAction(type, details = {}) {
+  const payload = {
+    clientId: CLIENT_ID,
+    initData: tg?.initData || "",
+    type,
+    details,
+    state: stateSummary()
+  };
+
+  fetch(apiUrl("/api/player/event"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+    keepalive: true
+  }).catch(() => {});
+}
+
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
@@ -534,6 +561,10 @@ function completeZenSession() {
   state.sessions += 1;
   state.resonance += reward;
   state.score += 8;
+  trackAction("zen_completed", {
+    reward,
+    durationMs: state.zenDuration || ZEN_DEFAULT_DURATION_MS
+  });
   state.zenStartedAt = 0;
   state.zenPausedAt = 0;
   state.zenElapsed = 0;
@@ -671,6 +702,10 @@ function collectHarvest(auto = false) {
   state.plantVariant = (state.plantVariant + 1 + state.artifact) % PLANT_VARIANTS.length;
   playTone("collect");
   toast(auto ? `Auto +${harvest} \u2726` : `+${harvest} \u2726`);
+  trackAction(auto ? "farm_auto_collected" : "farm_collected", {
+    harvest,
+    artifact: state.artifact
+  });
   render();
 }
 
@@ -693,6 +728,7 @@ function farmAction() {
 
   if (state.energy <= 0) {
     toast("Need \u26a1");
+    trackAction("farm_blocked_no_energy", { progress: Math.round(progress) });
     return;
   }
 
@@ -702,11 +738,19 @@ function farmAction() {
     state.plantedAt = Date.now();
     playTone("grow");
     toast("Planted");
+    trackAction("farm_grow_clicked", {
+      growthDuration: state.growthDuration,
+      plantVariant: state.plantVariant
+    });
   } else {
     state.plantedAt -= BOOST_MS + state.artifact * 450;
     state.boostUntil = Date.now() + 2_800;
     playTone("boost");
     toast("Boost");
+    trackAction("farm_boost_clicked", {
+      progress: Math.round(progress),
+      boostMs: BOOST_MS + state.artifact * 450
+    });
   }
   render();
 }
@@ -715,12 +759,21 @@ function mockStarsBuy() {
   state.energy += 12;
   playTone("stars");
   toast("Mock \u2605 +12 \u26a1");
+  trackAction("stars_button_clicked", {
+    stars: 10,
+    energyAdded: 12,
+    mode: "mock"
+  });
   render();
 }
 
 function synthArtifact() {
   if (state.energy < 5) {
     toast("Need 5 \u26a1");
+    trackAction("lab_blocked_no_energy", {
+      energy: state.energy,
+      cost: 5
+    });
     return;
   }
   state.energy -= 5;
@@ -729,6 +782,10 @@ function synthArtifact() {
   state.score += 8;
   playTone("lab");
   toast("Artifact +1");
+  trackAction("lab_mutation_clicked", {
+    artifact: state.artifact,
+    energyCost: 5
+  });
   render();
 }
 
@@ -740,6 +797,9 @@ function meditate() {
     playTone("zen");
     startZenAmbient();
     toast("Zen started");
+    trackAction("zen_started", {
+      durationMs: state.zenDuration || ZEN_DEFAULT_DURATION_MS
+    });
     render();
     return;
   }
@@ -750,6 +810,9 @@ function meditate() {
     playTone("tap");
     startZenAmbient();
     toast("Zen resumed");
+    trackAction("zen_resumed", {
+      elapsedMs: state.zenElapsed
+    });
     render();
     return;
   }
@@ -759,6 +822,9 @@ function meditate() {
   playTone("tap");
   stopZenAmbient(0.8);
   toast("Zen paused");
+  trackAction("zen_paused", {
+    elapsedMs: state.zenElapsed
+  });
   render();
 }
 
@@ -777,6 +843,7 @@ function switchRoom(name) {
   });
   if (name === "zen" && state.zenStartedAt && !state.zenPausedAt) startZenAmbient();
   if (name !== "zen") stopZenAmbient(1);
+  trackAction("room_opened", { room: name });
 }
 
 $("#mainActionBtn")?.addEventListener("click", farmAction);
@@ -785,12 +852,18 @@ $("#autoCollectBtn")?.addEventListener("click", () => {
   state.autoCollect = !state.autoCollect;
   playTone("tap");
   toast(state.autoCollect ? "Auto collect on" : "Auto collect off");
+  trackAction("farm_auto_collect_toggled", {
+    enabled: state.autoCollect
+  });
   render();
 });
 $("#mutationAutoBtn")?.addEventListener("click", () => {
   state.mutationAuto = !state.mutationAuto;
   playTone("tap");
   toast(state.mutationAuto ? "Mutation auto on" : "Mutation auto off");
+  trackAction("lab_auto_toggled", {
+    enabled: state.mutationAuto
+  });
   render();
 });
 $("#synthBtn")?.addEventListener("click", synthArtifact);
@@ -803,6 +876,9 @@ document.querySelectorAll(".zen-mode").forEach((button) => {
     state.zenPausedAt = 0;
     state.zenElapsed = 0;
     playTone("tap");
+    trackAction("zen_duration_selected", {
+      durationMs: state.zenDuration
+    });
     render();
   });
 });
@@ -814,12 +890,16 @@ $("#soundBtn")?.addEventListener("click", () => {
   }
   playTone("tap");
   toast(state.soundOn ? "Sound on" : "Sound off");
+  trackAction("sound_toggled", {
+    enabled: state.soundOn
+  });
   render();
 });
 $("#resetBtn")?.addEventListener("click", () => {
   state = { ...defaultState, soundOn: state.soundOn, playerName: state.playerName };
   playTone("tap");
   toast("Reset");
+  trackAction("progress_reset_clicked");
   render();
 });
 
@@ -827,5 +907,9 @@ document.querySelectorAll(".nav-item").forEach((button) => {
   button.addEventListener("click", () => switchRoom(button.dataset.room));
 });
 
+trackAction("app_opened", {
+  room: "farm",
+  telegram: Boolean(tg?.initData || tg?.initDataUnsafe?.user)
+});
 render();
 window.setInterval(render, 500);
