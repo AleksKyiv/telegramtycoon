@@ -4750,3 +4750,344 @@ button {
   position: relative;
   z-index: 2;
 }
+
+/* Farm header v2: Telegram profile first, currencies second, leagues/settings in sheets. */
+.profile-strip {
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+  gap: 9px;
+  align-items: center;
+  margin: 0 0 8px;
+  padding: 9px 10px;
+  border-radius: 15px;
+}
+
+.profile-strip #telegramStatusDot {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.profile-copy {
+  grid-column: 2;
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.profile-copy strong {
+  color: rgba(236, 255, 249, 0.92);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.profile-copy b {
+  min-width: 0;
+  overflow: hidden;
+  color: rgba(167, 202, 191, 0.96);
+  font-size: 12px;
+  font-weight: 850;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-copy small {
+  color: rgba(108, 255, 177, 0.9);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.profile-actions {
+  grid-column: 3;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.profile-chip {
+  min-height: 34px;
+  padding: 0 9px;
+  border: 1px solid rgba(126, 255, 222, 0.22);
+  border-radius: 12px;
+  background:
+    linear-gradient(180deg, rgba(151, 255, 220, 0.13), rgba(5, 18, 17, 0.66)),
+    rgba(7, 26, 23, 0.72);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 8px 18px rgba(0, 0, 0, 0.22);
+  color: rgba(236, 255, 249, 0.94);
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.profile-chip:active {
+  transform: translateY(1px);
+}
+
+.resource-row {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 7px;
+  margin: 0 0 10px;
+}
+
+.resource {
+  min-height: 45px;
+  gap: 5px;
+  border-radius: 14px;
+}
+
+.resource strong {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 14px;
+  text-overflow: ellipsis;
+}
+
+.resource span,
+.resource b {
+  font-size: 13px;
+}
+
+.control-sheet[hidden] {
+  display: none !important;
+}
+
+.control-sheet {
+  position: absolute;
+  inset: 0;
+  z-index: 36;
+  pointer-events: none;
+}
+
+.control-sheet.open {
+  pointer-events: auto;
+}
+
+.sheet-backdrop {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  border: 0;
+  border-radius: 0;
+  background: rgba(0, 0, 0, 0.42);
+  opacity: 0;
+  transition: opacity 180ms ease;
+}
+
+.control-sheet.open .sheet-backdrop {
+  opacity: 1;
+}
+
+.sheet-panel {
+  position: absolute;
+  right: 12px;
+  bottom: calc(76px + max(12px, env(safe-area-inset-bottom)));
+  left: 12px;
+  max-height: min(66vh, 520px);
+  overflow: auto;
+  padding: 14px;
+  border: 1px solid rgba(126, 255, 222, 0.24);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 18% 0%, rgba(73, 255, 181, 0.18), transparent 34%),
+    linear-gradient(180deg, rgba(9, 33, 30, 0.98), rgba(2, 13, 12, 0.98));
+  box-shadow:
+    0 24px 72px rgba(0, 0, 0, 0.52),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.sheet-panel.compact {
+  max-height: 280px;
+}
+
+.control-sheet.open .sheet-panel {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.sheet-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.settings-sheet .sheet-header {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.sheet-header div {
+  min-width: 0;
+}
+
+.sheet-header span,
+.sheet-header small {
+  display: block;
+  color: rgba(151, 176, 168, 0.9);
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sheet-header strong {
+  display: block;
+  margin-top: 2px;
+  color: #effff9;
+  font-size: 18px;
+  font-weight: 950;
+}
+
+.sheet-close {
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.07);
+  color: rgba(236, 255, 249, 0.9);
+  font-size: 22px;
+  line-height: 1;
+}
+
+.league-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 10px;
+  align-items: center;
+  margin-bottom: 11px;
+  padding: 10px 12px;
+  border: 1px solid rgba(126, 255, 222, 0.16);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.league-summary span,
+.league-summary em {
+  min-width: 0;
+  overflow: hidden;
+  color: rgba(157, 184, 176, 0.92);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 850;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.league-summary strong {
+  color: var(--green);
+  font-size: 18px;
+}
+
+.league-summary > b {
+  justify-self: end;
+  color: rgba(255, 211, 107, 0.98);
+  font-size: 15px;
+}
+
+.league-rows {
+  display: grid;
+  gap: 7px;
+  max-height: 310px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.league-rows .leader-row {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  min-height: 38px;
+  padding: 0 10px;
+  border: 1px solid rgba(126, 255, 222, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.league-rows .leader-row span {
+  color: rgba(139, 169, 160, 0.9);
+  font-size: 11px;
+  font-weight: 950;
+}
+
+.league-rows .leader-row b {
+  min-width: 0;
+  overflow: hidden;
+  color: rgba(232, 255, 248, 0.92);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.league-rows .leader-row strong {
+  color: rgba(255, 211, 107, 0.96);
+  font-size: 13px;
+}
+
+.league-rows .leader-row.you {
+  border-color: rgba(66, 242, 183, 0.4);
+  background: rgba(66, 242, 183, 0.1);
+}
+
+.settings-row {
+  width: 100%;
+  min-height: 48px;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 0 12px;
+  border: 1px solid rgba(126, 255, 222, 0.18);
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, rgba(151, 255, 220, 0.12), rgba(255, 255, 255, 0.035)),
+    rgba(255, 255, 255, 0.045);
+  color: rgba(236, 255, 249, 0.94);
+  font-weight: 900;
+}
+
+.settings-row span {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: 10px;
+  background: rgba(66, 242, 183, 0.12);
+  color: var(--green);
+}
+
+.settings-row strong {
+  text-align: left;
+}
+
+.settings-row b {
+  color: rgba(255, 211, 107, 0.96);
+}
+
+@media (max-width: 370px) {
+  .profile-strip {
+    grid-template-columns: 10px minmax(0, 1fr);
+  }
+
+  .profile-actions {
+    grid-column: 2;
+    width: 100%;
+    margin-top: 6px;
+  }
+
+  .profile-chip {
+    flex: 1;
+  }
+
+  .resource-row {
+    gap: 5px;
+  }
+}

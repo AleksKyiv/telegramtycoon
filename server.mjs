@@ -237,7 +237,7 @@ function leaderboardResponse(currentPlayerId = null) {
     }));
 
   return {
-    leaderboard: players.slice(0, 10),
+    leaderboard: players.slice(0, 50),
     rank: currentPlayerId ? players.findIndex((player) => player.id === currentPlayerId) + 1 || null : null
   };
 }

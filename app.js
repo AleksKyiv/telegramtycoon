@@ -324,6 +324,7 @@ function playerSnapshot() {
 
 function renderLeaderboard() {
   setText("#backendState", backendState.status);
+  setText("#leagueTitle", leagueName());
   const rows = $("#leaderboardRows");
   if (!rows) return;
 
@@ -337,15 +338,33 @@ function renderLeaderboard() {
   rows.innerHTML = players.map((player) => {
     const isYou = player.id === backendState.playerId || (!backendState.playerId && player.name === state.playerName);
     const rank = String(player.rank).padStart(2, "0");
-    const username = player.username ? ` @${player.username}` : "";
+    const username = player.username ? ` @${escapeHtml(player.username)}` : "";
+    const name = escapeHtml(player.name || "Player");
     return `
       <div class="leader-row ${isYou ? "you" : ""}">
         <span>${rank}</span>
-        <b>${player.name}${username}</b>
+        <b>${name}${username}</b>
         <strong>${player.score}</strong>
       </div>
     `;
   }).join("");
+}
+
+function leagueName(score = state.score) {
+  if (score >= 1200) return "Zen League";
+  if (score >= 700) return "Crystal League";
+  if (score >= 300) return "Sprout League";
+  if (score >= 100) return "Green League";
+  return "Seed League";
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 function updateLoadingSplash(progress, message) {
@@ -706,6 +725,8 @@ function render() {
   setText("#playerName", state.playerName);
   setText("#leaderName", state.playerName);
   setText("#avatar", state.playerName.slice(0, 1).toUpperCase());
+  setText("#leagueBadge", leagueName());
+  setText("#leagueTitle", leagueName());
   setText("#artifactLabel", state.artifact > 0 ? `x${state.artifact}` : "Empty");
   renderMutationLab(progress);
   renderZen();
@@ -867,6 +888,7 @@ function meditate() {
 }
 
 function switchRoom(name) {
+  closeSheets();
   playTone("nav");
   const app = $(".app");
   if (app) {
@@ -882,6 +904,24 @@ function switchRoom(name) {
   if (name === "zen" && state.zenStartedAt && !state.zenPausedAt) startZenAmbient();
   if (name !== "zen") stopZenAmbient(1);
   trackAction("room_opened", { room: name });
+}
+
+function openSheet(selector) {
+  const sheet = $(selector);
+  if (!sheet) return;
+  closeSheets(selector);
+  sheet.hidden = false;
+  window.requestAnimationFrame(() => sheet.classList.add("open"));
+}
+
+function closeSheets(exceptSelector = "") {
+  document.querySelectorAll(".control-sheet").forEach((sheet) => {
+    if (exceptSelector && sheet.matches(exceptSelector)) return;
+    sheet.classList.remove("open");
+    window.setTimeout(() => {
+      if (!sheet.classList.contains("open")) sheet.hidden = true;
+    }, 180);
+  });
 }
 
 $("#mainActionBtn")?.addEventListener("click", farmAction);
@@ -906,6 +946,29 @@ $("#mutationAutoBtn")?.addEventListener("click", () => {
 });
 $("#synthBtn")?.addEventListener("click", synthArtifact);
 $("#meditateBtn")?.addEventListener("click", meditate);
+$("#leagueBtn")?.addEventListener("click", () => {
+  renderLeaderboard();
+  openSheet("#leagueSheet");
+  playTone("tap");
+  trackAction("league_opened", {
+    rank: backendState.rank,
+    league: leagueName()
+  });
+});
+$("#settingsBtn")?.addEventListener("click", () => {
+  openSheet("#settingsSheet");
+  playTone("tap");
+  trackAction("settings_opened");
+});
+document.querySelectorAll("[data-close-sheet]").forEach((button) => {
+  button.addEventListener("click", () => {
+    closeSheets();
+    playTone("tap");
+  });
+});
+window.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") closeSheets();
+});
 document.querySelectorAll(".zen-mode").forEach((button) => {
   button.addEventListener("click", () => {
     if (state.zenStartedAt && !state.zenPausedAt) return;
