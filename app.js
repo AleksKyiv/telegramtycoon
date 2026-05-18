@@ -84,6 +84,11 @@ let backendState = {
   rank: null,
   leaderboard: []
 };
+const loadingState = {
+  progress: 0,
+  hidden: false,
+  startedAt: Date.now()
+};
 
 function playTone(type = "tap") {
   if (!state.soundOn) return;
@@ -343,6 +348,34 @@ function renderLeaderboard() {
   }).join("");
 }
 
+function updateLoadingSplash(progress, message) {
+  if (loadingState.hidden) return;
+  const safeProgress = clamp(Math.round(progress), loadingState.progress, 100);
+  loadingState.progress = safeProgress;
+  setText("#loadingPercent", `${safeProgress}%`);
+  setText("#loadingText", message);
+  setStyle("#loadingBar", "--loading-progress", `${safeProgress}%`);
+
+  document.querySelectorAll(".loading-segments i").forEach((segment, index) => {
+    segment.classList.toggle("is-active", index < Math.ceil((safeProgress / 100) * 8));
+  });
+}
+
+function hideLoadingSplash() {
+  if (loadingState.hidden) return;
+  loadingState.hidden = true;
+  updateLoadingSplash(100, "Capsule ready");
+  window.setTimeout(() => {
+    $("#loadingSplash")?.classList.add("is-hidden");
+  }, 360);
+}
+
+function scheduleLoadingCompletion() {
+  const elapsed = Date.now() - loadingState.startedAt;
+  const delay = Math.max(3800, 4800 - elapsed);
+  window.setTimeout(hideLoadingSplash, delay);
+}
+
 function scheduleBackendSync(force = false) {
   const now = Date.now();
   const snapshot = playerSnapshot();
@@ -359,6 +392,7 @@ function scheduleBackendSync(force = false) {
 
 async function syncPlayer() {
   try {
+    updateLoadingSplash(78, "Connecting server");
     const response = await fetch(apiUrl("/api/player/sync"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -382,10 +416,14 @@ async function syncPlayer() {
     backendState.rank = data.rank || backendState.rank;
     backendState.leaderboard = data.leaderboard || backendState.leaderboard;
     renderLeaderboard();
+    updateLoadingSplash(94, "Leaderboard synced");
+    scheduleLoadingCompletion();
   } catch {
     backendState.available = false;
     backendState.status = "Local";
     renderLeaderboard();
+    updateLoadingSplash(88, "Offline preview ready");
+    scheduleLoadingCompletion();
   }
 }
 
@@ -907,6 +945,9 @@ document.querySelectorAll(".nav-item").forEach((button) => {
   button.addEventListener("click", () => switchRoom(button.dataset.room));
 });
 
+updateLoadingSplash(18, "Initializing capsule");
+window.setTimeout(() => updateLoadingSplash(42, "Growing microculture"), 220);
+window.setTimeout(() => updateLoadingSplash(64, tg?.initData ? "Telegram signal found" : "Browser preview"), 520);
 trackAction("app_opened", {
   room: "farm",
   telegram: Boolean(tg?.initData || tg?.initDataUnsafe?.user)
