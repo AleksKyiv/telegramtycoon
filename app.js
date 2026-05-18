@@ -827,10 +827,12 @@ function mockStarsBuy() {
 }
 
 async function buyStarsEnergy() {
+  const platform = telegramPlatform();
   trackAction("stars_button_clicked", {
     stars: 10,
     productId: "energy_pack_10",
-    mode: tg?.initData ? "telegram" : "preview"
+    mode: tg?.initData ? "telegram" : "preview",
+    platform
   });
 
   if (!tg?.initData || typeof tg.openInvoice !== "function") {
@@ -848,6 +850,7 @@ async function buyStarsEnergy() {
         clientId: CLIENT_ID,
         initData: tg.initData,
         productId: "energy_pack_10",
+        platform,
         state: stateSummary()
       })
     });
@@ -857,13 +860,15 @@ async function buyStarsEnergy() {
     trackAction("stars_invoice_opened", {
       orderId: data.orderId,
       productId: data.product?.id || "energy_pack_10",
-      stars: data.product?.stars || 10
+      stars: data.product?.stars || 10,
+      platform
     });
 
     tg.openInvoice(data.invoiceLink, (status) => {
       trackAction("stars_invoice_closed", {
         orderId: data.orderId,
-        status
+        status,
+        platform
       });
 
       if (status === "paid") {
@@ -889,6 +894,14 @@ async function buyStarsEnergy() {
       message: error.message
     });
   }
+}
+
+function telegramPlatform() {
+  const value = String(tg?.platform || "web").toLowerCase();
+  if (value.includes("ios") || value.includes("iphone") || value.includes("ipad")) return "ios";
+  if (value.includes("android")) return "android";
+  if (value.includes("tdesktop") || value.includes("macos") || value.includes("windows") || value.includes("linux")) return "desktop";
+  return value || "web";
 }
 
 function synthArtifact() {

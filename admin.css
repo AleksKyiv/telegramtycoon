@@ -505,8 +505,63 @@ input:focus {
 .payment-card.pending { border-color: rgba(88, 220, 255, 0.24); }
 .payment-card.support { border-color: rgba(200, 255, 106, 0.28); }
 
+.platform-split {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: -2px 0 14px;
+}
+
+.platform-pill,
+.platform-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.platform-badge {
+  padding: 5px 9px;
+}
+
+.platform-pill strong {
+  color: var(--text);
+}
+
+.platform-pill.android,
+.platform-badge.android {
+  border-color: rgba(92, 255, 207, 0.28);
+  background: rgba(92, 255, 207, 0.08);
+  color: var(--accent);
+}
+
+.platform-pill.ios,
+.platform-badge.ios {
+  border-color: rgba(255, 209, 102, 0.3);
+  background: rgba(255, 209, 102, 0.08);
+  color: var(--warn);
+}
+
+.platform-pill.desktop,
+.platform-badge.desktop {
+  border-color: rgba(88, 220, 255, 0.26);
+  background: rgba(88, 220, 255, 0.08);
+  color: #8ee9ff;
+}
+
+.muted-pill {
+  opacity: 0.72;
+}
+
 .payments-table-wrap table {
-  min-width: 860px;
+  min-width: 940px;
 }
 
 .payment-status {

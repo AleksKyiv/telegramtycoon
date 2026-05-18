@@ -41,6 +41,7 @@ const elements = {
   paymentStars: document.getElementById("paymentStars"),
   paymentPending: document.getElementById("paymentPending"),
   paymentSupport: document.getElementById("paymentSupport"),
+  paymentPlatformSplit: document.getElementById("paymentPlatformSplit"),
   paymentsTable: document.getElementById("paymentsTable"),
   botStarsStatus: document.getElementById("botStarsStatus"),
   botStarsBalance: document.getElementById("botStarsBalance"),
@@ -217,11 +218,12 @@ function renderPayments(overview) {
   elements.paymentStars.textContent = formatNumber(stats.paidStars);
   elements.paymentPending.textContent = formatNumber(stats.pendingOrderCount);
   elements.paymentSupport.textContent = "Ready";
+  renderPaymentPlatforms(stats.paidPaymentPlatforms || stats.paymentPlatforms || {});
 
   if (!payments.length) {
     elements.paymentsTable.innerHTML = `
       <tr>
-        <td colspan="7"><div class="empty-state">No Stars orders yet. Open the Mini App in Telegram and press ★10.</div></td>
+        <td colspan="8"><div class="empty-state">No Stars orders yet. Open the Mini App in Telegram and press ★10.</div></td>
       </tr>
     `;
     return;
@@ -234,10 +236,11 @@ function renderPayments(overview) {
           <td><span class="payment-status ${paymentClass(payment.status)}">${escapeHtml(payment.status)}</span></td>
           <td>
             <span class="player-name">
-              <b>${escapeHtml(payment.playerName || "Unknown")}</b>
-              <span>${escapeHtml(payment.telegramId ? `tg:${payment.telegramId}` : payment.playerId || "-")}</span>
+              <b>${escapeHtml(payment.paidByName || payment.playerName || "Unknown")}</b>
+              <span>${escapeHtml(payment.paidByUsername || payment.username || (payment.paidByTelegramId ? `tg:${payment.paidByTelegramId}` : payment.telegramId ? `tg:${payment.telegramId}` : payment.playerId || "-"))}</span>
             </span>
           </td>
+          <td><span class="platform-badge ${platformClass(payment.platform)}">${escapeHtml(platformLabel(payment.platform))}</span></td>
           <td>${escapeHtml(payment.productId || "-")}</td>
           <td>${formatNumber(payment.stars)}</td>
           <td>+${formatNumber(payment.rewardEnergy)} energy</td>
@@ -247,6 +250,21 @@ function renderPayments(overview) {
       `
     )
     .join("");
+}
+
+function renderPaymentPlatforms(platforms = {}) {
+  const ordered = ["android", "ios", "desktop", "web", "unknown"];
+  elements.paymentPlatformSplit.innerHTML = ordered
+    .filter((platform) => platforms[platform])
+    .map(
+      (platform) => `
+        <span class="platform-pill ${platformClass(platform)}">
+          <b>${escapeHtml(platformLabel(platform))}</b>
+          <strong>${formatNumber(platforms[platform])}</strong>
+        </span>
+      `
+    )
+    .join("") || `<span class="platform-pill muted-pill"><b>No platform data yet</b><strong>0</strong></span>`;
 }
 
 function renderBotStars(botStars = {}) {
@@ -431,6 +449,24 @@ function paymentClass(status) {
   if (status === "pending") return "pending";
   if (status === "failed_to_create" || status === "payment_mismatch") return "bad";
   return "neutral";
+}
+
+function platformClass(platform) {
+  const value = String(platform || "unknown").toLowerCase();
+  if (value === "android") return "android";
+  if (value === "ios") return "ios";
+  if (value === "desktop") return "desktop";
+  if (value === "web") return "web";
+  return "unknown";
+}
+
+function platformLabel(platform) {
+  const value = platformClass(platform);
+  if (value === "ios") return "Apple iOS";
+  if (value === "android") return "Android";
+  if (value === "desktop") return "Desktop";
+  if (value === "web") return "Web";
+  return "Unknown";
 }
 
 function shortId(value) {

@@ -236,6 +236,7 @@ async function createStarsInvoice(request, response) {
     verified: auth.verified
   });
   const order = createStarsOrder(result.player, product);
+  order.platform = safePlatform(body.platform);
   db.orders[order.payload] = order;
   logEvent("stars_invoice_created", {
     kind: "player_action",
@@ -243,7 +244,8 @@ async function createStarsInvoice(request, response) {
     name: result.player.name,
     productId: product.id,
     stars: product.stars,
-    rewardEnergy: product.reward.energy
+    rewardEnergy: product.reward.energy,
+    platform: order.platform
   });
   await saveDatabase();
 
@@ -364,6 +366,8 @@ function createStarsOrder(player, product) {
     playerId: player.id,
     playerName: player.name,
     telegramId: player.telegramId,
+    username: player.username,
+    platform: "unknown",
     stars: product.stars,
     reward: product.reward,
     createdAt: new Date().toISOString()
@@ -443,6 +447,9 @@ function handleSuccessfulPayment(message) {
   }
 
   const now = new Date().toISOString();
+  const payer = message.from || null;
+  const payerPlayerId = payer?.id ? `tg:${payer.id}` : null;
+  const payerName = displayName(payer, order.playerName || "Telegram user");
   const player = db.players[order.playerId];
   if (player) {
     player.energy = safeNumber(player.energy) + safeNumber(product.reward.energy);
@@ -453,16 +460,32 @@ function handleSuccessfulPayment(message) {
 
   order.status = "paid";
   order.paidAt = now;
+  order.updatedAt = now;
+  order.paidByPlayerId = payerPlayerId || order.playerId;
+  order.paidByTelegramId = payer?.id || order.telegramId || null;
+  order.paidByUsername = payer?.username || "";
+  order.paidByName = payerName;
   order.telegramPaymentChargeId = payment.telegram_payment_charge_id;
   order.providerPaymentChargeId = payment.provider_payment_charge_id;
+
+  if (payerPlayerId && payerPlayerId !== order.playerId) {
+    logEvent("stars_payment_payer_mismatch", {
+      kind: "player_action",
+      playerId: order.playerId,
+      orderId: order.id,
+      expectedPlayerId: order.playerId,
+      paidByPlayerId: payerPlayerId
+    });
+  }
 
   logEvent("stars_payment_recorded", {
     kind: "player_action",
     playerId: order.playerId,
-    name: order.playerName,
+    name: payerName,
     orderId: order.id,
     productId: product.id,
     stars: product.stars,
+    platform: order.platform || "unknown",
     rewardEnergy: product.reward.energy,
     telegramPaymentChargeId: safeEventValue(payment.telegram_payment_charge_id)
   });
@@ -585,13 +608,15 @@ async function adminOverview() {
     (accumulator, payment) => {
       accumulator.total += 1;
       accumulator[payment.status] = (accumulator[payment.status] || 0) + 1;
+      accumulator.platforms[payment.platform] = (accumulator.platforms[payment.platform] || 0) + 1;
       if (payment.status === "paid") {
         accumulator.paid += 1;
         accumulator.stars += safeNumber(payment.stars);
+        accumulator.paidPlatforms[payment.platform] = (accumulator.paidPlatforms[payment.platform] || 0) + 1;
       }
       return accumulator;
     },
-    { total: 0, pending: 0, paid: 0, failed_to_create: 0, payment_mismatch: 0, stars: 0 }
+    { total: 0, pending: 0, paid: 0, failed_to_create: 0, payment_mismatch: 0, stars: 0, platforms: {}, paidPlatforms: {} }
   );
 
   return {
@@ -621,6 +646,8 @@ async function adminOverview() {
       paidOrderCount: paymentStats.paid,
       pendingOrderCount: paymentStats.pending,
       paidStars: paymentStats.stars,
+      paymentPlatforms: paymentStats.platforms,
+      paidPaymentPlatforms: paymentStats.paidPlatforms,
       roomOpenCount: actionEvents.filter((event) => event.type === "room_opened").length
     },
     actionSummary: Object.entries(actionCounts)
@@ -797,6 +824,12 @@ function paymentRecords() {
       playerId: order.playerId,
       playerName: order.playerName,
       telegramId: order.telegramId,
+      username: order.username || "",
+      paidByPlayerId: order.paidByPlayerId || "",
+      paidByName: order.paidByName || "",
+      paidByTelegramId: order.paidByTelegramId || null,
+      paidByUsername: order.paidByUsername || "",
+      platform: safePlatform(order.platform),
       stars: safeNumber(order.stars),
       rewardEnergy: safeNumber(order.reward?.energy),
       createdAt: order.createdAt,
@@ -1097,6 +1130,15 @@ function safeId(value) {
   return String(value || "browser")
     .replace(/[^a-z0-9_-]/gi, "")
     .slice(0, 64) || "browser";
+}
+
+function safePlatform(value) {
+  const platform = String(value || "unknown").toLowerCase();
+  if (platform.includes("ios") || platform.includes("iphone") || platform.includes("ipad")) return "ios";
+  if (platform.includes("android")) return "android";
+  if (platform.includes("desktop") || platform.includes("tdesktop") || platform.includes("mac") || platform.includes("windows") || platform.includes("linux")) return "desktop";
+  if (platform.includes("web")) return "web";
+  return "unknown";
 }
 
 async function callTelegram(method, payload) {
