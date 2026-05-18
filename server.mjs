@@ -9,6 +9,7 @@ await loadDotEnv();
 
 const port = Number(process.env.PORT || 4173);
 const botToken = process.env.BOT_TOKEN || "";
+const publicAppUrl = process.env.PUBLIC_APP_URL || "https://telegramtycoon.onrender.com/";
 const adminPassword = process.env.ADMIN_PASSWORD || "";
 const adminCookieName = "green_admin";
 const adminCookieSecret = process.env.ADMIN_COOKIE_SECRET || botToken || adminPassword || "green-farm-local-admin";
@@ -264,6 +265,7 @@ async function createStarsInvoice(request, response) {
     });
   } catch (error) {
     order.status = "failed_to_create";
+    order.updatedAt = new Date().toISOString();
     order.error = safeEventValue(error.message);
     logEvent("stars_invoice_failed", {
       kind: "player_action",
@@ -294,6 +296,12 @@ async function handleTelegramWebhook(request, response) {
 
   if (update.message?.successful_payment) {
     handleSuccessfulPayment(update.message);
+    await saveDatabase();
+    return sendJson(response, 200, { ok: true });
+  }
+
+  if (update.message?.text) {
+    await handleBotTextMessage(update.message);
     await saveDatabase();
     return sendJson(response, 200, { ok: true });
   }
@@ -367,6 +375,12 @@ async function handlePreCheckoutQuery(query) {
     query.currency === "XTR" &&
     safeNumber(query.total_amount) === product.stars
   );
+
+  if (order) {
+    order.updatedAt = new Date().toISOString();
+    order.preCheckoutAt = order.updatedAt;
+    order.preCheckoutStatus = validOrder ? "approved" : "rejected";
+  }
 
   await callTelegram("answerPreCheckoutQuery", {
     pre_checkout_query_id: query.id,
@@ -449,6 +463,73 @@ function handleSuccessfulPayment(message) {
   });
 }
 
+async function handleBotTextMessage(message) {
+  const text = String(message.text || "").trim();
+  const chatId = message.chat?.id;
+  if (!chatId || !text.startsWith("/")) return;
+
+  const command = text.split(/\s+/)[0].split("@")[0].toLowerCase();
+  const user = message.from || null;
+  const playerId = user?.id ? `tg:${user.id}` : null;
+
+  if (command === "/paysupport") {
+    logEvent("paysupport_requested", {
+      kind: "player_action",
+      playerId,
+      name: displayName(user, "Telegram user"),
+      username: user?.username || null
+    });
+    await safeSendMessage({
+      chat_id: chatId,
+      text: [
+        "Payment support is active.",
+        "",
+        "If Stars were charged but the game bonus did not appear, send here:",
+        "1. approximate payment time;",
+        "2. paid amount in Stars;",
+        "3. transaction ID from Telegram Stars receipt, if visible.",
+        "",
+        "We will check the server payment journal and refund or restore the bonus if needed."
+      ].join("\n")
+    });
+    return;
+  }
+
+  if (command === "/start" || command === "/app") {
+    logEvent("bot_app_command", {
+      kind: "player_action",
+      playerId,
+      name: displayName(user, "Telegram user"),
+      command
+    });
+    await safeSendMessage({
+      chat_id: chatId,
+      text: "Open Green Farm Tycoon:",
+      reply_markup: {
+        inline_keyboard: [
+          [
+            {
+              text: "Open app",
+              web_app: { url: publicAppUrl }
+            }
+          ]
+        ]
+      }
+    });
+  }
+}
+
+async function safeSendMessage(payload) {
+  try {
+    await callTelegram("sendMessage", payload);
+  } catch (error) {
+    logEvent("bot_message_failed", {
+      kind: "player_action",
+      error: safeEventValue(error.message)
+    });
+  }
+}
+
 function leaderboardResponse(currentPlayerId = null) {
   const players = Object.values(db.players)
     .sort((a, b) => b.score - a.score || String(a.name).localeCompare(String(b.name)))
@@ -493,6 +574,19 @@ function adminOverview() {
   );
   const actionEvents = db.events.filter((event) => event.kind === "player_action");
   const actionCounts = countEvents(actionEvents);
+  const payments = paymentRecords();
+  const paymentStats = payments.reduce(
+    (accumulator, payment) => {
+      accumulator.total += 1;
+      accumulator[payment.status] = (accumulator[payment.status] || 0) + 1;
+      if (payment.status === "paid") {
+        accumulator.paid += 1;
+        accumulator.stars += safeNumber(payment.stars);
+      }
+      return accumulator;
+    },
+    { total: 0, pending: 0, paid: 0, failed_to_create: 0, payment_mismatch: 0, stars: 0 }
+  );
 
   return {
     ok: true,
@@ -517,6 +611,10 @@ function adminOverview() {
       labActionCount: countActionPrefix(actionEvents, "lab_"),
       zenActionCount: countActionPrefix(actionEvents, "zen_"),
       starsActionCount: countActionPrefix(actionEvents, "stars_"),
+      paymentOrderCount: paymentStats.total,
+      paidOrderCount: paymentStats.paid,
+      pendingOrderCount: paymentStats.pending,
+      paidStars: paymentStats.stars,
       roomOpenCount: actionEvents.filter((event) => event.type === "room_opened").length
     },
     actionSummary: Object.entries(actionCounts)
@@ -563,9 +661,32 @@ function adminOverview() {
       createdAt: player.createdAt,
       updatedAt: player.updatedAt
     })),
+    payments: payments.slice(0, 80),
     leaderboard: leaderboardResponse().leaderboard,
     events: db.events.slice(0, 80)
   };
+}
+
+function paymentRecords() {
+  return Object.values(db.orders || {})
+    .sort((a, b) => new Date(b.updatedAt || b.paidAt || b.createdAt).getTime() - new Date(a.updatedAt || a.paidAt || a.createdAt).getTime())
+    .map((order) => ({
+      id: order.id,
+      payload: order.payload,
+      status: order.status,
+      productId: order.productId,
+      playerId: order.playerId,
+      playerName: order.playerName,
+      telegramId: order.telegramId,
+      stars: safeNumber(order.stars),
+      rewardEnergy: safeNumber(order.reward?.energy),
+      createdAt: order.createdAt,
+      paidAt: order.paidAt || null,
+      updatedAt: order.updatedAt || null,
+      telegramPaymentChargeId: order.telegramPaymentChargeId || "",
+      providerPaymentChargeId: order.providerPaymentChargeId || "",
+      error: order.error || ""
+    }));
 }
 
 function logPlayerProgress({ player, isNew, scoreDelta, resonanceDelta, sessionDelta }) {

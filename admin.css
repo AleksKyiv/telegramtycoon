@@ -431,6 +431,105 @@ input:focus {
 .action-card.zen { border-color: rgba(200, 255, 106, 0.22); }
 .action-card.stars { border-color: rgba(255, 209, 102, 0.28); }
 
+.payments-panel {
+  margin-bottom: 14px;
+  background:
+    radial-gradient(circle at 84% 0%, rgba(255, 209, 102, 0.14), transparent 32%),
+    var(--panel);
+}
+
+.payments-panel .panel-head > strong {
+  align-self: start;
+  border: 1px solid rgba(255, 209, 102, 0.3);
+  border-radius: 999px;
+  padding: 9px 12px;
+  color: var(--warn);
+  background: rgba(255, 209, 102, 0.08);
+  font-size: 12px;
+}
+
+.payment-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.payment-card {
+  min-height: 108px;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.045);
+  padding: 14px;
+}
+
+.payment-card span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.payment-card strong {
+  color: var(--text);
+  font-size: 30px;
+  line-height: 1;
+}
+
+.payment-card small {
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.payment-card.paid { border-color: rgba(92, 255, 207, 0.28); }
+.payment-card.stars { border-color: rgba(255, 209, 102, 0.36); }
+.payment-card.pending { border-color: rgba(88, 220, 255, 0.24); }
+.payment-card.support { border-color: rgba(200, 255, 106, 0.28); }
+
+.payments-table-wrap table {
+  min-width: 860px;
+}
+
+.payment-status {
+  display: inline-flex;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  padding: 5px 9px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.payment-status.paid {
+  border-color: rgba(92, 255, 207, 0.32);
+  background: rgba(92, 255, 207, 0.09);
+  color: var(--accent);
+}
+
+.payment-status.pending {
+  border-color: rgba(255, 209, 102, 0.32);
+  background: rgba(255, 209, 102, 0.09);
+  color: var(--warn);
+}
+
+.payment-status.bad {
+  border-color: rgba(255, 123, 138, 0.38);
+  background: rgba(255, 123, 138, 0.1);
+  color: var(--bad);
+}
+
+.mono {
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .action-summary {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -681,6 +780,7 @@ td {
   .control-visuals,
   .roadmap-steps,
   .action-grid,
+  .payment-grid,
   .action-summary {
     grid-template-columns: 1fr;
   }

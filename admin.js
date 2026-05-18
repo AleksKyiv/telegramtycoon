@@ -36,6 +36,12 @@ const elements = {
   actionZen: document.getElementById("actionZen"),
   actionStars: document.getElementById("actionStars"),
   actionSummary: document.getElementById("actionSummary"),
+  paymentTotal: document.getElementById("paymentTotal"),
+  paymentPaid: document.getElementById("paymentPaid"),
+  paymentStars: document.getElementById("paymentStars"),
+  paymentPending: document.getElementById("paymentPending"),
+  paymentSupport: document.getElementById("paymentSupport"),
+  paymentsTable: document.getElementById("paymentsTable"),
   roomsGrid: document.getElementById("roomsGrid"),
   playersTable: document.getElementById("playersTable"),
   eventsList: document.getElementById("eventsList")
@@ -135,6 +141,7 @@ function renderOverview(overview) {
 
   renderVisualAnalytics(overview);
   renderActionTracking(overview);
+  renderPayments(overview);
   renderRooms(overview.rooms);
   renderPlayers(overview.players);
   renderEvents(overview.events);
@@ -191,6 +198,45 @@ function renderActionTracking(overview) {
           <span>${escapeHtml(actionLabel(item.type))}</span>
           <strong>${formatNumber(item.count)}</strong>
         </div>
+      `
+    )
+    .join("");
+}
+
+function renderPayments(overview) {
+  const { stats, payments = [] } = overview;
+  elements.paymentTotal.textContent = `${formatNumber(stats.paymentOrderCount)} orders`;
+  elements.paymentPaid.textContent = formatNumber(stats.paidOrderCount);
+  elements.paymentStars.textContent = formatNumber(stats.paidStars);
+  elements.paymentPending.textContent = formatNumber(stats.pendingOrderCount);
+  elements.paymentSupport.textContent = "Ready";
+
+  if (!payments.length) {
+    elements.paymentsTable.innerHTML = `
+      <tr>
+        <td colspan="7"><div class="empty-state">No Stars orders yet. Open the Mini App in Telegram and press ★10.</div></td>
+      </tr>
+    `;
+    return;
+  }
+
+  elements.paymentsTable.innerHTML = payments
+    .map(
+      (payment) => `
+        <tr>
+          <td><span class="payment-status ${paymentClass(payment.status)}">${escapeHtml(payment.status)}</span></td>
+          <td>
+            <span class="player-name">
+              <b>${escapeHtml(payment.playerName || "Unknown")}</b>
+              <span>${escapeHtml(payment.telegramId ? `tg:${payment.telegramId}` : payment.playerId || "-")}</span>
+            </span>
+          </td>
+          <td>${escapeHtml(payment.productId || "-")}</td>
+          <td>${formatNumber(payment.stars)}</td>
+          <td>+${formatNumber(payment.rewardEnergy)} energy</td>
+          <td><span class="mono">${escapeHtml(shortId(payment.telegramPaymentChargeId || payment.payload || "-"))}</span></td>
+          <td><span class="muted">${formatDateTime(payment.paidAt || payment.createdAt)}</span></td>
+        </tr>
       `
     )
     .join("");
@@ -298,6 +344,9 @@ function eventTitle(event) {
     stars_payment_unmatched: "Stars unmatched",
     stars_payment_duplicate: "Stars duplicate",
     stars_payment_mismatch: "Stars mismatch",
+    paysupport_requested: "Payment support",
+    bot_app_command: "Bot command",
+    bot_message_failed: "Bot reply failed",
     sound_toggled: "Sound toggled",
     progress_reset_clicked: "Progress reset"
   };
@@ -326,11 +375,24 @@ function actionLabel(type) {
 }
 
 function actionDetailsText(details) {
-  const preferred = ["room", "enabled", "harvest", "reward", "durationMs", "stars", "energyAdded", "mode"];
+  const preferred = ["room", "enabled", "harvest", "reward", "durationMs", "stars", "energyAdded", "mode", "orderId", "status", "productId", "command"];
   return preferred
     .filter((key) => Object.prototype.hasOwnProperty.call(details, key))
     .map((key) => `${key}: ${escapeHtml(details[key])}`)
     .join(", ");
+}
+
+function paymentClass(status) {
+  if (status === "paid") return "paid";
+  if (status === "pending") return "pending";
+  if (status === "failed_to_create" || status === "payment_mismatch") return "bad";
+  return "neutral";
+}
+
+function shortId(value) {
+  const text = String(value || "");
+  if (text.length <= 14) return text;
+  return `${text.slice(0, 7)}...${text.slice(-5)}`;
 }
 
 function showLogin(message = "") {

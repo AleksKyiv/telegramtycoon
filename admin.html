@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#071210">
     <title>Green Farm Control</title>
-    <link rel="stylesheet" href="/admin.css?v=3">
-    <script src="/admin.js?v=3" defer></script>
+    <link rel="stylesheet" href="/admin.css?v=4">
+    <script src="/admin.js?v=4" defer></script>
   </head>
   <body>
     <main class="admin-shell">
@@ -181,6 +181,54 @@
             </article>
           </div>
           <div class="action-summary" id="actionSummary"></div>
+        </section>
+
+        <section class="panel payments-panel" aria-label="Stars payments">
+          <div class="panel-head">
+            <div>
+              <h2>Payments</h2>
+              <p>Stars journal: invoices, paid orders, charge IDs and support visibility.</p>
+            </div>
+            <strong id="paymentTotal">0 orders</strong>
+          </div>
+          <div class="payment-grid">
+            <article class="payment-card paid">
+              <span>Paid orders</span>
+              <strong id="paymentPaid">0</strong>
+              <small>successful Stars payments</small>
+            </article>
+            <article class="payment-card stars">
+              <span>Stars earned</span>
+              <strong id="paymentStars">0</strong>
+              <small>recorded by webhook</small>
+            </article>
+            <article class="payment-card pending">
+              <span>Pending</span>
+              <strong id="paymentPending">0</strong>
+              <small>invoice opened, not paid yet</small>
+            </article>
+            <article class="payment-card support">
+              <span>Support</span>
+              <strong id="paymentSupport">Ready</strong>
+              <small>/paysupport command enabled</small>
+            </article>
+          </div>
+          <div class="table-wrap payments-table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Status</th>
+                  <th>Player</th>
+                  <th>Product</th>
+                  <th>Stars</th>
+                  <th>Reward</th>
+                  <th>Charge ID</th>
+                  <th>Created</th>
+                </tr>
+              </thead>
+              <tbody id="paymentsTable"></tbody>
+            </table>
+          </div>
         </section>
 
         <section class="panel roadmap-panel" aria-label="Development roadmap">

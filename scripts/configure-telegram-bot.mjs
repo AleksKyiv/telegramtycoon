@@ -22,7 +22,8 @@ const bot = await callTelegram("getMe", {});
 await callTelegram("setMyCommands", {
   commands: [
     { command: "start", description: "Open the Green Farm Mini App" },
-    { command: "app", description: "Launch Mini App" }
+    { command: "app", description: "Launch Mini App" },
+    { command: "paysupport", description: "Stars payment support" }
   ]
 });
 await callTelegram("setChatMenuButton", {
