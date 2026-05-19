@@ -42,6 +42,7 @@ create table if not exists public.payment_orders (
   error text,
   created_at timestamptz not null default now(),
   pre_checkout_at timestamptz,
+  pre_checkout_status text,
   paid_at timestamptz,
   updated_at timestamptz
 );

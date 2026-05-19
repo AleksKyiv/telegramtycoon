@@ -178,7 +178,9 @@ function renderDataStore(overview) {
   elements.dataStorage.textContent = dataStore.storage || ".data/players.json";
   elements.dataRequested.textContent = `requested: ${requested}`;
   elements.dataMigration.textContent = dataStore.migrationReady ? "Ready" : "Draft";
-  elements.dataSupabase.textContent = dataStore.supabaseConfigured ? "Supabase env ready" : "Supabase not connected";
+  elements.dataSupabase.textContent = dataStore.fallbackActive
+    ? `Fallback: ${dataStore.lastError || "Supabase error"}`
+    : dataStore.supabaseConfigured ? "Supabase env ready" : "Supabase not connected";
   elements.dataExportCount.textContent = `${formatNumber(totalRecords)} records`;
 }
 

@@ -17,6 +17,15 @@ const telegramWebhookSecret = process.env.TELEGRAM_WEBHOOK_SECRET || (botToken
   ? crypto.createHash("sha256").update(botToken).digest("hex")
   : "");
 const dataFile = join(root, ".data", "players.json");
+const requestedDataBackend = String(process.env.DATA_BACKEND || "json").toLowerCase();
+const supabaseUrl = String(process.env.SUPABASE_URL || "").replace(/\/+$/, "");
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+const dataStoreRuntime = {
+  active: "json",
+  lastError: "",
+  lastSyncAt: null,
+  fallbackActive: false
+};
 const starsProducts = {
   energy_pack_10: {
     id: "energy_pack_10",
@@ -730,12 +739,20 @@ function adminExport() {
 }
 
 function dataStoreStatus() {
+  const supabaseConfigured = isSupabaseConfigured();
+  const requested = requestedDataBackend || "json";
   return {
-    active: "json",
-    requested: String(process.env.DATA_BACKEND || "json").toLowerCase(),
-    storage: ".data/players.json",
+    active: dataStoreRuntime.active,
+    requested,
+    storage: dataStoreRuntime.active === "supabase"
+      ? "supabase: public.players, public.payment_orders, public.events"
+      : ".data/players.json",
     migrationReady: true,
-    supabaseConfigured: Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY),
+    supabaseConfigured,
+    supabaseEnabled: shouldUseSupabase(),
+    fallbackActive: dataStoreRuntime.fallbackActive,
+    lastError: dataStoreRuntime.lastError,
+    lastSyncAt: dataStoreRuntime.lastSyncAt,
     schemaPath: "database/supabase-schema.sql",
     exportUrl: "/api/admin/export"
   };
@@ -1021,16 +1038,43 @@ async function serveStatic(pathname, response) {
 }
 
 async function readDatabase() {
-  try {
-    return normalizeDatabase(JSON.parse(await readFile(dataFile, "utf8")));
-  } catch {
-    return normalizeDatabase({});
+  if (shouldUseSupabase()) {
+    try {
+      const remoteDb = await readSupabaseDatabase();
+      if (isDatabaseEmpty(remoteDb)) {
+        const localDb = await readJsonDatabase();
+        if (!isDatabaseEmpty(localDb)) {
+          await saveSupabaseDatabase(localDb);
+          setDataStoreRuntime("supabase");
+          return localDb;
+        }
+      }
+      setDataStoreRuntime("supabase");
+      return remoteDb;
+    } catch (error) {
+      markDataStoreFallback(error);
+    }
   }
+
+  const localDb = await readJsonDatabase();
+  setDataStoreRuntime("json");
+  return localDb;
 }
 
 async function saveDatabase() {
+  if (shouldUseSupabase()) {
+    try {
+      await saveSupabaseDatabase(db);
+      setDataStoreRuntime("supabase");
+      return;
+    } catch (error) {
+      markDataStoreFallback(error);
+    }
+  }
+
   await mkdir(dirname(dataFile), { recursive: true });
   await writeFile(dataFile, JSON.stringify(db, null, 2));
+  if (!shouldUseSupabase()) setDataStoreRuntime("json");
 }
 
 function normalizeDatabase(value) {
@@ -1038,6 +1082,237 @@ function normalizeDatabase(value) {
     players: value?.players && typeof value.players === "object" ? value.players : {},
     orders: value?.orders && typeof value.orders === "object" ? value.orders : {},
     events: Array.isArray(value?.events) ? value.events : []
+  };
+}
+
+async function readJsonDatabase() {
+  try {
+    return normalizeDatabase(JSON.parse(await readFile(dataFile, "utf8")));
+  } catch {
+    return normalizeDatabase({});
+  }
+}
+
+function isDatabaseEmpty(value) {
+  const normalized = normalizeDatabase(value);
+  return !Object.keys(normalized.players).length &&
+    !Object.keys(normalized.orders).length &&
+    !normalized.events.length;
+}
+
+function shouldUseSupabase() {
+  return requestedDataBackend === "supabase" && isSupabaseConfigured();
+}
+
+function isSupabaseConfigured() {
+  return Boolean(supabaseUrl && supabaseServiceRoleKey);
+}
+
+function setDataStoreRuntime(active) {
+  dataStoreRuntime.active = active;
+  dataStoreRuntime.lastError = "";
+  dataStoreRuntime.lastSyncAt = new Date().toISOString();
+  dataStoreRuntime.fallbackActive = false;
+}
+
+function markDataStoreFallback(error) {
+  dataStoreRuntime.active = "json";
+  dataStoreRuntime.lastError = safeEventValue(error?.message || "Supabase request failed.");
+  dataStoreRuntime.lastSyncAt = new Date().toISOString();
+  dataStoreRuntime.fallbackActive = true;
+  console.error("Supabase data backend failed, using JSON fallback:", error);
+}
+
+async function readSupabaseDatabase() {
+  const [playersRows, orderRows, eventRows] = await Promise.all([
+    supabaseRequest("players?select=*&order=updated_at.desc"),
+    supabaseRequest("payment_orders?select=*&order=created_at.desc"),
+    supabaseRequest("events?select=*&order=created_at.desc&limit=200")
+  ]);
+
+  return normalizeDatabase({
+    players: Object.fromEntries(playersRows.map((row) => [row.id, playerFromRow(row)])),
+    orders: Object.fromEntries(orderRows.map((row) => [row.payload, orderFromRow(row)])),
+    events: eventRows.map(eventFromRow)
+  });
+}
+
+async function saveSupabaseDatabase(value) {
+  const normalized = normalizeDatabase(value);
+  await supabaseUpsert("players", Object.values(normalized.players).map(playerToRow), "id");
+  await supabaseUpsert("payment_orders", Object.values(normalized.orders).map(orderToRow), "id");
+  await supabaseUpsert("events", normalized.events.map(eventToRow), "id");
+}
+
+async function supabaseRequest(path, options = {}) {
+  const response = await fetch(`${supabaseUrl}/rest/v1/${path}`, {
+    method: options.method || "GET",
+    headers: {
+      apikey: supabaseServiceRoleKey,
+      Authorization: `Bearer ${supabaseServiceRoleKey}`,
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      ...(options.prefer ? { Prefer: options.prefer } : {})
+    },
+    ...(options.body ? { body: JSON.stringify(options.body) } : {})
+  });
+
+  const text = await response.text();
+  const payload = text ? JSON.parse(text) : null;
+  if (!response.ok) {
+    throw new Error(payload?.message || payload?.error || `Supabase request failed: ${response.status}`);
+  }
+  return payload || [];
+}
+
+async function supabaseUpsert(table, rows, conflictKey) {
+  if (!rows.length) return;
+  await supabaseRequest(`${table}?on_conflict=${encodeURIComponent(conflictKey)}`, {
+    method: "POST",
+    prefer: "resolution=merge-duplicates,return=minimal",
+    body: rows
+  });
+}
+
+function playerToRow(player) {
+  return {
+    id: player.id,
+    telegram_id: player.telegramId || null,
+    username: player.username || null,
+    name: player.name || "Guest",
+    verified: Boolean(player.verified),
+    score: safeNumber(player.score),
+    energy: safeNumber(player.energy),
+    resonance: safeNumber(player.resonance),
+    sessions: safeNumber(player.sessions),
+    artifact: safeNumber(player.artifact),
+    stars_spent: safeNumber(player.starsSpent),
+    purchases: safeNumber(player.purchases),
+    state: {
+      score: safeNumber(player.score),
+      energy: safeNumber(player.energy),
+      resonance: safeNumber(player.resonance),
+      sessions: safeNumber(player.sessions),
+      artifact: safeNumber(player.artifact)
+    },
+    created_at: player.createdAt || new Date().toISOString(),
+    updated_at: player.updatedAt || new Date().toISOString()
+  };
+}
+
+function playerFromRow(row) {
+  return {
+    id: row.id,
+    telegramId: row.telegram_id || null,
+    username: row.username || null,
+    name: row.name || "Guest",
+    score: safeNumber(row.score),
+    energy: safeNumber(row.energy),
+    resonance: safeNumber(row.resonance),
+    sessions: safeNumber(row.sessions),
+    artifact: safeNumber(row.artifact),
+    starsSpent: safeNumber(row.stars_spent),
+    purchases: safeNumber(row.purchases),
+    verified: Boolean(row.verified),
+    createdAt: row.created_at || new Date().toISOString(),
+    updatedAt: row.updated_at || row.created_at || new Date().toISOString()
+  };
+}
+
+function orderToRow(order) {
+  return {
+    id: order.id,
+    payload: order.payload,
+    status: order.status || "pending",
+    product_id: order.productId || "",
+    player_id: order.playerId || null,
+    player_name: order.playerName || null,
+    telegram_id: order.telegramId || null,
+    username: order.username || null,
+    platform: safePlatform(order.platform),
+    stars: safeNumber(order.stars),
+    reward: order.reward && typeof order.reward === "object" ? order.reward : {},
+    paid_by_player_id: order.paidByPlayerId || null,
+    paid_by_name: order.paidByName || null,
+    paid_by_telegram_id: order.paidByTelegramId || null,
+    paid_by_username: order.paidByUsername || null,
+    telegram_payment_charge_id: order.telegramPaymentChargeId || null,
+    provider_payment_charge_id: order.providerPaymentChargeId || null,
+    error: order.error || null,
+    created_at: order.createdAt || new Date().toISOString(),
+    pre_checkout_at: order.preCheckoutAt || null,
+    pre_checkout_status: order.preCheckoutStatus || null,
+    paid_at: order.paidAt || null,
+    updated_at: order.updatedAt || null
+  };
+}
+
+function orderFromRow(row) {
+  return {
+    id: row.id,
+    payload: row.payload,
+    status: row.status || "pending",
+    productId: row.product_id || "",
+    playerId: row.player_id || null,
+    playerName: row.player_name || "",
+    telegramId: row.telegram_id || null,
+    username: row.username || "",
+    platform: safePlatform(row.platform),
+    stars: safeNumber(row.stars),
+    reward: row.reward && typeof row.reward === "object" ? row.reward : {},
+    paidByPlayerId: row.paid_by_player_id || "",
+    paidByName: row.paid_by_name || "",
+    paidByTelegramId: row.paid_by_telegram_id || null,
+    paidByUsername: row.paid_by_username || "",
+    telegramPaymentChargeId: row.telegram_payment_charge_id || "",
+    providerPaymentChargeId: row.provider_payment_charge_id || "",
+    error: row.error || "",
+    createdAt: row.created_at || new Date().toISOString(),
+    preCheckoutAt: row.pre_checkout_at || null,
+    preCheckoutStatus: row.pre_checkout_status || null,
+    paidAt: row.paid_at || null,
+    updatedAt: row.updated_at || null
+  };
+}
+
+function eventToRow(event) {
+  const {
+    id,
+    type,
+    createdAt,
+    kind,
+    playerId,
+    name,
+    username,
+    state,
+    ...details
+  } = event;
+
+  return {
+    id,
+    type: type || "event",
+    kind: kind || null,
+    player_id: playerId || null,
+    name: name || null,
+    username: username || null,
+    details,
+    state: state && typeof state === "object" ? state : {},
+    created_at: createdAt || new Date().toISOString()
+  };
+}
+
+function eventFromRow(row) {
+  const details = row.details && typeof row.details === "object" ? row.details : {};
+  return {
+    id: row.id,
+    type: row.type || "event",
+    createdAt: row.created_at || new Date().toISOString(),
+    kind: row.kind || details.kind,
+    playerId: row.player_id || details.playerId,
+    name: row.name || details.name,
+    username: row.username || details.username,
+    ...details,
+    state: row.state && typeof row.state === "object" ? row.state : details.state || {}
   };
 }
 
