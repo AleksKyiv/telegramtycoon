@@ -34,6 +34,14 @@ const starsProducts = {
     label: "12 Energy",
     stars: 10,
     reward: { energy: 12 }
+  },
+  farm_slot_4: {
+    id: "farm_slot_4",
+    title: "Farm Chamber Slot",
+    description: "Unlocks the fourth growth chamber in your Green Farm capsule.",
+    label: "Chamber Slot",
+    stars: 10,
+    reward: { slot: 3 }
   }
 };
 const STARS_WITHDRAWAL_HOLD_DAYS = 21;
@@ -339,7 +347,11 @@ function upsertPlayer({ clientId, user, state, verified }) {
   const resonance = safeNumber(state?.resonance);
   const sessions = safeNumber(state?.sessions);
   const artifact = safeNumber(state?.artifact);
+  const droneLevel = state?.droneLevel === undefined
+    ? safeDroneLevel(existing.droneLevel)
+    : safeDroneLevel(state.droneLevel);
   const missions = mergeMissions(existing.missions, state?.missions);
+  const unlockedSlots = mergeUnlockedSlots(existing.unlockedSlots, state?.unlockedSlots);
   const name = displayName(user, existing.name || "Guest");
 
   const player = {
@@ -352,7 +364,9 @@ function upsertPlayer({ clientId, user, state, verified }) {
     resonance,
     sessions,
     artifact,
+    droneLevel,
     missions,
+    unlockedSlots,
     starsSpent: safeNumber(existing.starsSpent),
     purchases: safeNumber(existing.purchases),
     verified,
@@ -468,6 +482,9 @@ function handleSuccessfulPayment(message) {
   const player = db.players[order.playerId];
   if (player) {
     player.energy = safeNumber(player.energy) + safeNumber(product.reward.energy);
+    if (product.reward.slot !== undefined) {
+      player.unlockedSlots = mergeUnlockedSlots(player.unlockedSlots, { [String(product.reward.slot)]: true });
+    }
     player.starsSpent = safeNumber(player.starsSpent) + product.stars;
     player.purchases = safeNumber(player.purchases) + 1;
     player.updatedAt = now;
@@ -502,6 +519,7 @@ function handleSuccessfulPayment(message) {
     stars: product.stars,
     platform: order.platform || "unknown",
     rewardEnergy: product.reward.energy,
+    rewardSlot: product.reward.slot,
     telegramPaymentChargeId: safeEventValue(payment.telegram_payment_charge_id)
   });
 }
@@ -711,6 +729,8 @@ async function adminOverview() {
       resonance: player.resonance,
       sessions: player.sessions,
       artifact: player.artifact,
+      droneLevel: player.droneLevel,
+      unlockedSlots: safeUnlockedSlots(player.unlockedSlots),
       missions: player.missions || { opened: {}, claimed: {} },
       missionsClaimed: Object.keys(player.missions?.claimed || {}).length,
       starsSpent: safeNumber(player.starsSpent),
@@ -995,6 +1015,27 @@ function safeMissions(value) {
   };
 }
 
+function safeDroneLevel(value) {
+  return Math.min(9, Math.max(1, safeNumber(value) || 1));
+}
+
+function safeUnlockedSlots(value) {
+  const slots = { "0": true };
+  if (!value || typeof value !== "object") return slots;
+  Object.entries(value).slice(0, 12).forEach(([key, item]) => {
+    const slot = String(Math.min(8, Math.max(0, safeNumber(key))));
+    if (item) slots[slot] = true;
+  });
+  return slots;
+}
+
+function mergeUnlockedSlots(existing, incoming) {
+  return {
+    ...safeUnlockedSlots(existing),
+    ...safeUnlockedSlots(incoming)
+  };
+}
+
 function mergeMissions(existing, incoming) {
   const current = safeMissions(existing);
   const next = safeMissions(incoming);
@@ -1012,6 +1053,8 @@ function safeStateSummary(state) {
     resonance: safeNumber(state?.resonance),
     sessions: safeNumber(state?.sessions),
     artifact: safeNumber(state?.artifact),
+    droneLevel: safeDroneLevel(state?.droneLevel),
+    unlockedSlots: safeUnlockedSlots(state?.unlockedSlots),
     missionsClaimed: Object.keys(missions.claimed).length
   };
 }
@@ -1233,6 +1276,8 @@ function playerToRow(player) {
       resonance: safeNumber(player.resonance),
       sessions: safeNumber(player.sessions),
       artifact: safeNumber(player.artifact),
+      droneLevel: safeDroneLevel(player.droneLevel),
+      unlockedSlots: safeUnlockedSlots(player.unlockedSlots),
       missions: safeMissions(player.missions)
     },
     created_at: player.createdAt || new Date().toISOString(),
@@ -1251,6 +1296,8 @@ function playerFromRow(row) {
     resonance: safeNumber(row.resonance),
     sessions: safeNumber(row.sessions),
     artifact: safeNumber(row.artifact),
+    droneLevel: safeDroneLevel(row.state?.droneLevel),
+    unlockedSlots: safeUnlockedSlots(row.state?.unlockedSlots),
     missions: safeMissions(row.state?.missions),
     starsSpent: safeNumber(row.stars_spent),
     purchases: safeNumber(row.purchases),

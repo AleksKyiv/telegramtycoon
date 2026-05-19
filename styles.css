@@ -5072,6 +5072,1429 @@ button {
   color: rgba(255, 211, 107, 0.96);
 }
 
+.capsule-drone {
+  position: absolute;
+  left: -14px;
+  top: 72px;
+  z-index: 22;
+  width: 76px;
+  height: 86px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  filter: drop-shadow(0 0 18px rgba(88, 220, 255, 0.42));
+  animation: capsuleDronePatrol 5.8s ease-in-out infinite;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.capsule-drone * {
+  pointer-events: none;
+}
+
+.capsule-drone::before {
+  content: "";
+  position: absolute;
+  inset: 28px 10px auto;
+  height: 20px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(88, 220, 255, 0.26), transparent 70%);
+  filter: blur(7px);
+}
+
+.capsule-drone::after {
+  content: "";
+  position: absolute;
+  left: 50px;
+  top: 42px;
+  width: 78px;
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(88, 220, 255, 0.9), rgba(129, 255, 216, 0.4), transparent);
+  box-shadow: 0 0 16px rgba(88, 220, 255, 0.62);
+  transform-origin: left center;
+  animation: droneScanLine 1.6s ease-in-out infinite;
+}
+
+.capsule-drone.active {
+  filter: drop-shadow(0 0 22px rgba(66, 242, 183, 0.42));
+}
+
+.capsule-drone.ready {
+  filter: drop-shadow(0 0 24px rgba(255, 211, 107, 0.42));
+}
+
+.drone-body {
+  position: relative;
+  z-index: 3;
+  width: 44px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(181, 255, 239, 0.34);
+  border-radius: 13px 13px 18px 18px;
+  background:
+    linear-gradient(135deg, transparent 0 12%, rgba(255, 255, 255, 0.16) 12% 18%, transparent 18%),
+    radial-gradient(circle at 50% 28%, rgba(255, 255, 255, 0.36), transparent 16%),
+    linear-gradient(180deg, rgba(112, 251, 238, 0.96), rgba(24, 98, 101, 0.96) 52%, rgba(8, 38, 43, 0.98));
+  box-shadow:
+    inset 0 0 16px rgba(255, 255, 255, 0.18),
+    inset 0 -14px 18px rgba(0, 0, 0, 0.34),
+    0 0 0 3px rgba(88, 220, 255, 0.05);
+  clip-path: polygon(16% 0, 84% 0, 100% 18%, 100% 78%, 76% 100%, 24% 100%, 0 78%, 0 18%);
+}
+
+.drone-body::before,
+.drone-body::after {
+  content: "";
+  position: absolute;
+  left: 9px;
+  right: 9px;
+  height: 2px;
+  border-radius: 999px;
+  background: rgba(183, 255, 240, 0.52);
+  box-shadow: 0 0 8px rgba(129, 255, 216, 0.44);
+}
+
+.drone-body::before {
+  top: 25px;
+}
+
+.drone-body::after {
+  top: 31px;
+  opacity: 0.54;
+}
+
+.drone-body i {
+  position: absolute;
+  top: 9px;
+  width: 18px;
+  height: 14px;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 50% 50%, #f8ffca 0 18%, rgba(255, 211, 107, 0.96) 19% 42%, rgba(255, 211, 107, 0.18) 68%),
+    rgba(255, 211, 107, 0.18);
+  box-shadow: 0 0 17px rgba(255, 211, 107, 0.76);
+}
+
+.drone-body b {
+  position: absolute;
+  bottom: 5px;
+  color: #05211d;
+  font-size: 10px;
+  font-weight: 1000;
+}
+
+.drone-wing {
+  position: absolute;
+  z-index: 2;
+  top: 20px;
+  width: 26px;
+  height: 26px;
+  border: 1px solid rgba(181, 255, 239, 0.34);
+  border-radius: 50%;
+  background:
+    conic-gradient(from 90deg, rgba(129, 255, 216, 0.12), rgba(88, 220, 255, 0.72), rgba(129, 255, 216, 0.12), rgba(255, 211, 107, 0.46), rgba(129, 255, 216, 0.12)),
+    rgba(5, 24, 27, 0.72);
+  box-shadow:
+    inset 0 0 10px rgba(255, 255, 255, 0.08),
+    0 0 12px rgba(88, 220, 255, 0.26);
+  animation: droneWing 280ms linear infinite;
+}
+
+.drone-wing.left {
+  left: 1px;
+  transform-origin: right center;
+}
+
+.drone-wing.right {
+  right: 1px;
+  transform-origin: left center;
+}
+
+.drone-tail {
+  position: absolute;
+  z-index: 2;
+  bottom: 8px;
+  width: 16px;
+  height: 18px;
+  border-radius: 0 0 10px 10px;
+  background: linear-gradient(180deg, rgba(129, 255, 216, 0.24), rgba(255, 211, 107, 0.96), rgba(255, 119, 78, 0.82));
+  box-shadow: 0 0 16px rgba(255, 211, 107, 0.46);
+}
+
+.drone-scan {
+  position: absolute;
+  left: 46px;
+  top: 45px;
+  width: 88px;
+  height: 118px;
+  border-left: 1px solid rgba(88, 220, 255, 0.34);
+  border-bottom: 1px solid rgba(88, 220, 255, 0.14);
+  border-radius: 0 0 0 32px;
+  opacity: 0.72;
+  transform-origin: 0 0;
+  animation: droneScanBeam 2.4s ease-in-out infinite;
+}
+
+@keyframes capsuleDronePatrol {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(-0.6deg); }
+  45% { transform: translate3d(5px, 178px, 0) rotate(0.8deg); }
+  70% { transform: translate3d(1px, 132px, 0) rotate(-0.4deg); }
+}
+
+@keyframes droneWing {
+  0%, 100% { opacity: 0.46; transform: scaleX(0.86); }
+  50% { opacity: 0.9; transform: scaleX(1.08); }
+}
+
+@keyframes droneScanLine {
+  0%, 100% { opacity: 0.26; transform: scaleX(0.48); }
+  50% { opacity: 0.94; transform: scaleX(1); }
+}
+
+@keyframes droneScanBeam {
+  0%, 100% { opacity: 0.24; transform: rotate(-7deg) scaleY(0.72); }
+  50% { opacity: 0.76; transform: rotate(6deg) scaleY(1.05); }
+}
+
+/* Drone layout pass: left side is for the robot, right side is for telemetry. */
+#farmRoom .capsule {
+  min-height: 410px;
+}
+
+.app.room-farm .process-rail {
+  top: 226px;
+  right: 24px;
+  left: auto;
+  z-index: 24;
+}
+
+#farmRoom .growth-ring {
+  top: 76px;
+  right: 15px;
+  left: auto;
+  z-index: 18;
+  width: 60px;
+  height: 60px;
+}
+
+#farmRoom .growth-ring span {
+  transform: none;
+  color: #dffff2;
+  font-size: 11px;
+  text-shadow: 0 0 10px rgba(129, 255, 216, 0.52);
+}
+
+.capsule-node {
+  min-width: 46px;
+  min-height: 38px;
+  padding: 4px 7px;
+  border-radius: 14px;
+}
+
+.water-node,
+.light-node,
+.time-node {
+  left: auto;
+  right: 16px;
+  bottom: auto;
+}
+
+.water-node {
+  top: 144px;
+}
+
+.light-node {
+  top: 192px;
+}
+
+.time-node {
+  top: 240px;
+}
+
+@media (max-height: 760px) {
+  #farmRoom .capsule {
+    min-height: 364px;
+  }
+
+  #farmRoom .capsule::before {
+    top: 36px;
+    width: 216px;
+    height: 256px;
+  }
+
+  #farmRoom .capsule::after {
+    top: 286px;
+    width: 252px;
+    height: 64px;
+  }
+
+  #farmRoom .capsule-glass {
+    top: 48px;
+    width: 190px;
+    height: 236px;
+  }
+
+  #farmRoom .capsule-light.base {
+    top: 270px;
+    width: 186px;
+  }
+
+  #farmRoom .capsule-base {
+    top: 314px;
+    width: 188px;
+  }
+
+  #farmRoom .specimen-grid {
+    top: 54px;
+    width: 198px;
+    height: 212px;
+  }
+
+  .root-network {
+    top: 220px;
+    width: 204px;
+  }
+
+  #farmRoom .growth-ring {
+    top: 70px;
+    right: 12px;
+    width: 56px;
+    height: 56px;
+  }
+
+  .water-node,
+  .light-node,
+  .time-node {
+    right: 13px;
+  }
+
+  .water-node { top: 134px; }
+  .light-node { top: 180px; }
+  .time-node { top: 226px; }
+
+  .app.room-farm .process-rail {
+    top: 430px;
+    right: 30px;
+    left: auto;
+  }
+
+  #farmRoom .action-dock {
+    margin-top: -4px;
+  }
+}
+
+/* Stable flat service drone pass: optimized CSS layers, no spinning parts. */
+#farmRoom .capsule {
+  min-height: clamp(432px, 60vh, 494px);
+}
+
+.capsule-drone {
+  left: -18px;
+  top: 86px;
+  width: 88px;
+  height: 76px;
+  filter: drop-shadow(0 0 14px rgba(88, 220, 255, 0.34));
+  animation-duration: 9.5s;
+}
+
+.capsule-drone::before {
+  inset: 44px 14px auto;
+  height: 12px;
+  background:
+    radial-gradient(ellipse, rgba(129, 255, 216, 0.2), transparent 72%);
+}
+
+.capsule-drone::after {
+  left: 64px;
+  top: 39px;
+  width: 72px;
+  height: 2px;
+  opacity: 0.72;
+}
+
+.drone-orbit {
+  display: none;
+}
+
+.drone-antenna {
+  position: absolute;
+  top: 5px;
+  z-index: 4;
+  width: 22px;
+  height: 19px;
+  opacity: 0;
+  transform: translateY(5px) scale(0.74);
+  transition: opacity 220ms ease, transform 220ms ease;
+}
+
+.drone-antenna::before,
+.drone-antenna::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  width: 1.5px;
+  height: 18px;
+  border-radius: 999px;
+  background: rgba(183, 255, 240, 0.76);
+  box-shadow: 0 0 10px rgba(129, 255, 216, 0.42);
+}
+
+.drone-antenna::before {
+  left: 6px;
+  transform: rotate(-22deg);
+}
+
+.drone-antenna::after {
+  right: 6px;
+  transform: rotate(22deg);
+}
+
+.drone-body {
+  width: 62px;
+  height: 34px;
+  border-color: rgba(181, 255, 239, 0.32);
+  border-radius: 14px;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.16), transparent 18% 78%, rgba(129, 255, 216, 0.1)),
+    linear-gradient(180deg, rgba(48, 184, 190, 0.96), rgba(12, 58, 67, 0.98));
+  clip-path: polygon(18% 0, 82% 0, 100% 20%, 100% 76%, 74% 100%, 26% 100%, 0 76%, 0 20%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    inset 0 -12px 16px rgba(0, 0, 0, 0.3),
+    0 0 0 3px rgba(88, 220, 255, 0.04);
+}
+
+.drone-body em {
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  top: 23px;
+  height: 4px;
+  border-radius: 999px;
+  background:
+    linear-gradient(90deg, rgba(129, 255, 216, 0.14), rgba(129, 255, 216, 0.86) var(--drone-power, 34%), rgba(3, 20, 22, 0.62) 0);
+  box-shadow: 0 0 10px rgba(129, 255, 216, 0.42);
+}
+
+.drone-wing {
+  top: 26px;
+  width: 19px;
+  height: 7px;
+  border-radius: 999px;
+  background:
+    linear-gradient(90deg, rgba(129, 255, 216, 0.12), rgba(88, 220, 255, 0.56), rgba(129, 255, 216, 0.12)),
+    rgba(5, 24, 27, 0.72);
+  animation: droneWing 2.6s ease-in-out infinite;
+}
+
+.drone-wing.left {
+  left: 1px;
+}
+
+.drone-wing.right {
+  right: 1px;
+}
+
+.drone-arm {
+  position: absolute;
+  top: 58px;
+  z-index: 2;
+  width: 28px;
+  height: 24px;
+  opacity: 0;
+  transform: scale(0.74);
+  transition: opacity 220ms ease, transform 220ms ease;
+}
+
+.drone-arm::before,
+.drone-arm::after {
+  content: "";
+  position: absolute;
+  border-radius: 999px;
+  background: rgba(145, 255, 232, 0.74);
+  box-shadow: 0 0 10px rgba(88, 220, 255, 0.38);
+}
+
+.drone-arm::before {
+  top: 2px;
+  width: 22px;
+  height: 2px;
+}
+
+.drone-arm::after {
+  bottom: 2px;
+  width: 12px;
+  height: 10px;
+  border: 1px solid rgba(255, 211, 107, 0.54);
+  background: rgba(255, 211, 107, 0.18);
+}
+
+.drone-arm.left {
+  left: 6px;
+  transform-origin: right top;
+  rotate: -24deg;
+}
+
+.drone-arm.left::after {
+  left: 0;
+}
+
+.drone-arm.right {
+  right: 6px;
+  transform-origin: left top;
+  rotate: 24deg;
+}
+
+.drone-arm.right::before,
+.drone-arm.right::after {
+  right: 0;
+}
+
+.drone-node {
+  position: absolute;
+  z-index: 4;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #dffff2;
+  box-shadow:
+    0 0 10px rgba(129, 255, 216, 0.85),
+    0 0 20px rgba(88, 220, 255, 0.36);
+  opacity: 0;
+  transform: scale(0.62);
+  transition: opacity 220ms ease, transform 220ms ease;
+}
+
+.drone-node.node-a {
+  left: 12px;
+  top: 14px;
+}
+
+.drone-node.node-b {
+  right: 12px;
+  top: 14px;
+}
+
+.capsule-drone[data-tier="2"] .drone-antenna,
+.capsule-drone[data-tier="3"] .drone-antenna,
+.capsule-drone[data-tier="4"] .drone-antenna,
+.capsule-drone[data-tier="5"] .drone-antenna {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.capsule-drone[data-tier="3"] .drone-arm,
+.capsule-drone[data-tier="4"] .drone-arm,
+.capsule-drone[data-tier="5"] .drone-arm {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.capsule-drone[data-tier="4"] .drone-orbit,
+.capsule-drone[data-tier="5"] .drone-orbit {
+  display: none;
+}
+
+.capsule-drone[data-tier="5"] .drone-node {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.capsule-drone[data-tier="5"] .drone-body {
+  border-color: rgba(255, 211, 107, 0.48);
+  box-shadow:
+    inset 0 0 16px rgba(255, 255, 255, 0.18),
+    inset 0 -14px 18px rgba(0, 0, 0, 0.34),
+    0 0 18px rgba(255, 211, 107, 0.22);
+}
+
+#farmRoom .growth-ring {
+  position: absolute;
+  top: 78px;
+  right: 14px;
+  left: auto;
+  width: 58px;
+  height: 58px;
+}
+
+.water-node,
+.light-node,
+.time-node {
+  right: 14px;
+}
+
+.water-node { top: 146px; }
+.light-node { top: 194px; }
+.time-node { top: 242px; }
+
+.app.room-farm .process-rail {
+  top: 300px;
+  right: 13px;
+}
+
+@keyframes droneOrbit {
+  from { rotate: 0deg; }
+  to { rotate: 360deg; }
+}
+
+@media (max-height: 760px) {
+  #farmRoom .capsule {
+    min-height: 414px;
+  }
+
+  #farmRoom .capsule::before {
+    height: 282px;
+  }
+
+  #farmRoom .capsule::after {
+    top: 312px;
+  }
+
+  #farmRoom .capsule-glass {
+    height: 260px;
+  }
+
+  #farmRoom .capsule-light.base {
+    top: 294px;
+  }
+
+  #farmRoom .capsule-base {
+    top: 340px;
+  }
+
+  #farmRoom .specimen-grid {
+    top: 56px;
+    height: 226px;
+  }
+
+  .root-network {
+    top: 242px;
+  }
+
+  .capsule-drone {
+    left: -22px;
+    top: 82px;
+  }
+
+  #farmRoom .growth-ring {
+    position: absolute;
+    top: 68px;
+    right: 12px;
+  }
+
+  .water-node { top: 132px; }
+  .light-node { top: 178px; }
+  .time-node { top: 224px; }
+
+  .app.room-farm .process-rail {
+    top: 278px;
+    right: 12px;
+  }
+}
+
+/* Farm clarity pass: one active plant, compact actions, clearer slot economy. */
+#farmRoom .capsule {
+  min-height: clamp(456px, 63vh, 520px);
+}
+
+.app.room-farm .process-rail {
+  top: 318px;
+}
+
+#farmRoom .action-dock {
+  grid-template-columns: 72px 36px 36px 42px;
+  justify-content: center;
+  gap: 7px;
+  margin-top: -10px;
+}
+
+.primary-action,
+.meter-card,
+.stars-action {
+  min-height: 40px;
+}
+
+.grow-card {
+  min-height: 44px;
+  padding: 4px 6px;
+  gap: 2px;
+}
+
+.grow-card span {
+  position: relative;
+  width: 34px;
+  height: 24px;
+  display: block;
+  font-size: 0;
+}
+
+.grow-card span::before,
+.grow-card span::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.grow-card[data-action="grow"] span::before {
+  bottom: 3px;
+  width: 3px;
+  height: 17px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #dffff2, #6dff82);
+  box-shadow: 0 0 12px rgba(129, 255, 216, 0.5);
+}
+
+.grow-card[data-action="grow"] span::after {
+  bottom: 11px;
+  width: 26px;
+  height: 15px;
+  border-radius: 15px 15px 3px 15px;
+  background:
+    radial-gradient(circle at 34% 52%, rgba(255, 255, 255, 0.55), transparent 17%),
+    linear-gradient(135deg, #98ff65, #25d56a);
+  clip-path: polygon(50% 0, 84% 18%, 100% 50%, 64% 100%, 50% 72%, 36% 100%, 0 50%, 16% 18%);
+}
+
+.grow-card[data-action="boost"] span::before {
+  top: 1px;
+  width: 18px;
+  height: 25px;
+  background: linear-gradient(180deg, #fff2a8, #6dffdf);
+  clip-path: polygon(52% 0, 18% 52%, 45% 52%, 31% 100%, 84% 38%, 56% 39%, 72% 0);
+  filter: drop-shadow(0 0 12px rgba(255, 211, 107, 0.7));
+}
+
+.grow-card[data-action="collect"] span::before {
+  bottom: 3px;
+  width: 25px;
+  height: 14px;
+  border: 2px solid rgba(129, 255, 216, 0.88);
+  border-top: 0;
+  border-radius: 4px 4px 10px 10px;
+  box-shadow: 0 0 12px rgba(129, 255, 216, 0.38);
+}
+
+.grow-card[data-action="collect"] span::after {
+  top: 1px;
+  width: 14px;
+  height: 18px;
+  border-radius: 16px 16px 2px 16px;
+  background: linear-gradient(135deg, #c6ff83, #45e56d);
+  transform: translateX(-50%) rotate(-20deg);
+  filter: drop-shadow(0 0 10px rgba(129, 255, 216, 0.55));
+  animation: collectDrop 1.6s ease-in-out infinite;
+}
+
+.grow-card strong {
+  font-size: 10px;
+  line-height: 1;
+}
+
+.stars-action {
+  display: none;
+}
+
+.stars-action span {
+  font-size: 15px;
+  line-height: 1;
+}
+
+.stars-action strong {
+  font-size: 15px;
+  line-height: 1;
+}
+
+.grow-card span {
+  font-size: 0;
+}
+
+.specimen-pod.empty-pod {
+  border-style: dashed;
+  border-color: rgba(129, 255, 216, 0.14);
+  background:
+    linear-gradient(135deg, rgba(129, 255, 216, 0.06), transparent 34% 66%, rgba(88, 220, 255, 0.05)),
+    rgba(2, 13, 12, 0.42);
+}
+
+.specimen-pod.empty-pod .pod-plant {
+  opacity: 0;
+  animation: none;
+}
+
+.specimen-pod.empty-pod::after {
+  left: 24px;
+  right: 24px;
+  height: 2px;
+  opacity: 0.45;
+  filter: blur(1px);
+}
+
+.specimen-pod.empty-pod .pod-sun {
+  color: rgba(139, 169, 160, 0.86);
+}
+
+.specimen-pod.empty-pod .pod-artifact {
+  left: 50%;
+  right: auto;
+  top: 50%;
+  bottom: auto;
+  min-width: 48px;
+  justify-content: center;
+  transform: translate(-50%, -50%);
+  color: rgba(139, 169, 160, 0.92);
+}
+
+.specimen-pod.empty-pod .pod-id {
+  color: rgba(139, 169, 160, 0.84);
+}
+
+.specimen-pod.locked-pod .pod-artifact i {
+  display: none;
+}
+
+.specimen-pod.locked-pod .pod-sun i,
+.specimen-pod.paid-pod .pod-sun i,
+.specimen-pod.paid-pod .pod-artifact i {
+  display: none;
+}
+
+.specimen-pod.paid-pod {
+  border-color: rgba(255, 211, 107, 0.34);
+  background:
+    radial-gradient(circle at 50% 48%, rgba(255, 211, 107, 0.16), transparent 36%),
+    linear-gradient(180deg, rgba(255, 211, 107, 0.08), rgba(255, 255, 255, 0.02)),
+    rgba(2, 13, 12, 0.5);
+}
+
+.specimen-pod.paid-pod .pod-sun,
+.specimen-pod.paid-pod .pod-artifact {
+  color: var(--gold);
+  text-shadow: 0 0 12px rgba(255, 211, 107, 0.5);
+}
+
+.specimen-pod.paid-pod .pod-artifact {
+  border-color: rgba(255, 211, 107, 0.28);
+  background: rgba(255, 211, 107, 0.08);
+}
+
+.specimen-pod.paid-pod .pod-id {
+  color: rgba(255, 211, 107, 0.92);
+}
+
+.specimen-pod.paid-pod {
+  border-color: rgba(255, 226, 124, 0.58);
+  background:
+    radial-gradient(circle at 50% 46%, rgba(255, 211, 107, 0.32), transparent 42%),
+    radial-gradient(circle at 50% 78%, rgba(129, 255, 216, 0.16), transparent 38%),
+    linear-gradient(180deg, rgba(255, 211, 107, 0.16), rgba(255, 255, 255, 0.03)),
+    rgba(7, 16, 13, 0.68);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    inset 0 -12px 18px rgba(0, 0, 0, 0.22),
+    0 0 22px rgba(255, 211, 107, 0.22),
+    0 0 34px rgba(129, 255, 216, 0.09);
+  animation: paidSlotPulse 2.8s ease-in-out infinite;
+}
+
+.specimen-pod.paid-pod .pod-sun,
+.specimen-pod.paid-pod > .pod-artifact,
+.specimen-pod.paid-pod > .pod-id {
+  display: none;
+}
+
+.pod-buy-cta {
+  position: absolute;
+  inset: 13px 9px;
+  z-index: 7;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 6px;
+  border: 1px solid rgba(255, 231, 151, 0.3);
+  border-radius: 15px;
+  background:
+    linear-gradient(180deg, rgba(255, 211, 107, 0.12), rgba(129, 255, 216, 0.055)),
+    rgba(3, 18, 15, 0.64);
+  box-shadow:
+    inset 0 0 18px rgba(255, 211, 107, 0.08),
+    0 0 18px rgba(255, 211, 107, 0.18);
+}
+
+.pod-buy-cta b {
+  color: rgba(255, 247, 210, 0.98);
+  font-size: 16px;
+  font-weight: 1000;
+  line-height: 1;
+  letter-spacing: 0;
+  text-shadow:
+    0 0 10px rgba(255, 211, 107, 0.64),
+    0 0 16px rgba(129, 255, 216, 0.24);
+}
+
+.pod-buy-cta i {
+  min-width: 46px;
+  padding: 4px 7px;
+  border-radius: 999px;
+  background: rgba(255, 211, 107, 0.14);
+  color: var(--gold);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 950;
+  line-height: 1;
+  box-shadow: inset 0 0 0 1px rgba(255, 211, 107, 0.25);
+}
+
+.specimen-pod.unlocked-pod .pod-buy-cta {
+  display: none;
+}
+
+.app.room-farm .process-rail {
+  display: none;
+}
+
+.water-node,
+.light-node,
+.time-node,
+#farmRoom .growth-ring {
+  right: 12px;
+}
+
+.capsule-modules {
+  z-index: 20;
+}
+
+.capsule-node {
+  min-width: 38px;
+  min-height: 24px;
+  grid-template-columns: 10px 1fr;
+  gap: 4px;
+  padding: 3px 5px;
+  border-radius: 999px;
+  border-color: rgba(129, 255, 216, 0.18);
+  background: rgba(2, 15, 13, 0.52);
+  box-shadow:
+    inset 0 0 10px rgba(129, 255, 216, 0.045),
+    0 0 12px rgba(88, 220, 255, 0.08);
+  backdrop-filter: blur(7px);
+}
+
+.capsule-node::before {
+  content: "";
+  position: absolute;
+  right: 100%;
+  top: 50%;
+  width: 32px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(129, 255, 216, 0.48));
+  box-shadow: 0 0 8px rgba(129, 255, 216, 0.24);
+}
+
+.capsule-node::after {
+  content: "";
+  position: absolute;
+  right: calc(100% + 30px);
+  top: 50%;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(129, 255, 216, 0.88);
+  box-shadow: 0 0 10px rgba(129, 255, 216, 0.55);
+  transform: translateY(-50%);
+}
+
+.capsule-node span {
+  width: 8px;
+  height: 8px;
+  display: block;
+  border-radius: 50%;
+  background: currentColor;
+  font-size: 0;
+}
+
+.capsule-node b {
+  color: rgba(223, 255, 242, 0.86);
+  font-size: 9px;
+  line-height: 1;
+}
+
+.water-node,
+.light-node,
+.time-node {
+  right: 8px;
+}
+
+.water-node { top: 156px; }
+.light-node { top: 196px; }
+.time-node { top: 236px; }
+
+/* Future-ready drone: flat service body with visible module sockets. */
+.capsule-drone {
+  left: -20px;
+  top: 92px;
+  width: 96px;
+  height: 78px;
+  animation-duration: 16s;
+}
+
+.drone-body {
+  width: 68px;
+  height: 36px;
+  border-radius: 12px;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.18), transparent 18% 80%, rgba(129, 255, 216, 0.12)),
+    linear-gradient(180deg, #43cfd3, #0e3d4b 58%, #071d26);
+  clip-path: polygon(12% 0, 88% 0, 100% 28%, 92% 100%, 8% 100%, 0 28%);
+}
+
+.drone-body::before {
+  left: 11px;
+  right: 11px;
+  top: 11px;
+  height: 3px;
+  background: linear-gradient(90deg, rgba(129, 255, 216, 0.22), rgba(223, 255, 242, 0.78), rgba(129, 255, 216, 0.22));
+}
+
+.drone-body::after {
+  left: 13px;
+  right: 13px;
+  top: 18px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(88, 220, 255, 0.66), transparent);
+}
+
+.drone-body i {
+  left: 8px;
+  top: 9px;
+  width: 11px;
+  height: 11px;
+}
+
+.drone-body b {
+  right: 7px;
+  bottom: 5px;
+  left: auto;
+  color: rgba(223, 255, 242, 0.94);
+  font-size: 9px;
+}
+
+.drone-wing {
+  top: 29px;
+  width: 15px;
+  height: 10px;
+  border-radius: 3px;
+  background:
+    linear-gradient(180deg, rgba(129, 255, 216, 0.2), rgba(88, 220, 255, 0.58)),
+    rgba(4, 22, 28, 0.9);
+  animation: droneWing 5.8s ease-in-out infinite;
+}
+
+.drone-wing.left { left: 2px; }
+.drone-wing.right { right: 2px; }
+
+.drone-antenna {
+  opacity: 0.45;
+  transform: translateY(3px) scale(0.86);
+}
+
+.drone-node {
+  opacity: 0.48;
+  transform: scale(0.78);
+  background: rgba(3, 20, 24, 0.92);
+  border: 1px solid rgba(129, 255, 216, 0.42);
+}
+
+.drone-node.node-a {
+  left: 19px;
+  top: 52px;
+}
+
+.drone-node.node-b {
+  right: 19px;
+  top: 52px;
+}
+
+.drone-arm {
+  opacity: 0.22;
+  transform: scale(0.8);
+}
+
+.capsule-drone[data-tier="3"] .drone-arm,
+.capsule-drone[data-tier="4"] .drone-arm,
+.capsule-drone[data-tier="5"] .drone-arm {
+  opacity: 0.92;
+}
+
+@keyframes collectDrop {
+  0%, 100% { transform: translateX(-50%) translateY(-2px) rotate(-20deg); }
+  50% { transform: translateX(-50%) translateY(3px) rotate(-10deg); }
+}
+
+@keyframes paidSlotPulse {
+  0%, 100% {
+    filter: brightness(1);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.18),
+      inset 0 -12px 18px rgba(0, 0, 0, 0.22),
+      0 0 18px rgba(255, 211, 107, 0.18);
+  }
+  50% {
+    filter: brightness(1.12);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.2),
+      inset 0 -12px 18px rgba(0, 0, 0, 0.22),
+      0 0 28px rgba(255, 211, 107, 0.32),
+      0 0 42px rgba(129, 255, 216, 0.12);
+  }
+}
+
+@media (max-height: 760px) {
+  #farmRoom .capsule {
+    min-height: 440px;
+  }
+
+  #farmRoom .capsule::before {
+    height: 308px;
+  }
+
+  #farmRoom .capsule::after {
+    top: 338px;
+  }
+
+  #farmRoom .capsule-glass {
+    height: 286px;
+  }
+
+  #farmRoom .capsule-light.base {
+    top: 318px;
+  }
+
+  #farmRoom .capsule-base {
+    top: 366px;
+  }
+
+  #farmRoom .specimen-grid {
+    top: 62px;
+    height: 244px;
+  }
+
+  .root-network {
+    top: 268px;
+  }
+
+  .capsule-drone {
+    top: 96px;
+  }
+
+  .app.room-farm .process-rail {
+    top: 308px;
+  }
+}
+
+.drone-upgrade-preview {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 12px;
+  padding: 12px;
+  border: 1px solid rgba(126, 255, 222, 0.16);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.mini-drone {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border-radius: 18px;
+  background: radial-gradient(circle, rgba(88, 220, 255, 0.2), rgba(66, 242, 183, 0.06));
+}
+
+.mini-drone i {
+  width: 28px;
+  height: 30px;
+  border-radius: 12px 12px 15px 15px;
+  background: linear-gradient(180deg, rgba(109, 255, 218, 0.96), rgba(16, 84, 78, 0.96));
+  box-shadow: 0 0 18px rgba(66, 242, 183, 0.28);
+}
+
+.mini-drone b {
+  position: absolute;
+  width: 56px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1px solid rgba(159, 255, 237, 0.26);
+}
+
+.drone-upgrade-preview strong {
+  display: block;
+  color: rgba(238, 255, 249, 0.96);
+  font-size: 15px;
+}
+
+.drone-upgrade-preview small {
+  display: block;
+  margin-top: 4px;
+  color: rgba(139, 169, 160, 0.92);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.drone-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.drone-stats span {
+  min-height: 62px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 3px;
+  border: 1px solid rgba(126, 255, 222, 0.14);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.drone-stats b {
+  color: var(--green);
+  font-size: 15px;
+}
+
+.drone-stats small {
+  color: rgba(139, 169, 160, 0.92);
+  font-size: 10px;
+  font-weight: 850;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.drone-upgrade-btn {
+  width: 100%;
+  min-height: 52px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 3px;
+  border: 1px solid rgba(255, 211, 107, 0.34);
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(255, 211, 107, 0.2), rgba(66, 242, 183, 0.11));
+  color: rgba(255, 242, 204, 0.98);
+  font-weight: 950;
+}
+
+.drone-upgrade-btn b {
+  color: rgba(139, 169, 160, 0.92);
+  font-size: 11px;
+}
+
+.drone-upgrade-btn:disabled {
+  opacity: 0.48;
+}
+
+/* Connector pass: remove right progress sphere, make ports visual, and give drone a full rail. */
+#farmRoom .growth-ring {
+  display: none !important;
+}
+
+.capsule-node {
+  width: 38px;
+  min-width: 38px;
+  height: 24px;
+  min-height: 24px;
+  grid-template-columns: 9px 16px;
+  justify-content: center;
+  border-radius: 999px;
+}
+
+.capsule-node span {
+  width: 7px;
+  height: 7px;
+  place-self: center;
+}
+
+.capsule-node b {
+  position: relative;
+  width: 16px;
+  height: 14px;
+  display: block;
+  font-size: 0;
+}
+
+.capsule-node b::before,
+.capsule-node b::after {
+  content: "";
+  position: absolute;
+  inset: auto;
+  display: block;
+}
+
+.water-node b::before {
+  left: 2px;
+  top: 2px;
+  width: 12px;
+  height: 10px;
+  border-radius: 2px 2px 7px 7px;
+  background: linear-gradient(180deg, rgba(129, 255, 216, 0.22), rgba(88, 220, 255, 0.86));
+  box-shadow: 0 0 10px rgba(88, 220, 255, 0.35);
+}
+
+.light-node b::before {
+  left: 3px;
+  top: 3px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 241, 180, 0.96), rgba(255, 211, 107, 0.46), transparent 72%);
+  box-shadow: 0 0 11px rgba(255, 211, 107, 0.5);
+}
+
+.time-node b::before {
+  left: 1px;
+  top: 6px;
+  width: 14px;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(129, 255, 216, 0.2), rgba(129, 255, 216, 0.92), rgba(255, 211, 107, 0.72));
+  box-shadow: 0 0 9px rgba(129, 255, 216, 0.42);
+}
+
+.time-node b::after {
+  left: 6px;
+  top: 2px;
+  width: 2px;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(129, 255, 216, 0.72);
+}
+
+.drone-dock-rail {
+  position: absolute;
+  left: 10px;
+  top: 48px;
+  z-index: 21;
+  width: 24px;
+  height: 346px;
+  pointer-events: none;
+}
+
+.drone-dock-rail::before {
+  content: "";
+  position: absolute;
+  left: 9px;
+  top: 8px;
+  bottom: 8px;
+  width: 1px;
+  background: linear-gradient(180deg, transparent, rgba(129, 255, 216, 0.54), rgba(88, 220, 255, 0.34), transparent);
+  box-shadow: 0 0 10px rgba(129, 255, 216, 0.22);
+}
+
+.drone-dock-rail i {
+  position: absolute;
+  left: 4px;
+  width: 11px;
+  height: 11px;
+  border: 1px solid rgba(129, 255, 216, 0.34);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, rgba(223, 255, 242, 0.9) 0 16%, rgba(129, 255, 216, 0.38) 17% 46%, rgba(3, 20, 20, 0.94) 47%);
+  box-shadow: 0 0 11px rgba(129, 255, 216, 0.25);
+  animation: dockPulse 5.6s ease-in-out infinite;
+}
+
+.drone-dock-rail i::after {
+  content: "";
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  width: 18px;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(129, 255, 216, 0.42), transparent);
+  transform: translateY(-50%);
+}
+
+.drone-dock-rail i:nth-child(1) { top: 0%; animation-delay: -0.1s; }
+.drone-dock-rail i:nth-child(2) { top: 13%; animation-delay: -0.8s; }
+.drone-dock-rail i:nth-child(3) { top: 26%; animation-delay: -1.5s; }
+.drone-dock-rail i:nth-child(4) { top: 40%; animation-delay: -2.2s; }
+.drone-dock-rail i:nth-child(5) { top: 54%; animation-delay: -2.9s; }
+.drone-dock-rail i:nth-child(6) { top: 68%; animation-delay: -3.6s; }
+.drone-dock-rail i:nth-child(7) { top: 82%; animation-delay: -4.3s; }
+.drone-dock-rail i:nth-child(8) { top: 96%; animation-delay: -5s; }
+
+.capsule-drone {
+  left: -22px;
+  top: 42px;
+  animation-duration: 28s;
+  animation-timing-function: ease-in-out;
+}
+
+.capsule-drone::after {
+  left: 72px;
+  top: 39px;
+  width: 24px;
+  height: 2px;
+  opacity: 0.82;
+  background: linear-gradient(90deg, rgba(129, 255, 216, 0.84), rgba(129, 255, 216, 0.2));
+  box-shadow: 0 0 10px rgba(129, 255, 216, 0.35);
+  animation: dockProbe 28s ease-in-out infinite;
+}
+
+.drone-scan {
+  display: none;
+}
+
+@keyframes capsuleDronePatrol {
+  0%, 8% { transform: translate3d(0, 0, 0) rotate(-0.4deg); }
+  20%, 28% { transform: translate3d(5px, 76px, 0) rotate(0.5deg); }
+  40%, 48% { transform: translate3d(1px, 154px, 0) rotate(-0.3deg); }
+  60%, 68% { transform: translate3d(6px, 232px, 0) rotate(0.4deg); }
+  82%, 100% { transform: translate3d(0, 306px, 0) rotate(-0.5deg); }
+}
+
+@keyframes dockPulse {
+  0%, 100% { opacity: 0.34; transform: scale(0.86); }
+  45%, 55% { opacity: 0.95; transform: scale(1); }
+}
+
+@keyframes dockProbe {
+  0%, 12%, 30%, 50%, 70%, 100% {
+    opacity: 0.18;
+    transform: scaleX(0.2);
+  }
+  18%, 38%, 58%, 82% {
+    opacity: 0.95;
+    transform: scaleX(1);
+  }
+}
+
+@media (max-height: 760px) {
+  .drone-dock-rail {
+    top: 42px;
+    height: 326px;
+  }
+
+  .capsule-drone {
+    top: 42px;
+  }
+
+  @keyframes capsuleDronePatrol {
+    0%, 8% { transform: translate3d(0, 0, 0) rotate(-0.4deg); }
+    20%, 28% { transform: translate3d(5px, 70px, 0) rotate(0.5deg); }
+    40%, 48% { transform: translate3d(1px, 142px, 0) rotate(-0.3deg); }
+    60%, 68% { transform: translate3d(6px, 214px, 0) rotate(0.4deg); }
+    82%, 100% { transform: translate3d(0, 286px, 0) rotate(-0.5deg); }
+  }
+}
+
 .missions-space {
   position: relative;
   min-height: calc(100vh - 160px);

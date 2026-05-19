@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#06110f">
     <title>Green Farm Tycoon</title>
-    <link rel="stylesheet" href="styles.css?v=26">
+    <link rel="stylesheet" href="styles.css?v=33">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="app.js?v=26" defer></script>
+    <script src="app.js?v=33" defer></script>
   </head>
   <body>
     <main class="app room-farm" aria-label="Green Farm Tycoon MVP">
@@ -68,6 +68,26 @@
           <div class="capsule-light top" aria-hidden="true"></div>
           <div class="capsule-light base" aria-hidden="true"></div>
           <div class="growth-ring" id="growthRing"><span id="growthPercent">0%</span></div>
+          <div class="drone-dock-rail" aria-hidden="true">
+            <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+          </div>
+          <button class="capsule-drone" id="capsuleDrone" type="button" aria-label="Open drone upgrades">
+            <span class="drone-orbit" aria-hidden="true"></span>
+            <span class="drone-scan" aria-hidden="true"></span>
+            <span class="drone-antenna" aria-hidden="true"></span>
+            <span class="drone-wing left" aria-hidden="true"></span>
+            <span class="drone-body">
+              <i></i>
+              <em></em>
+              <b id="droneLevelBadge">L1</b>
+            </span>
+            <span class="drone-wing right" aria-hidden="true"></span>
+            <span class="drone-arm left" aria-hidden="true"></span>
+            <span class="drone-arm right" aria-hidden="true"></span>
+            <span class="drone-node node-a" aria-hidden="true"></span>
+            <span class="drone-node node-b" aria-hidden="true"></span>
+            <span class="drone-tail" aria-hidden="true"></span>
+          </button>
           <div class="plant" id="plantVisual" aria-hidden="true">
             <i class="stem"></i>
             <i class="stem stem-b"></i>
@@ -106,7 +126,7 @@
             <span id="growthBubbleC">+3%</span>
           </div>
           <div class="specimen-grid" id="specimenGrid" aria-label="Plant chambers">
-            <button class="specimen-pod" data-pod="0" aria-label="Plant chamber 1">
+            <button class="specimen-pod active-pod" data-pod="0" aria-label="Plant chamber 1">
               <span class="pod-sun"><i>☼</i><b id="podSun0">72</b></span>
               <span class="pod-plant">
                 <i class="pod-stem"></i><i class="pod-stem side-a"></i><i class="pod-stem side-b"></i>
@@ -116,7 +136,7 @@
               <span class="pod-artifact"><i>◇</i><b id="podArtifact0">12%</b></span>
               <span class="pod-id" id="podId0">001</span>
             </button>
-            <button class="specimen-pod" data-pod="1" aria-label="Plant chamber 2">
+            <button class="specimen-pod empty-pod locked-pod" data-pod="1" aria-label="Locked plant chamber 2">
               <span class="pod-sun"><i>☼</i><b id="podSun1">68</b></span>
               <span class="pod-plant">
                 <i class="pod-stem"></i><i class="pod-stem side-a"></i><i class="pod-stem side-b"></i>
@@ -126,7 +146,7 @@
               <span class="pod-artifact"><i>◇</i><b id="podArtifact1">15%</b></span>
               <span class="pod-id" id="podId1">014</span>
             </button>
-            <button class="specimen-pod" data-pod="2" aria-label="Plant chamber 3">
+            <button class="specimen-pod empty-pod locked-pod" data-pod="2" aria-label="Locked plant chamber 3">
               <span class="pod-sun"><i>☼</i><b id="podSun2">81</b></span>
               <span class="pod-plant">
                 <i class="pod-stem"></i><i class="pod-stem side-a"></i><i class="pod-stem side-b"></i>
@@ -136,7 +156,7 @@
               <span class="pod-artifact"><i>◇</i><b id="podArtifact2">18%</b></span>
               <span class="pod-id" id="podId2">027</span>
             </button>
-            <button class="specimen-pod" data-pod="3" aria-label="Plant chamber 4">
+            <button class="specimen-pod empty-pod paid-pod" data-pod="3" data-buy-slot="stars" aria-label="Buy plant chamber 4 for 10 Stars">
               <span class="pod-sun"><i>☼</i><b id="podSun3">76</b></span>
               <span class="pod-plant">
                 <i class="pod-stem"></i><i class="pod-stem side-a"></i><i class="pod-stem side-b"></i>
@@ -144,6 +164,7 @@
                 <i class="pod-core"></i>
               </span>
               <span class="pod-artifact"><i>◇</i><b id="podArtifact3">21%</b></span>
+              <span class="pod-buy-cta" aria-hidden="true"><b>START</b><i>★ 10</i></span>
               <span class="pod-id" id="podId3">040</span>
             </button>
           </div>
@@ -344,6 +365,35 @@
             <span id="soundIcon">♪</span>
             <strong>Sound</strong>
             <b id="soundState">On</b>
+          </button>
+        </div>
+      </section>
+
+      <section class="control-sheet drone-sheet" id="droneSheet" hidden aria-label="Capsule drone upgrades">
+        <button class="sheet-backdrop" type="button" data-close-sheet aria-label="Close drone upgrades"></button>
+        <div class="sheet-panel compact">
+          <header class="sheet-header">
+            <div>
+              <span>Capsule drone</span>
+              <strong id="droneSheetLevel">Level 1</strong>
+            </div>
+            <button class="sheet-close" type="button" data-close-sheet aria-label="Close">×</button>
+          </header>
+          <div class="drone-upgrade-preview">
+            <span class="mini-drone" aria-hidden="true"><i></i><b></b></span>
+            <div>
+              <strong>Pollination AI</strong>
+              <small>Drone patrols the capsule, speeds growth and adds harvest output.</small>
+            </div>
+          </div>
+          <div class="drone-stats">
+            <span><b id="droneSpeedValue">-1.1s</b><small>growth time</small></span>
+            <span><b id="droneHarvestValue">+2</b><small>harvest</small></span>
+            <span><b id="droneSignalValue">Idle</b><small>signal</small></span>
+          </div>
+          <button class="drone-upgrade-btn" id="droneUpgradeBtn" type="button">
+            <span id="droneUpgradeText">Upgrade</span>
+            <b id="droneCostValue">56 score · 5 energy</b>
           </button>
         </div>
       </section>

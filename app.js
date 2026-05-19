@@ -84,6 +84,8 @@ const defaultState = {
   zenElapsed: 0,
   soundOn: true,
   playerName: "You",
+  droneLevel: 1,
+  unlockedSlots: { "0": true },
   missions: {
     opened: {},
     claimed: {}
@@ -313,6 +315,8 @@ function loadState() {
     const restored = { ...base, ...JSON.parse(saved) };
     restored.growthDuration ||= GROW_DURATION_MS;
     restored.missions = normalizeMissionState(restored.missions);
+    restored.droneLevel = safeDroneLevel(restored.droneLevel);
+    restored.unlockedSlots = normalizeUnlockedSlots(restored.unlockedSlots);
     if (!restored.plantedAt && restored.growth > 0) {
       restored.plantedAt = Date.now() - (restored.growth / 100) * restored.growthDuration;
     }
@@ -324,6 +328,45 @@ function loadState() {
 
 function saveState() {
   localStorage.setItem("green-farm-mvp", JSON.stringify(state));
+}
+
+function safeDroneLevel(value = state.droneLevel) {
+  const level = Math.floor(Number(value) || 1);
+  return clamp(level, 1, 9);
+}
+
+function normalizeUnlockedSlots(value = state.unlockedSlots) {
+  const slots = { "0": true };
+  if (!value || typeof value !== "object") return slots;
+  Object.entries(value).forEach(([key, item]) => {
+    const index = clamp(Math.floor(Number(key) || 0), 0, 8);
+    if (item) slots[String(index)] = true;
+  });
+  return slots;
+}
+
+function isSlotUnlocked(index) {
+  return Boolean(normalizeUnlockedSlots()[String(index)]);
+}
+
+function unlockSlot(index) {
+  state.unlockedSlots = normalizeUnlockedSlots();
+  state.unlockedSlots[String(index)] = true;
+}
+
+function droneUpgradeCost(level = safeDroneLevel()) {
+  return {
+    score: 32 + level * 24,
+    energy: 3 + level * 2
+  };
+}
+
+function droneSpeedBonus(level = safeDroneLevel()) {
+  return level * 1_150;
+}
+
+function droneHarvestBonus(level = safeDroneLevel()) {
+  return level * 2;
 }
 
 function normalizeMissionState(value = {}) {
@@ -392,6 +435,8 @@ function playerSnapshot() {
     resonance: state.resonance,
     sessions: state.sessions,
     artifact: state.artifact,
+    droneLevel: safeDroneLevel(),
+    unlockedSlots: normalizeUnlockedSlots(),
     missions: state.missions
   });
 }
@@ -497,7 +542,10 @@ async function syncPlayer() {
           energy: state.energy,
           resonance: state.resonance,
           sessions: state.sessions,
-          artifact: state.artifact
+          artifact: state.artifact,
+          droneLevel: safeDroneLevel(),
+          unlockedSlots: normalizeUnlockedSlots(),
+          missions: state.missions
         }
       })
     });
@@ -508,8 +556,14 @@ async function syncPlayer() {
     backendState.playerId = data.player?.id || backendState.playerId;
     backendState.rank = data.rank || backendState.rank;
     backendState.leaderboard = data.leaderboard || backendState.leaderboard;
+    if (data.player?.droneLevel) {
+      state.droneLevel = Math.max(safeDroneLevel(), safeDroneLevel(data.player.droneLevel));
+    }
     if (data.player?.missions) {
       state.missions = mergeMissionState(state.missions, data.player.missions);
+    }
+    if (data.player?.unlockedSlots) {
+      state.unlockedSlots = { ...normalizeUnlockedSlots(state.unlockedSlots), ...normalizeUnlockedSlots(data.player.unlockedSlots) };
     }
     renderLeaderboard();
     updateLoadingSplash(94, "Leaderboard synced");
@@ -530,6 +584,8 @@ function stateSummary() {
     resonance: state.resonance,
     sessions: state.sessions,
     artifact: state.artifact,
+    droneLevel: safeDroneLevel(),
+    unlockedSlots: normalizeUnlockedSlots(),
     missions: state.missions
   };
 }
@@ -642,6 +698,43 @@ function applyPlantVariant(variant, progress, motion) {
 function renderSpecimenPods(progress, motion) {
   document.querySelectorAll(".specimen-pod").forEach((pod, index) => {
     const variant = PLANT_VARIANTS[(state.plantVariant + index * 13) % PLANT_VARIANTS.length];
+    const slotUnlocked = isSlotUnlocked(index);
+
+    pod.classList.toggle("active-pod", index === 0);
+    pod.classList.toggle("empty-pod", index > 0);
+    pod.classList.toggle("locked-pod", index === 1 || index === 2);
+    pod.classList.toggle("paid-pod", index === 3 && !slotUnlocked);
+    pod.classList.toggle("unlocked-pod", index === 3 && slotUnlocked);
+
+    if (index > 0) {
+      pod.style.setProperty("--leaf-hue", variant.leafHue);
+      pod.style.setProperty("--stem-hue", variant.stemHue);
+      pod.style.setProperty("--accent-hue", variant.accentHue);
+      pod.style.setProperty("--core-hue", variant.coreHue);
+      pod.style.setProperty("--pod-growth", "0.42");
+      pod.style.setProperty("--motion", "0.35");
+      pod.classList.remove("ready", "artifact-ready");
+
+      if (index === 3 && !slotUnlocked) {
+        setText("#podSun3", "");
+        setText("#podArtifact3", "★ 10");
+        setText("#podId3", "START");
+        return;
+      }
+
+      if (index === 3 && slotUnlocked) {
+        setText("#podSun3", "ON");
+        setText("#podArtifact3", "Ready");
+        setText("#podId3", "OPEN");
+        return;
+      }
+
+      setText(`#podSun${index}`, "--");
+      setText(`#podArtifact${index}`, "Empty");
+      setText(`#podId${index}`, "LOCK");
+      return;
+    }
+
     const podProgress = state.plantedAt ? clamp(progress + index * 9 - (index % 2) * 14, 8, 100) : 0;
     const artifactChance = clamp(10 + index * 4 + state.artifact * 3 + Math.floor(podProgress / 14), 8, 64);
     const sunValue = clamp(54 + ((variant.coreHue + progress + index * 11) % 43), 48, 99);
@@ -785,6 +878,69 @@ function renderMissions() {
   }).join("");
 }
 
+function renderDrone() {
+  const level = safeDroneLevel();
+  const cost = droneUpgradeCost(level);
+  const speedSeconds = Math.round(droneSpeedBonus(level) / 100) / 10;
+  const harvestBonus = droneHarvestBonus(level);
+  const canUpgrade = level < 9 && state.score >= cost.score && state.energy >= cost.energy;
+
+  setText("#droneLevelBadge", `L${level}`);
+  setText("#droneSheetLevel", `Level ${level}`);
+  setText("#droneSpeedValue", `-${speedSeconds}s`);
+  setText("#droneHarvestValue", `+${harvestBonus}`);
+  setText("#droneCostValue", level >= 9 ? "MAX" : `${cost.score} score · ${cost.energy} energy`);
+  setText("#droneUpgradeText", level >= 9 ? "Max level" : "Upgrade");
+  setText("#droneSignalValue", state.plantedAt ? "Scanning" : "Idle");
+  setClass("#capsuleDrone", "active", Boolean(state.plantedAt));
+  setClass("#capsuleDrone", "ready", growthProgress() >= 100);
+  setStyle("#capsuleDrone", "--drone-power", `${Math.min(100, 26 + level * 8)}%`);
+
+  const drone = $("#capsuleDrone");
+  if (drone) {
+    drone.dataset.level = String(level);
+    drone.dataset.tier = String(Math.min(5, Math.ceil(level / 2)));
+  }
+
+  const button = $("#droneUpgradeBtn");
+  if (button) button.disabled = !canUpgrade;
+}
+
+function upgradeDrone() {
+  const level = safeDroneLevel();
+  if (level >= 9) {
+    toast("Drone max");
+    return;
+  }
+
+  const cost = droneUpgradeCost(level);
+  if (state.score < cost.score || state.energy < cost.energy) {
+    toast("Need resources");
+    trackAction("drone_upgrade_blocked", {
+      level,
+      needScore: cost.score,
+      needEnergy: cost.energy,
+      score: state.score,
+      energy: state.energy
+    });
+    render();
+    return;
+  }
+
+  state.score -= cost.score;
+  state.energy -= cost.energy;
+  state.droneLevel = level + 1;
+  playTone("boost");
+  toast(`Drone L${state.droneLevel}`);
+  trackAction("drone_upgraded", {
+    level: state.droneLevel,
+    spentScore: cost.score,
+    spentEnergy: cost.energy
+  });
+  render();
+  scheduleBackendSync(true);
+}
+
 function missionIcon(type) {
   const icons = {
     telegram: "✈",
@@ -857,7 +1013,8 @@ function render() {
   const rank = Math.max(2, 12 - Math.floor(state.score / 80));
   const stage = growthStage(progress);
   const isGrowing = state.plantedAt && progress < 100;
-  const action = progress >= 100 ? ["\u2726", "Collect"] : state.plantedAt ? ["\u21af", "Boost"] : ["\u25cf", "Grow"];
+  const actionState = progress >= 100 ? "collect" : state.plantedAt ? "boost" : "grow";
+  const action = progress >= 100 ? ["", "Collect"] : state.plantedAt ? ["", "Boost"] : ["", "Grow"];
   const processState = progress >= 100 ? "Ready" : isGrowing ? "Run" : "Idle";
   const plantScale = state.plantedAt ? 0.92 + (progress / 100) * 0.34 : 0.76;
   const motion = state.plantedAt ? 0.7 + progress / 180 : 0.42;
@@ -892,6 +1049,8 @@ function render() {
   setText("#plantStage", stage);
   setText("#mainActionIcon", action[0]);
   setText("#mainActionText", action[1]);
+  const mainActionButton = $("#mainActionBtn");
+  if (mainActionButton) mainActionButton.dataset.action = actionState;
   setText("#leaderScore", state.score);
   setText("#rankValue", backendState.rank || rank);
   setText("#playerName", state.playerName);
@@ -903,6 +1062,7 @@ function render() {
   renderMutationLab(progress);
   renderZen();
   renderMissions();
+  renderDrone();
   setText("#waterModule", waterLevel);
   setText("#lightModule", lightLevel);
   setText("#timeModule", progress >= 100 ? "OK" : state.plantedAt ? `${secondsLeft}s` : "--");
@@ -924,7 +1084,7 @@ function render() {
 }
 
 function collectHarvest(auto = false) {
-  const harvest = 18 + state.artifact * 4;
+  const harvest = 18 + state.artifact * 4 + droneHarvestBonus();
   state.score += harvest;
   state.resonance += state.artifact > 0 ? 1 : 0;
   state.plantedAt = 0;
@@ -967,6 +1127,7 @@ function farmAction() {
   state.energy -= 1;
   if (!state.plantedAt) {
     state.growthDuration = Math.max(18_000, GROW_DURATION_MS - state.artifact * 1_500);
+    state.growthDuration = Math.max(12_000, state.growthDuration - droneSpeedBonus());
     state.plantedAt = Date.now();
     playTone("grow");
     toast("Planted");
@@ -975,7 +1136,7 @@ function farmAction() {
       plantVariant: state.plantVariant
     });
   } else {
-    state.plantedAt -= BOOST_MS + state.artifact * 450;
+    state.plantedAt -= BOOST_MS + state.artifact * 450 + safeDroneLevel() * 260;
     state.boostUntil = Date.now() + 2_800;
     playTone("boost");
     toast("Boost");
@@ -987,30 +1148,68 @@ function farmAction() {
   render();
 }
 
-function mockStarsBuy() {
+function applyStarsReward(product = {}) {
+  if (product.id === "farm_slot_4" || product.reward?.slot !== undefined) {
+    const slot = Number(product.reward?.slot ?? 3);
+    unlockSlot(slot);
+    playTone("stars");
+    toast(`Slot ${slot + 1} unlocked`);
+    trackAction("stars_slot_unlocked", {
+      productId: product.id || "farm_slot_4",
+      slot: slot + 1
+    });
+    render();
+    scheduleBackendSync(true);
+    return;
+  }
+
+  const rewardEnergy = Number(product.reward?.energy || 12);
+  state.energy += rewardEnergy;
+  playTone("stars");
+  toast(`Stars paid +${rewardEnergy} \u26a1`);
+  render();
+  scheduleBackendSync(true);
+}
+
+function mockStarsBuy(productId = "energy_pack_10") {
+  if (productId === "farm_slot_4") {
+    applyStarsReward({
+      id: "farm_slot_4",
+      reward: { slot: 3 }
+    });
+    trackAction("stars_preview_mock", {
+      stars: 10,
+      productId,
+      slot: 4,
+      mode: "preview"
+    });
+    return;
+  }
+
   state.energy += 12;
   playTone("stars");
   toast("Mock \u2605 +12 \u26a1");
   trackAction("stars_preview_mock", {
     stars: 10,
+    productId,
     energyAdded: 12,
     mode: "mock"
   });
   render();
 }
 
-async function buyStarsEnergy() {
+async function buyStarsProduct(productId = "energy_pack_10") {
   const platform = telegramPlatform();
   trackAction("stars_button_clicked", {
     stars: 10,
-    productId: "energy_pack_10",
+    productId,
     mode: tg?.initData ? "telegram" : "preview",
     platform
   });
 
   if (!tg?.initData || typeof tg.openInvoice !== "function") {
     toast("Stars only in Telegram");
-    mockStarsBuy();
+    mockStarsBuy(productId);
     return;
   }
 
@@ -1022,7 +1221,7 @@ async function buyStarsEnergy() {
       body: JSON.stringify({
         clientId: CLIENT_ID,
         initData: tg.initData,
-        productId: "energy_pack_10",
+        productId,
         platform,
         state: stateSummary()
       })
@@ -1032,7 +1231,7 @@ async function buyStarsEnergy() {
 
     trackAction("stars_invoice_opened", {
       orderId: data.orderId,
-      productId: data.product?.id || "energy_pack_10",
+      productId: data.product?.id || productId,
       stars: data.product?.stars || 10,
       platform
     });
@@ -1045,12 +1244,7 @@ async function buyStarsEnergy() {
       });
 
       if (status === "paid") {
-        const rewardEnergy = Number(data.product?.reward?.energy || 12);
-        state.energy += rewardEnergy;
-        playTone("stars");
-        toast(`Stars paid +${rewardEnergy} \u26a1`);
-        render();
-        scheduleBackendSync(true);
+        applyStarsReward(data.product || { id: productId });
         return;
       }
 
@@ -1067,6 +1261,18 @@ async function buyStarsEnergy() {
       message: error.message
     });
   }
+}
+
+function buyStarsEnergy() {
+  return buyStarsProduct("energy_pack_10");
+}
+
+function buyFarmSlot4() {
+  if (isSlotUnlocked(3)) {
+    toast("Slot already open");
+    return null;
+  }
+  return buyStarsProduct("farm_slot_4");
 }
 
 function telegramPlatform() {
@@ -1197,6 +1403,25 @@ $("#mutationAutoBtn")?.addEventListener("click", () => {
 });
 $("#synthBtn")?.addEventListener("click", synthArtifact);
 $("#meditateBtn")?.addEventListener("click", meditate);
+$("#capsuleDrone")?.addEventListener("click", () => {
+  openSheet("#droneSheet");
+  playTone("tap");
+  trackAction("drone_menu_opened", {
+    level: safeDroneLevel()
+  });
+  render();
+});
+$("#droneUpgradeBtn")?.addEventListener("click", upgradeDrone);
+$("#specimenGrid")?.addEventListener("click", (event) => {
+  const paidPod = event.target.closest(".paid-pod");
+  if (!paidPod) return;
+  playTone("tap");
+  buyFarmSlot4();
+  trackAction("farm_slot_buy_clicked", {
+    slot: Number(paidPod.dataset.pod || 3) + 1,
+    stars: 10
+  });
+});
 $("#missionsGrid")?.addEventListener("click", (event) => {
   const openButton = event.target.closest("[data-open-mission]");
   const claimButton = event.target.closest("[data-claim-mission]");
