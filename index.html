@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#06110f">
     <title>Green Farm Tycoon</title>
-    <link rel="stylesheet" href="styles.css?v=25">
+    <link rel="stylesheet" href="styles.css?v=26">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="app.js?v=25" defer></script>
+    <script src="app.js?v=26" defer></script>
   </head>
   <body>
     <main class="app room-farm" aria-label="Green Farm Tycoon MVP">
@@ -274,10 +274,36 @@
         </section>
       </section>
 
+      <section class="room" id="missionsRoom" aria-label="Missions room">
+        <div class="room-title"><span>Missions</span><strong>Starter</strong></div>
+        <section class="missions-space" aria-label="Starter missions">
+          <div class="missions-orbit" aria-hidden="true">
+            <i></i><i></i><i></i>
+          </div>
+          <header class="missions-header">
+            <div>
+              <span>Mission Hub</span>
+              <strong>Start energy</strong>
+              <small>Open social signals, wait a moment, claim first energy.</small>
+            </div>
+            <div class="missions-core">
+              <b id="missionsEnergy">+0</b>
+              <small>energy</small>
+            </div>
+          </header>
+          <div class="missions-progress">
+            <span id="missionsProgress"></span>
+            <b id="missionsClaimed">0/4</b>
+          </div>
+          <div class="missions-grid" id="missionsGrid"></div>
+        </section>
+      </section>
+
       <nav class="nav" aria-label="Rooms">
         <button class="nav-item active" data-room="farm"><span>🌿</span><b>Farm</b></button>
         <button class="nav-item" data-room="lab"><span>⚗</span><b>Lab</b></button>
         <button class="nav-item" data-room="zen"><span>◎</span><b>Zen</b></button>
+        <button class="nav-item" data-room="missions"><span>✦</span><b>Tasks</b></button>
       </nav>
 
       <section class="control-sheet league-sheet" id="leagueSheet" hidden aria-label="Player league">

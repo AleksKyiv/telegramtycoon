@@ -12,6 +12,45 @@ const GROW_DURATION_MS = 30_000;
 const BOOST_MS = 4_500;
 const ZEN_DEFAULT_DURATION_MS = 300_000;
 const BREATH_LOOP_MS = 12_000;
+const MISSION_WAIT_MS = 10_000;
+const MISSIONS = [
+  {
+    id: "telegram_channel",
+    type: "telegram",
+    title: "Green Channel",
+    label: "Join",
+    url: "https://t.me/Qwanttarium_bot",
+    reward: { energy: 25 },
+    note: "Starter energy"
+  },
+  {
+    id: "youtube_signal",
+    type: "youtube",
+    title: "YouTube Signal",
+    label: "Open",
+    url: "https://www.youtube.com/",
+    reward: { energy: 15 },
+    note: "Watch path"
+  },
+  {
+    id: "instagram_growth",
+    type: "instagram",
+    title: "Instagram Growth",
+    label: "Open",
+    url: "https://www.instagram.com/",
+    reward: { energy: 15 },
+    note: "Social pulse"
+  },
+  {
+    id: "tiktok_pulse",
+    type: "tiktok",
+    title: "TikTok Pulse",
+    label: "Open",
+    url: "https://www.tiktok.com/",
+    reward: { energy: 15 },
+    note: "Viral sprout"
+  }
+];
 const PLANT_VARIANTS = Array.from({ length: 100 }, (_, index) => {
   const seed = index + 1;
   return {
@@ -44,7 +83,11 @@ const defaultState = {
   zenPausedAt: 0,
   zenElapsed: 0,
   soundOn: true,
-  playerName: "You"
+  playerName: "You",
+  missions: {
+    opened: {},
+    claimed: {}
+  }
 };
 
 let state = loadState();
@@ -66,7 +109,8 @@ const setClass = (selector, className, enabled) => {
 const rooms = {
   farm: $("#farmRoom"),
   lab: $("#labRoom"),
-  zen: $("#zenRoom")
+  zen: $("#zenRoom"),
+  missions: $("#missionsRoom")
 };
 
 let audioContext;
@@ -268,6 +312,7 @@ function loadState() {
   try {
     const restored = { ...base, ...JSON.parse(saved) };
     restored.growthDuration ||= GROW_DURATION_MS;
+    restored.missions = normalizeMissionState(restored.missions);
     if (!restored.plantedAt && restored.growth > 0) {
       restored.plantedAt = Date.now() - (restored.growth / 100) * restored.growthDuration;
     }
@@ -279,6 +324,34 @@ function loadState() {
 
 function saveState() {
   localStorage.setItem("green-farm-mvp", JSON.stringify(state));
+}
+
+function normalizeMissionState(value = {}) {
+  return {
+    opened: value.opened && typeof value.opened === "object" ? value.opened : {},
+    claimed: value.claimed && typeof value.claimed === "object" ? value.claimed : {}
+  };
+}
+
+function mergeMissionState(localValue = {}, remoteValue = {}) {
+  const local = normalizeMissionState(localValue);
+  const remote = normalizeMissionState(remoteValue);
+  return {
+    opened: { ...remote.opened, ...local.opened },
+    claimed: { ...remote.claimed, ...local.claimed }
+  };
+}
+
+function claimedMissionCount() {
+  return MISSIONS.filter((mission) => state.missions.claimed[mission.id]).length;
+}
+
+function missionRewardText(mission) {
+  const parts = [];
+  if (mission.reward.energy) parts.push(`+${mission.reward.energy} energy`);
+  if (mission.reward.resonance) parts.push(`+${mission.reward.resonance} zen`);
+  if (mission.reward.score) parts.push(`+${mission.reward.score} score`);
+  return parts.join(" · ");
 }
 
 function getClientId() {
@@ -318,7 +391,8 @@ function playerSnapshot() {
     energy: state.energy,
     resonance: state.resonance,
     sessions: state.sessions,
-    artifact: state.artifact
+    artifact: state.artifact,
+    missions: state.missions
   });
 }
 
@@ -434,6 +508,9 @@ async function syncPlayer() {
     backendState.playerId = data.player?.id || backendState.playerId;
     backendState.rank = data.rank || backendState.rank;
     backendState.leaderboard = data.leaderboard || backendState.leaderboard;
+    if (data.player?.missions) {
+      state.missions = mergeMissionState(state.missions, data.player.missions);
+    }
     renderLeaderboard();
     updateLoadingSplash(94, "Leaderboard synced");
     scheduleLoadingCompletion();
@@ -452,7 +529,8 @@ function stateSummary() {
     energy: state.energy,
     resonance: state.resonance,
     sessions: state.sessions,
-    artifact: state.artifact
+    artifact: state.artifact,
+    missions: state.missions
   };
 }
 
@@ -670,6 +748,100 @@ function renderZen() {
   });
 }
 
+function renderMissions() {
+  const grid = $("#missionsGrid");
+  const now = Date.now();
+  const claimed = claimedMissionCount();
+  const totalEnergy = MISSIONS.reduce((sum, mission) => sum + (state.missions.claimed[mission.id] ? Number(mission.reward.energy || 0) : 0), 0);
+
+  setText("#missionsClaimed", `${claimed}/${MISSIONS.length}`);
+  setText("#missionsEnergy", `+${totalEnergy}`);
+  setStyle("#missionsProgress", "--missions-progress", `${(claimed / Math.max(1, MISSIONS.length)) * 100}%`);
+
+  if (!grid) return;
+  grid.innerHTML = MISSIONS.map((mission) => {
+    const openedAt = Number(state.missions.opened[mission.id] || 0);
+    const claimedMission = Boolean(state.missions.claimed[mission.id]);
+    const readyAt = openedAt + MISSION_WAIT_MS;
+    const secondsLeft = Math.max(0, Math.ceil((readyAt - now) / 1000));
+    const isReady = openedAt > 0 && secondsLeft <= 0;
+    const status = claimedMission ? "Claimed" : isReady ? "Ready" : openedAt ? `${secondsLeft}s` : "Locked";
+
+    return `
+      <article class="mission-card ${claimedMission ? "claimed" : ""} ${isReady ? "ready" : ""}" data-mission="${mission.id}">
+        <div class="mission-icon ${mission.type}">${missionIcon(mission.type)}</div>
+        <div class="mission-copy">
+          <span>${escapeHtml(mission.note)}</span>
+          <strong>${escapeHtml(mission.title)}</strong>
+          <small>${escapeHtml(missionRewardText(mission))}</small>
+        </div>
+        <b class="mission-status">${escapeHtml(status)}</b>
+        <div class="mission-actions">
+          <button type="button" data-open-mission="${mission.id}" ${claimedMission ? "disabled" : ""}>${escapeHtml(mission.label)}</button>
+          <button type="button" data-claim-mission="${mission.id}" ${!isReady || claimedMission ? "disabled" : ""}>Claim</button>
+        </div>
+      </article>
+    `;
+  }).join("");
+}
+
+function missionIcon(type) {
+  const icons = {
+    telegram: "✈",
+    youtube: "▶",
+    instagram: "◉",
+    tiktok: "♪"
+  };
+  return icons[type] || "✦";
+}
+
+function openMission(id) {
+  const mission = MISSIONS.find((item) => item.id === id);
+  if (!mission) return;
+
+  state.missions.opened[mission.id] = Date.now();
+  playTone("tap");
+  toast("Mission opened");
+  trackAction("mission_opened", {
+    missionId: mission.id,
+    missionType: mission.type,
+    rewardEnergy: mission.reward.energy || 0
+  });
+
+  if (tg?.openLink) {
+    tg.openLink(mission.url);
+  } else {
+    window.open(mission.url, "_blank", "noopener");
+  }
+  render();
+}
+
+function claimMission(id) {
+  const mission = MISSIONS.find((item) => item.id === id);
+  if (!mission || state.missions.claimed[mission.id]) return;
+
+  const openedAt = Number(state.missions.opened[mission.id] || 0);
+  if (!openedAt || Date.now() - openedAt < MISSION_WAIT_MS) {
+    toast("Open mission first");
+    return;
+  }
+
+  state.energy += Number(mission.reward.energy || 0);
+  state.resonance += Number(mission.reward.resonance || 0);
+  state.score += Number(mission.reward.score || 0);
+  state.missions.claimed[mission.id] = new Date().toISOString();
+  playTone("collect");
+  toast(`${missionRewardText(mission)} claimed`);
+  trackAction("mission_claimed", {
+    missionId: mission.id,
+    missionType: mission.type,
+    rewardEnergy: mission.reward.energy || 0,
+    claimedCount: claimedMissionCount()
+  });
+  render();
+  scheduleBackendSync(true);
+}
+
 function setFarmStageClass(stage) {
   const farmRoom = $("#farmRoom");
   if (!farmRoom) return;
@@ -730,6 +902,7 @@ function render() {
   setText("#artifactLabel", state.artifact > 0 ? `x${state.artifact}` : "Empty");
   renderMutationLab(progress);
   renderZen();
+  renderMissions();
   setText("#waterModule", waterLevel);
   setText("#lightModule", lightLevel);
   setText("#timeModule", progress >= 100 ? "OK" : state.plantedAt ? `${secondsLeft}s` : "--");
@@ -970,7 +1143,7 @@ function switchRoom(name) {
   playTone("nav");
   const app = $(".app");
   if (app) {
-    app.classList.remove("room-farm", "room-lab", "room-zen");
+    app.classList.remove("room-farm", "room-lab", "room-zen", "room-missions");
     app.classList.add(`room-${name}`);
   }
   Object.entries(rooms).forEach(([key, room]) => {
@@ -1024,6 +1197,12 @@ $("#mutationAutoBtn")?.addEventListener("click", () => {
 });
 $("#synthBtn")?.addEventListener("click", synthArtifact);
 $("#meditateBtn")?.addEventListener("click", meditate);
+$("#missionsGrid")?.addEventListener("click", (event) => {
+  const openButton = event.target.closest("[data-open-mission]");
+  const claimButton = event.target.closest("[data-claim-mission]");
+  if (openButton) openMission(openButton.dataset.openMission);
+  if (claimButton) claimMission(claimButton.dataset.claimMission);
+});
 $("#leagueBtn")?.addEventListener("click", () => {
   renderLeaderboard();
   openSheet("#leagueSheet");
@@ -1075,7 +1254,7 @@ $("#soundBtn")?.addEventListener("click", () => {
   render();
 });
 $("#resetBtn")?.addEventListener("click", () => {
-  state = { ...defaultState, soundOn: state.soundOn, playerName: state.playerName };
+  state = { ...defaultState, soundOn: state.soundOn, playerName: state.playerName, missions: normalizeMissionState() };
   playTone("tap");
   toast("Reset");
   trackAction("progress_reset_clicked");

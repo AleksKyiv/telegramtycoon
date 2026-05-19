@@ -339,6 +339,7 @@ function upsertPlayer({ clientId, user, state, verified }) {
   const resonance = safeNumber(state?.resonance);
   const sessions = safeNumber(state?.sessions);
   const artifact = safeNumber(state?.artifact);
+  const missions = mergeMissions(existing.missions, state?.missions);
   const name = displayName(user, existing.name || "Guest");
 
   const player = {
@@ -351,6 +352,7 @@ function upsertPlayer({ clientId, user, state, verified }) {
     resonance,
     sessions,
     artifact,
+    missions,
     starsSpent: safeNumber(existing.starsSpent),
     purchases: safeNumber(existing.purchases),
     verified,
@@ -689,6 +691,13 @@ async function adminOverview() {
         status: "Core product direction",
         focus: "Медитація, звук, Zen energy, головна цінність проекту",
         next: "Почати логувати старт/кінець Zen-сесій"
+      },
+      {
+        id: "missions",
+        name: "Missions",
+        status: "Starter funnel",
+        focus: "Перші бонуси за Telegram, YouTube, Instagram, TikTok та майбутні рекламні кампанії",
+        next: "Додати реальні посилання і перевірку Telegram-підписки"
       }
     ],
     players: playersByActivity.slice(0, 100).map((player) => ({
@@ -702,6 +711,8 @@ async function adminOverview() {
       resonance: player.resonance,
       sessions: player.sessions,
       artifact: player.artifact,
+      missions: player.missions || { opened: {}, claimed: {} },
+      missionsClaimed: Object.keys(player.missions?.claimed || {}).length,
       starsSpent: safeNumber(player.starsSpent),
       purchases: safeNumber(player.purchases),
       verified: player.verified,
@@ -967,13 +978,41 @@ function safeEventValue(value) {
   return String(value ?? "").slice(0, 160);
 }
 
+function safeMissions(value) {
+  const opened = value?.opened && typeof value.opened === "object" ? value.opened : {};
+  const claimed = value?.claimed && typeof value.claimed === "object" ? value.claimed : {};
+  return {
+    opened: Object.fromEntries(
+      Object.entries(opened)
+        .slice(0, 50)
+        .map(([key, item]) => [safeEventType(key), safeNumber(item)])
+    ),
+    claimed: Object.fromEntries(
+      Object.entries(claimed)
+        .slice(0, 50)
+        .map(([key, item]) => [safeEventType(key), safeEventValue(item)])
+    )
+  };
+}
+
+function mergeMissions(existing, incoming) {
+  const current = safeMissions(existing);
+  const next = safeMissions(incoming);
+  return {
+    opened: { ...current.opened, ...next.opened },
+    claimed: { ...current.claimed, ...next.claimed }
+  };
+}
+
 function safeStateSummary(state) {
+  const missions = safeMissions(state?.missions);
   return {
     score: safeNumber(state?.score),
     energy: safeNumber(state?.energy),
     resonance: safeNumber(state?.resonance),
     sessions: safeNumber(state?.sessions),
-    artifact: safeNumber(state?.artifact)
+    artifact: safeNumber(state?.artifact),
+    missionsClaimed: Object.keys(missions.claimed).length
   };
 }
 
@@ -1193,7 +1232,8 @@ function playerToRow(player) {
       energy: safeNumber(player.energy),
       resonance: safeNumber(player.resonance),
       sessions: safeNumber(player.sessions),
-      artifact: safeNumber(player.artifact)
+      artifact: safeNumber(player.artifact),
+      missions: safeMissions(player.missions)
     },
     created_at: player.createdAt || new Date().toISOString(),
     updated_at: player.updatedAt || new Date().toISOString()
@@ -1211,6 +1251,7 @@ function playerFromRow(row) {
     resonance: safeNumber(row.resonance),
     sessions: safeNumber(row.sessions),
     artifact: safeNumber(row.artifact),
+    missions: safeMissions(row.state?.missions),
     starsSpent: safeNumber(row.stars_spent),
     purchases: safeNumber(row.purchases),
     verified: Boolean(row.verified),

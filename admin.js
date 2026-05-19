@@ -422,6 +422,8 @@ function eventTitle(event) {
     zen_resumed: "Zen resumed",
     zen_completed: "Zen completed",
     zen_duration_selected: "Zen duration",
+    mission_opened: "Mission opened",
+    mission_claimed: "Mission claimed",
     stars_button_clicked: "Stars clicked",
     stars_preview_mock: "Stars preview",
     stars_invoice_created: "Stars invoice",
