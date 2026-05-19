@@ -17,6 +17,13 @@ const elements = {
   badgeServer: document.getElementById("badgeServer"),
   badgeTelegram: document.getElementById("badgeTelegram"),
   badgeEvents: document.getElementById("badgeEvents"),
+  dataBackend: document.getElementById("dataBackend"),
+  dataStorage: document.getElementById("dataStorage"),
+  dataRequested: document.getElementById("dataRequested"),
+  dataMigration: document.getElementById("dataMigration"),
+  dataSupabase: document.getElementById("dataSupabase"),
+  dataExportCount: document.getElementById("dataExportCount"),
+  exportDataBtn: document.getElementById("exportDataBtn"),
   mapReadiness: document.getElementById("mapReadiness"),
   pipeTelegram: document.getElementById("pipeTelegram"),
   pipeServer: document.getElementById("pipeServer"),
@@ -108,6 +115,10 @@ function bindEvents() {
 
   elements.refreshBtn.addEventListener("click", loadOverview);
 
+  elements.exportDataBtn.addEventListener("click", () => {
+    window.open("/api/admin/export", "_blank", "noopener");
+  });
+
   elements.logoutBtn.addEventListener("click", async () => {
     await api("/api/admin/logout", { method: "POST" }).catch(() => {});
     stopRefresh();
@@ -147,12 +158,28 @@ function renderOverview(overview) {
   elements.badgeEvents.textContent = `Events: ${formatNumber(stats.eventCount)}`;
 
   renderVisualAnalytics(overview);
+  renderDataStore(overview);
   renderActionTracking(overview);
   renderPayments(overview);
   renderBotStars(overview.botStars);
   renderRooms(overview.rooms);
   renderPlayers(overview.players);
   renderEvents(overview.events);
+}
+
+function renderDataStore(overview) {
+  const dataStore = overview.dataStore || {};
+  const stats = overview.stats || {};
+  const active = String(dataStore.active || "json").toUpperCase();
+  const requested = String(dataStore.requested || "json").toLowerCase();
+  const totalRecords = Number(stats.players || 0) + Number(stats.paymentOrderCount || 0) + Number(stats.eventCount || 0);
+
+  elements.dataBackend.textContent = active;
+  elements.dataStorage.textContent = dataStore.storage || ".data/players.json";
+  elements.dataRequested.textContent = `requested: ${requested}`;
+  elements.dataMigration.textContent = dataStore.migrationReady ? "Ready" : "Draft";
+  elements.dataSupabase.textContent = dataStore.supabaseConfigured ? "Supabase env ready" : "Supabase not connected";
+  elements.dataExportCount.textContent = `${formatNumber(totalRecords)} records`;
 }
 
 function renderVisualAnalytics(overview) {

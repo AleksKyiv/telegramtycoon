@@ -135,6 +135,10 @@ async function handleApi(request, response, url) {
     if (request.method === "GET" && url.pathname === "/api/admin/overview") {
       return sendJson(response, 200, await adminOverview());
     }
+
+    if (request.method === "GET" && url.pathname === "/api/admin/export") {
+      return sendJson(response, 200, adminExport());
+    }
   }
 
   if (request.method === "GET" && url.pathname === "/api/leaderboard") {
@@ -622,6 +626,7 @@ async function adminOverview() {
   return {
     ok: true,
     generatedAt: new Date().toISOString(),
+    dataStore: dataStoreStatus(),
     stats: {
       players: rankedPlayers.length,
       telegramPlayers: rankedPlayers.filter((player) => player.telegramId).length,
@@ -698,6 +703,41 @@ async function adminOverview() {
     botStars,
     leaderboard: leaderboardResponse().leaderboard,
     events: db.events.slice(0, 80)
+  };
+}
+
+function adminExport() {
+  const players = Object.values(db.players || {});
+  const orders = Object.values(db.orders || {});
+  const events = Array.isArray(db.events) ? db.events : [];
+
+  return {
+    ok: true,
+    version: 1,
+    generatedAt: new Date().toISOString(),
+    dataStore: dataStoreStatus(),
+    counts: {
+      players: players.length,
+      orders: orders.length,
+      payments: paymentRecords().length,
+      events: events.length
+    },
+    players,
+    orders,
+    payments: paymentRecords(),
+    events
+  };
+}
+
+function dataStoreStatus() {
+  return {
+    active: "json",
+    requested: String(process.env.DATA_BACKEND || "json").toLowerCase(),
+    storage: ".data/players.json",
+    migrationReady: true,
+    supabaseConfigured: Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY),
+    schemaPath: "database/supabase-schema.sql",
+    exportUrl: "/api/admin/export"
   };
 }
 

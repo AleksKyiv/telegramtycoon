@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#071210">
     <title>Green Farm Control</title>
-    <link rel="stylesheet" href="/admin.css?v=6">
-    <script src="/admin.js?v=6" defer></script>
+    <link rel="stylesheet" href="/admin.css?v=7">
+    <script src="/admin.js?v=7" defer></script>
   </head>
   <body>
     <main class="admin-shell">
@@ -73,6 +73,38 @@
             <span id="badgeServer">Server: online</span>
             <span id="badgeTelegram">Telegram: check</span>
             <span id="badgeEvents">Events: 0</span>
+          </div>
+        </section>
+
+        <section class="panel data-panel" aria-label="Data control">
+          <div class="panel-head">
+            <div>
+              <h2>Data Control</h2>
+              <p>Safe first step before Supabase: see where data lives, export it, and keep the live game stable.</p>
+            </div>
+            <strong id="dataBackend">JSON</strong>
+          </div>
+          <div class="data-grid">
+            <article class="data-card">
+              <span>Active storage</span>
+              <strong id="dataStorage">.data/players.json</strong>
+              <small id="dataRequested">requested: json</small>
+            </article>
+            <article class="data-card">
+              <span>Migration</span>
+              <strong id="dataMigration">Ready</strong>
+              <small id="dataSupabase">Supabase not connected</small>
+            </article>
+            <article class="data-card">
+              <span>Export snapshot</span>
+              <strong id="dataExportCount">0 records</strong>
+              <small>players, payments and events</small>
+            </article>
+            <article class="data-card data-action-card">
+              <span>Backup</span>
+              <button id="exportDataBtn" type="button">Export JSON</button>
+              <small>opens protected admin export</small>
+            </article>
           </div>
         </section>
 
