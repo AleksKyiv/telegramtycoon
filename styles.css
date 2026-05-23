@@ -4907,6 +4907,10 @@ button {
   max-height: 280px;
 }
 
+.drone-sheet .sheet-panel.compact {
+  max-height: min(72vh, 520px);
+}
+
 .control-sheet.open .sheet-panel {
   opacity: 1;
   transform: translateY(0);
@@ -6246,6 +6250,154 @@ button {
   line-height: 1.35;
 }
 
+.drone-skins {
+  display: grid;
+  gap: 9px;
+  margin: 0 0 12px;
+}
+
+.drone-skins header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.drone-skins header span {
+  color: rgba(139, 169, 160, 0.92);
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.drone-skins header b {
+  color: rgba(255, 211, 107, 0.98);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.drone-skin-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.drone-skin-card {
+  min-height: 118px;
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 5px;
+  padding: 9px 6px;
+  border: 1px solid rgba(126, 255, 222, 0.14);
+  border-radius: 15px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.025)),
+    rgba(3, 15, 14, 0.72);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.08);
+  text-align: center;
+}
+
+.drone-skin-card.active {
+  border-color: rgba(255, 211, 107, 0.52);
+  background:
+    linear-gradient(180deg, rgba(255, 211, 107, 0.16), rgba(66, 242, 183, 0.06)),
+    rgba(4, 18, 15, 0.9);
+  box-shadow:
+    inset 0 1px rgba(255, 255, 255, 0.12),
+    0 0 18px rgba(255, 211, 107, 0.16);
+}
+
+.drone-skin-card strong,
+.drone-skin-card small,
+.drone-skin-card em {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.drone-skin-card strong {
+  color: rgba(239, 255, 249, 0.98);
+  font-size: 11px;
+}
+
+.drone-skin-card small {
+  color: rgba(139, 169, 160, 0.92);
+  font-size: 9px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.drone-skin-card em {
+  color: rgba(255, 211, 107, 0.94);
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 950;
+}
+
+.skin-swatch {
+  position: relative;
+  width: 42px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 13px;
+  background: rgba(5, 22, 20, 0.82);
+}
+
+.skin-swatch i,
+.mini-drone i {
+  transition: background 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+}
+
+.skin-swatch i {
+  width: 30px;
+  height: 18px;
+  border-radius: 8px;
+  clip-path: polygon(16% 0, 84% 0, 100% 24%, 90% 100%, 10% 100%, 0 24%);
+}
+
+.skin-swatch b {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 6px;
+  height: 2px;
+  border-radius: 999px;
+}
+
+.skin-mint i,
+.mini-drone[data-skin="mint"] i {
+  background: linear-gradient(180deg, #63ffe2, #0d5b62);
+  box-shadow: 0 0 18px rgba(66, 242, 183, 0.34);
+}
+
+.skin-mint b {
+  background: rgba(129, 255, 216, 0.78);
+}
+
+.skin-solar i,
+.mini-drone[data-skin="solar"] i {
+  background: linear-gradient(180deg, #ffe48d, #e0782c 58%, #39220d);
+  box-shadow: 0 0 20px rgba(255, 185, 82, 0.42);
+}
+
+.skin-solar b {
+  background: rgba(255, 214, 114, 0.86);
+}
+
+.skin-void i,
+.mini-drone[data-skin="void"] i {
+  background: linear-gradient(180deg, #c8a6ff, #3e2384 58%, #090517);
+  box-shadow: 0 0 22px rgba(181, 112, 255, 0.5);
+}
+
+.skin-void b {
+  background: rgba(255, 211, 107, 0.9);
+}
+
 .drone-stats {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -6298,6 +6450,63 @@ button {
 
 .drone-upgrade-btn:disabled {
   opacity: 0.48;
+}
+
+/* Drone skin prototype: visual identity changes without touching the Farm layout. */
+.capsule-drone[data-skin="solar"] {
+  filter: drop-shadow(0 0 18px rgba(255, 185, 82, 0.42));
+}
+
+.capsule-drone[data-skin="solar"]::before {
+  background: radial-gradient(ellipse, rgba(255, 211, 107, 0.24), transparent 72%);
+}
+
+.capsule-drone[data-skin="solar"]::after {
+  background: linear-gradient(90deg, rgba(255, 211, 107, 0.95), rgba(255, 130, 64, 0.42), transparent);
+  box-shadow: 0 0 16px rgba(255, 185, 82, 0.62);
+}
+
+.capsule-drone[data-skin="solar"] .drone-body {
+  border-color: rgba(255, 226, 139, 0.46);
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.18), transparent 18% 78%, rgba(255, 211, 107, 0.16)),
+    linear-gradient(180deg, rgba(255, 207, 99, 0.98), rgba(148, 66, 22, 0.96));
+}
+
+.capsule-drone[data-skin="solar"] .drone-wing,
+.capsule-drone[data-skin="solar"] .drone-node {
+  border-color: rgba(255, 211, 107, 0.48);
+  background:
+    linear-gradient(180deg, rgba(255, 232, 148, 0.22), rgba(255, 144, 72, 0.58)),
+    rgba(28, 18, 6, 0.9);
+}
+
+.capsule-drone[data-skin="void"] {
+  filter: drop-shadow(0 0 20px rgba(174, 92, 255, 0.48));
+}
+
+.capsule-drone[data-skin="void"]::before {
+  background: radial-gradient(ellipse, rgba(174, 92, 255, 0.28), transparent 72%);
+}
+
+.capsule-drone[data-skin="void"]::after {
+  background: linear-gradient(90deg, rgba(191, 138, 255, 0.94), rgba(255, 211, 107, 0.46), transparent);
+  box-shadow: 0 0 18px rgba(174, 92, 255, 0.66);
+}
+
+.capsule-drone[data-skin="void"] .drone-body {
+  border-color: rgba(198, 153, 255, 0.48);
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.16), transparent 18% 78%, rgba(255, 211, 107, 0.13)),
+    linear-gradient(180deg, rgba(135, 94, 234, 0.98), rgba(31, 19, 77, 0.98));
+}
+
+.capsule-drone[data-skin="void"] .drone-wing,
+.capsule-drone[data-skin="void"] .drone-node {
+  border-color: rgba(197, 146, 255, 0.48);
+  background:
+    linear-gradient(180deg, rgba(196, 147, 255, 0.22), rgba(68, 40, 152, 0.68)),
+    rgba(10, 7, 26, 0.92);
 }
 
 /* Connector pass: remove right progress sphere, make ports visual, and give drone a full rail. */

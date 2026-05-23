@@ -10,6 +10,7 @@ Farm is the starter room and resource engine. It teaches the player the loop thr
 - Plant chamber carousel
 - One active product and locked/future slots
 - Drone on the left side
+- Drone skin chamber prototype
 - Energy / water / power indicators
 - Auto collect
 - Stars slot concept
@@ -33,6 +34,7 @@ Farm should become a premium microculture system, not a simple farm. It needs di
 - Slot ownership
 - Resources
 - Drone level
+- Drone skin
 - Auto collect state
 - Last collect time
 - Farm actions history
@@ -43,6 +45,7 @@ Farm should become a premium microculture system, not a simple farm. It needs di
 - Grow clicks
 - Collects
 - Auto collect enabled/disabled
+- Drone skin selections
 - Slot unlock attempts
 - Stars purchases tied to Farm
 
@@ -52,4 +55,3 @@ Farm should become a premium microculture system, not a simple farm. It needs di
 2. Define slot economy.
 3. Move Farm state from local-only to server-backed.
 4. Add clear visual feedback for "what should I press".
-

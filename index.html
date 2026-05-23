@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#06110f">
     <title>Green Farm Tycoon</title>
-    <link rel="stylesheet" href="styles.css?v=41">
+    <link rel="stylesheet" href="styles.css?v=42">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="app.js?v=36" defer></script>
+    <script src="app.js?v=37" defer></script>
   </head>
   <body>
     <main class="app room-farm" aria-label="Green Farm Tycoon MVP">
@@ -431,8 +431,8 @@
           <div class="drone-upgrade-preview">
             <span class="mini-drone" aria-hidden="true"><i></i><b></b></span>
             <div>
-              <strong>Pollination AI</strong>
-              <small>Drone patrols the capsule, speeds growth and adds harvest output.</small>
+              <strong id="droneSkinName">Mint Service</strong>
+              <small id="droneSkinNote">Drone patrols the capsule, speeds growth and adds harvest output.</small>
             </div>
           </div>
           <div class="drone-stats">
@@ -440,6 +440,13 @@
             <span><b id="droneHarvestValue">+2</b><small>harvest</small></span>
             <span><b id="droneSignalValue">Idle</b><small>signal</small></span>
           </div>
+          <section class="drone-skins" aria-label="Drone skins">
+            <header>
+              <span>Skin chamber</span>
+              <b id="droneSkinValue">Base</b>
+            </header>
+            <div class="drone-skin-grid" id="droneSkinGrid"></div>
+          </section>
           <button class="drone-upgrade-btn" id="droneUpgradeBtn" type="button">
             <span id="droneUpgradeText">Upgrade</span>
             <b id="droneCostValue">56 score · 5 energy</b>

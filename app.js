@@ -65,6 +65,33 @@ const PLANT_VARIANTS = Array.from({ length: 100 }, (_, index) => {
   };
 });
 
+const DRONE_SKINS = [
+  {
+    id: "mint",
+    name: "Mint Service",
+    tag: "Base",
+    route: "Owned",
+    note: "Clean capsule-service shell for the first drone.",
+    effect: "Stable scan"
+  },
+  {
+    id: "solar",
+    name: "Solar Bee",
+    tag: "Action reward",
+    route: "Tasks",
+    note: "Warm pollination shell with a brighter service pulse.",
+    effect: "Honey glow"
+  },
+  {
+    id: "void",
+    name: "Void Pulse",
+    tag: "Stars rare",
+    route: "Stars",
+    note: "Premium dark shell for rare drone drops and future sales.",
+    effect: "Rare aura"
+  }
+];
+
 const defaultState = {
   score: 0,
   energy: 10,
@@ -85,6 +112,7 @@ const defaultState = {
   soundOn: true,
   playerName: "You",
   droneLevel: 1,
+  droneSkin: "mint",
   unlockedSlots: { "0": true },
   missions: {
     opened: {},
@@ -316,6 +344,7 @@ function loadState() {
     restored.growthDuration ||= GROW_DURATION_MS;
     restored.missions = normalizeMissionState(restored.missions);
     restored.droneLevel = safeDroneLevel(restored.droneLevel);
+    restored.droneSkin = normalizeDroneSkin(restored.droneSkin);
     restored.unlockedSlots = normalizeUnlockedSlots(restored.unlockedSlots);
     if (!restored.plantedAt && restored.growth > 0) {
       restored.plantedAt = Date.now() - (restored.growth / 100) * restored.growthDuration;
@@ -333,6 +362,14 @@ function saveState() {
 function safeDroneLevel(value = state.droneLevel) {
   const level = Math.floor(Number(value) || 1);
   return clamp(level, 1, 9);
+}
+
+function droneSkinById(value = state.droneSkin) {
+  return DRONE_SKINS.find((skin) => skin.id === value) || DRONE_SKINS[0];
+}
+
+function normalizeDroneSkin(value = state.droneSkin) {
+  return droneSkinById(String(value || "")).id;
 }
 
 function normalizeUnlockedSlots(value = state.unlockedSlots) {
@@ -436,6 +473,7 @@ function playerSnapshot() {
     sessions: state.sessions,
     artifact: state.artifact,
     droneLevel: safeDroneLevel(),
+    droneSkin: normalizeDroneSkin(),
     unlockedSlots: normalizeUnlockedSlots(),
     missions: state.missions
   });
@@ -544,6 +582,7 @@ async function syncPlayer() {
           sessions: state.sessions,
           artifact: state.artifact,
           droneLevel: safeDroneLevel(),
+          droneSkin: normalizeDroneSkin(),
           unlockedSlots: normalizeUnlockedSlots(),
           missions: state.missions
         }
@@ -558,6 +597,9 @@ async function syncPlayer() {
     backendState.leaderboard = data.leaderboard || backendState.leaderboard;
     if (data.player?.droneLevel) {
       state.droneLevel = Math.max(safeDroneLevel(), safeDroneLevel(data.player.droneLevel));
+    }
+    if (data.player?.droneSkin) {
+      state.droneSkin = normalizeDroneSkin(data.player.droneSkin);
     }
     if (data.player?.missions) {
       state.missions = mergeMissionState(state.missions, data.player.missions);
@@ -925,6 +967,7 @@ function renderMissions() {
 
 function renderDrone() {
   const level = safeDroneLevel();
+  const skin = droneSkinById();
   const cost = droneUpgradeCost(level);
   const speedSeconds = Math.round(droneSpeedBonus(level) / 100) / 10;
   const harvestBonus = droneHarvestBonus(level);
@@ -937,6 +980,9 @@ function renderDrone() {
   setText("#droneCostValue", level >= 9 ? "MAX" : `${cost.score} score · ${cost.energy} energy`);
   setText("#droneUpgradeText", level >= 9 ? "Max level" : "Upgrade");
   setText("#droneSignalValue", state.plantedAt ? "Scanning" : "Idle");
+  setText("#droneSkinName", skin.name);
+  setText("#droneSkinNote", skin.note);
+  setText("#droneSkinValue", skin.tag);
   setClass("#capsuleDrone", "active", Boolean(state.plantedAt));
   setClass("#capsuleDrone", "ready", growthProgress() >= 100);
   setStyle("#capsuleDrone", "--drone-power", `${Math.min(100, 26 + level * 8)}%`);
@@ -945,10 +991,48 @@ function renderDrone() {
   if (drone) {
     drone.dataset.level = String(level);
     drone.dataset.tier = String(Math.min(5, Math.ceil(level / 2)));
+    drone.dataset.skin = skin.id;
   }
+
+  const miniDrone = $(".mini-drone");
+  if (miniDrone) miniDrone.dataset.skin = skin.id;
+  const sheet = $("#droneSheet");
+  if (sheet) sheet.dataset.skin = skin.id;
+
+  renderDroneSkins(skin.id);
 
   const button = $("#droneUpgradeBtn");
   if (button) button.disabled = !canUpgrade;
+}
+
+function renderDroneSkins(activeId = normalizeDroneSkin()) {
+  const grid = $("#droneSkinGrid");
+  if (!grid) return;
+
+  grid.innerHTML = DRONE_SKINS.map((skin) => {
+    const active = skin.id === activeId;
+    return `
+      <button class="drone-skin-card ${active ? "active" : ""}" type="button" data-drone-skin="${skin.id}" aria-pressed="${active ? "true" : "false"}">
+        <span class="skin-swatch skin-${skin.id}" aria-hidden="true"><i></i><b></b></span>
+        <strong>${escapeHtml(skin.name)}</strong>
+        <small>${escapeHtml(skin.route)}</small>
+        <em>${escapeHtml(skin.effect)}</em>
+      </button>
+    `;
+  }).join("");
+}
+
+function selectDroneSkin(id) {
+  const skin = droneSkinById(id);
+  state.droneSkin = skin.id;
+  playTone(skin.id === "void" ? "boost" : "tap");
+  toast(`${skin.name} skin`);
+  trackAction("drone_skin_selected", {
+    skin: skin.id,
+    route: skin.route
+  });
+  render();
+  scheduleBackendSync(true);
 }
 
 function upgradeDrone() {
@@ -1458,6 +1542,11 @@ $("#capsuleDrone")?.addEventListener("click", () => {
   render();
 });
 $("#droneUpgradeBtn")?.addEventListener("click", upgradeDrone);
+$("#droneSkinGrid")?.addEventListener("click", (event) => {
+  const skinButton = event.target.closest("[data-drone-skin]");
+  if (!skinButton) return;
+  selectDroneSkin(skinButton.dataset.droneSkin);
+});
 $("#specimenGrid")?.addEventListener("click", (event) => {
   const paidPod = event.target.closest('.paid-pod[data-buy-slot="stars"]');
   if (!paidPod) return;
