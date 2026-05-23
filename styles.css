@@ -7109,6 +7109,63 @@ button {
   }
 }
 
+/* Stable Farm controls: keep bottom actions locked to the screen, not room height. */
+.app.room-farm {
+  --farm-nav-bottom: max(22px, env(safe-area-inset-bottom));
+  --farm-action-bottom: calc(var(--farm-nav-bottom) + 116px);
+}
+
+#farmRoom.room.active {
+  animation: none;
+  transform: none;
+}
+
+.app.room-farm .nav {
+  position: fixed;
+  left: 50%;
+  right: auto;
+  bottom: var(--farm-nav-bottom);
+  width: min(392px, calc(100vw - 36px));
+  transform: translateX(-50%);
+  z-index: 40;
+}
+
+#farmRoom .action-dock {
+  position: fixed;
+  left: 50%;
+  right: auto;
+  bottom: var(--farm-action-bottom);
+  width: min(392px, calc(100vw - 36px));
+  transform: translateX(-50%);
+  z-index: 41;
+  height: 46px;
+  margin-top: 0;
+  align-items: stretch;
+  grid-template-rows: 46px;
+}
+
+#farmRoom .action-dock > * {
+  width: 100%;
+  min-height: 46px;
+  height: 46px;
+}
+
+#farmRoom .grow-card,
+#farmRoom .meter-card {
+  transform: translateZ(0);
+}
+
+@media (max-height: 760px) {
+  .app.room-farm {
+    --farm-nav-bottom: max(18px, env(safe-area-inset-bottom));
+    --farm-action-bottom: calc(var(--farm-nav-bottom) + 112px);
+  }
+
+  #farmRoom .action-dock {
+    bottom: var(--farm-action-bottom);
+  }
+}
+
 .missions-space {
   position: relative;
   min-height: calc(100vh - 160px);
