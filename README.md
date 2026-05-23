@@ -2,6 +2,12 @@
 
 Prototype 0 visual MVP for a Telegram Mini App tycoon.
 
+## Project control
+
+- [Project map](PROJECT_MAP.md) - main product structure, rooms, risks, and decision rules.
+- [Workflow rules](docs/WORKFLOW.md) - how we turn ideas into clean tasks without wasting context.
+- [Room index](docs/rooms/ROOM_INDEX.md) - Farm, Lab, Zen, Tasks, Stars, Admin passports.
+
 ## What is included
 
 - Mobile-first visual interface inspired by the first generated concept.
