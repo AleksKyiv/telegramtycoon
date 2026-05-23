@@ -6435,6 +6435,7 @@ button {
   top: 42px;
   animation-duration: 28s;
   animation-timing-function: ease-in-out;
+  animation-direction: alternate;
 }
 
 .capsule-drone::after {
@@ -6446,6 +6447,7 @@ button {
   background: linear-gradient(90deg, rgba(129, 255, 216, 0.84), rgba(129, 255, 216, 0.2));
   box-shadow: 0 0 10px rgba(129, 255, 216, 0.35);
   animation: dockProbe 28s ease-in-out infinite;
+  animation-direction: alternate;
 }
 
 .drone-scan {
@@ -6453,11 +6455,11 @@ button {
 }
 
 @keyframes capsuleDronePatrol {
-  0%, 8% { transform: translate3d(0, 0, 0) rotate(-0.4deg); }
-  20%, 28% { transform: translate3d(5px, 76px, 0) rotate(0.5deg); }
-  40%, 48% { transform: translate3d(1px, 154px, 0) rotate(-0.3deg); }
-  60%, 68% { transform: translate3d(6px, 232px, 0) rotate(0.4deg); }
-  82%, 100% { transform: translate3d(0, 306px, 0) rotate(-0.5deg); }
+  0%, 9% { transform: translate3d(0, 306px, 0) rotate(-0.5deg); }
+  24%, 32% { transform: translate3d(6px, 232px, 0) rotate(0.4deg); }
+  46%, 54% { transform: translate3d(1px, 154px, 0) rotate(-0.3deg); }
+  68%, 76% { transform: translate3d(5px, 76px, 0) rotate(0.5deg); }
+  92%, 100% { transform: translate3d(0, 0, 0) rotate(-0.4deg); }
 }
 
 @keyframes dockPulse {
@@ -6487,11 +6489,11 @@ button {
   }
 
   @keyframes capsuleDronePatrol {
-    0%, 8% { transform: translate3d(0, 0, 0) rotate(-0.4deg); }
-    20%, 28% { transform: translate3d(5px, 70px, 0) rotate(0.5deg); }
-    40%, 48% { transform: translate3d(1px, 142px, 0) rotate(-0.3deg); }
-    60%, 68% { transform: translate3d(6px, 214px, 0) rotate(0.4deg); }
-    82%, 100% { transform: translate3d(0, 286px, 0) rotate(-0.5deg); }
+    0%, 9% { transform: translate3d(0, 286px, 0) rotate(-0.5deg); }
+    24%, 32% { transform: translate3d(6px, 214px, 0) rotate(0.4deg); }
+    46%, 54% { transform: translate3d(1px, 142px, 0) rotate(-0.3deg); }
+    68%, 76% { transform: translate3d(5px, 70px, 0) rotate(0.5deg); }
+    92%, 100% { transform: translate3d(0, 0, 0) rotate(-0.4deg); }
   }
 }
 
