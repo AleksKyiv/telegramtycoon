@@ -764,6 +764,37 @@ function renderCapsuleBaseCubes(progress) {
   });
 }
 
+function renderTokenFlow(progress, secondsLeft) {
+  const map = $("#tokenFlowMap");
+  if (!map) return;
+
+  const level = safeDroneLevel();
+  const isBoosting = state.boostUntil > Date.now();
+  const isGrowing = Boolean(state.plantedAt && progress < 100);
+  const isReady = progress >= 100;
+  const reservoirFill = clamp(Math.round((state.energy / 30) * 100), 0, 100);
+  const pipeFill = isReady
+    ? 100
+    : isGrowing
+      ? clamp(Math.round(progress + 16 + level * 3), 20, 98)
+      : clamp(Math.round(reservoirFill / 2), 8, 44);
+  const pressure = clamp(24 + level * 7 + (isGrowing ? 24 : 0) + (isBoosting ? 20 : 0), 18, 100);
+  const speed = Math.max(3.8, 9 - level * 0.45 - (isBoosting ? 1.5 : 0));
+
+  map.classList.toggle("flow-active", isGrowing);
+  map.classList.toggle("flow-ready", isReady);
+  map.classList.toggle("flow-low", state.energy <= 2);
+  map.style.setProperty("--token-fill", `${reservoirFill}%`);
+  map.style.setProperty("--token-pipe", `${pipeFill}%`);
+  map.style.setProperty("--token-pressure", `${pressure}%`);
+  map.style.setProperty("--token-speed", `${speed.toFixed(1)}s`);
+
+  setText("#tokenPoolValue", `${reservoirFill}%`);
+  setText("#tokenFarmValue", isReady ? "MAX" : isGrowing ? `${secondsLeft}s` : "Idle");
+  setText("#tokenDroneValue", `L${level}`);
+  setText("#tokenZenValue", state.resonance);
+}
+
 function renderMutationLab(progress) {
   const variant = currentPlantVariant();
   const labLevel = 4 + Math.min(9, state.artifact);
@@ -1046,6 +1077,7 @@ function render() {
   applyPlantVariant(variant, progress, motion);
   renderSpecimenPods(progress, motion);
   renderCapsuleBaseCubes(progress);
+  renderTokenFlow(progress, secondsLeft);
   setText("#plantStage", stage);
   setText("#mainActionIcon", action[0]);
   setText("#mainActionText", action[1]);

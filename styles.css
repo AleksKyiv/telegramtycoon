@@ -6495,6 +6495,251 @@ button {
   }
 }
 
+/* Live token-water visualizer: shows spend, module pressure, and stored Zen as liquid flow. */
+#farmRoom .token-flow-map {
+  position: absolute;
+  left: 44px;
+  right: 44px;
+  top: 320px;
+  z-index: 24;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  grid-template-rows: 18px 34px;
+  gap: 5px 8px;
+  pointer-events: none;
+  --token-fill: 33%;
+  --token-pipe: 10%;
+  --token-pressure: 24%;
+  --token-speed: 8s;
+}
+
+.token-reservoir {
+  position: relative;
+  grid-row: 1 / 3;
+  align-self: stretch;
+  overflow: hidden;
+  border: 1px solid rgba(129, 255, 216, 0.3);
+  border-radius: 13px;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.08), transparent 28% 72%, rgba(129, 255, 216, 0.1)),
+    rgba(2, 17, 17, 0.72);
+  box-shadow:
+    inset 0 0 16px rgba(129, 255, 216, 0.08),
+    0 0 16px rgba(88, 220, 255, 0.12);
+}
+
+.token-reservoir i {
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  bottom: 4px;
+  min-height: 7px;
+  height: var(--token-fill);
+  overflow: hidden;
+  border-radius: 9px 9px 11px 11px;
+  background:
+    linear-gradient(180deg, rgba(223, 255, 242, 0.82), rgba(88, 220, 255, 0.84) 42%, rgba(66, 242, 183, 0.64)),
+    rgba(66, 242, 183, 0.5);
+  box-shadow:
+    0 0 14px rgba(88, 220, 255, 0.36),
+    inset 0 6px 8px rgba(255, 255, 255, 0.18);
+  transition: height 260ms ease;
+}
+
+.token-reservoir i::before {
+  content: "";
+  position: absolute;
+  left: -35%;
+  right: -35%;
+  top: -5px;
+  height: 12px;
+  border-radius: 50%;
+  background:
+    radial-gradient(ellipse at 25% 55%, rgba(255, 255, 255, 0.72), transparent 34%),
+    radial-gradient(ellipse at 66% 45%, rgba(129, 255, 216, 0.58), transparent 38%);
+  animation: tokenWaterSurface 3.8s ease-in-out infinite;
+}
+
+.token-reservoir b {
+  position: absolute;
+  inset: 5px 8px auto;
+  height: 2px;
+  border-radius: 999px;
+  background: rgba(223, 255, 242, 0.62);
+  box-shadow: 0 0 10px rgba(129, 255, 216, 0.5);
+}
+
+.token-pipe {
+  position: relative;
+  align-self: end;
+  overflow: hidden;
+  height: 12px;
+  border: 1px solid rgba(129, 255, 216, 0.18);
+  border-radius: 999px;
+  background: rgba(2, 17, 17, 0.68);
+  box-shadow:
+    inset 0 0 10px rgba(129, 255, 216, 0.07),
+    0 0 12px rgba(88, 220, 255, 0.08);
+}
+
+.token-pipe::before {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border-radius: 999px;
+  background:
+    repeating-linear-gradient(90deg, rgba(129, 255, 216, 0.08) 0 7px, transparent 7px 14px);
+}
+
+.token-pipe i {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: var(--token-pipe);
+  border-radius: inherit;
+  background:
+    linear-gradient(90deg, rgba(66, 242, 183, 0.2), rgba(88, 220, 255, 0.92), rgba(255, 211, 107, 0.72)),
+    repeating-linear-gradient(90deg, transparent 0 8px, rgba(255, 255, 255, 0.28) 8px 10px);
+  background-size: 100% 100%, 24px 100%;
+  box-shadow: 0 0 14px rgba(88, 220, 255, 0.42);
+  animation: tokenPipeFlow var(--token-speed) linear infinite;
+  transition: width 260ms ease;
+}
+
+.token-flow-modules {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.token-module {
+  position: relative;
+  min-width: 0;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  overflow: hidden;
+  border: 1px solid rgba(129, 255, 216, 0.16);
+  border-radius: 9px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.02)),
+    rgba(2, 18, 17, 0.68);
+  box-shadow: inset 0 0 14px rgba(129, 255, 216, 0.045);
+}
+
+.token-module::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: calc(var(--token-pressure) * 0.42);
+  background: linear-gradient(180deg, rgba(88, 220, 255, 0.08), rgba(66, 242, 183, 0.22));
+  opacity: 0.74;
+  transition: height 260ms ease;
+}
+
+.token-module::after {
+  content: "";
+  position: absolute;
+  left: 7px;
+  right: 7px;
+  top: 5px;
+  height: 2px;
+  border-radius: 999px;
+  background: rgba(129, 255, 216, 0.22);
+}
+
+.token-module b,
+.token-module small {
+  position: relative;
+  z-index: 1;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.token-module b {
+  color: rgba(238, 255, 249, 0.98);
+  font-size: 10px;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.token-module small {
+  margin-top: 3px;
+  color: rgba(139, 169, 160, 0.92);
+  font-size: 7px;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+#farmRoom .token-flow-map.flow-active .farm-module,
+#farmRoom .token-flow-map.flow-active .drone-module {
+  border-color: rgba(88, 220, 255, 0.34);
+  box-shadow:
+    inset 0 0 14px rgba(88, 220, 255, 0.08),
+    0 0 14px rgba(88, 220, 255, 0.14);
+}
+
+#farmRoom .token-flow-map.flow-ready .token-pipe i,
+#farmRoom .token-flow-map.flow-ready .pool-module {
+  box-shadow:
+    inset 0 0 16px rgba(255, 211, 107, 0.08),
+    0 0 18px rgba(255, 211, 107, 0.2);
+}
+
+#farmRoom .token-flow-map.flow-ready .token-pipe i {
+  background:
+    linear-gradient(90deg, rgba(66, 242, 183, 0.28), rgba(255, 211, 107, 0.94), rgba(129, 255, 216, 0.82)),
+    repeating-linear-gradient(90deg, transparent 0 8px, rgba(255, 255, 255, 0.28) 8px 10px);
+}
+
+#farmRoom .token-flow-map.flow-low .token-reservoir {
+  border-color: rgba(255, 121, 109, 0.34);
+}
+
+#farmRoom .token-flow-map.flow-low .token-reservoir i {
+  background: linear-gradient(180deg, rgba(255, 196, 164, 0.72), rgba(255, 121, 109, 0.76));
+}
+
+@keyframes tokenWaterSurface {
+  0%, 100% { transform: translateX(-6px) translateY(0); }
+  50% { transform: translateX(8px) translateY(2px); }
+}
+
+@keyframes tokenPipeFlow {
+  to { background-position: 0 0, 24px 0; }
+}
+
+@media (max-height: 760px) {
+  #farmRoom .token-flow-map {
+    top: 298px;
+    left: 40px;
+    right: 40px;
+  }
+}
+
+@media (max-width: 370px) {
+  #farmRoom .token-flow-map {
+    left: 38px;
+    right: 34px;
+    gap: 4px 6px;
+  }
+
+  .token-module b {
+    font-size: 9px;
+  }
+
+  .token-module small {
+    font-size: 6px;
+  }
+}
+
 .missions-space {
   position: relative;
   min-height: calc(100vh - 160px);
