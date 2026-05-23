@@ -699,12 +699,18 @@ function renderSpecimenPods(progress, motion) {
   document.querySelectorAll(".specimen-pod").forEach((pod, index) => {
     const variant = PLANT_VARIANTS[(state.plantVariant + index * 13) % PLANT_VARIANTS.length];
     const slotUnlocked = isSlotUnlocked(index);
+    const isFuturePremium = index >= 4;
+    const isGrowing = Boolean(state.plantedAt && progress < 100);
 
     pod.classList.toggle("active-pod", index === 0);
     pod.classList.toggle("empty-pod", index > 0);
     pod.classList.toggle("locked-pod", index === 1 || index === 2);
     pod.classList.toggle("paid-pod", index === 3 && !slotUnlocked);
     pod.classList.toggle("unlocked-pod", index === 3 && slotUnlocked);
+    pod.classList.toggle("future-pod", isFuturePremium);
+    pod.classList.toggle("growing", index === 0 && isGrowing);
+    pod.classList.toggle("bursting", index === 0 && state.boostUntil > Date.now());
+    pod.style.setProperty("--chamber-index", index);
 
     if (index > 0) {
       pod.style.setProperty("--leaf-hue", variant.leafHue);
@@ -729,6 +735,13 @@ function renderSpecimenPods(progress, motion) {
         return;
       }
 
+      if (isFuturePremium) {
+        setText(`#podSun${index}`, "");
+        setText(`#podArtifact${index}`, "Stars");
+        setText(`#podId${index}`, "NEXT");
+        return;
+      }
+
       setText(`#podSun${index}`, "--");
       setText(`#podArtifact${index}`, "Empty");
       setText(`#podId${index}`, "LOCK");
@@ -745,6 +758,7 @@ function renderSpecimenPods(progress, motion) {
     pod.style.setProperty("--accent-hue", variant.accentHue);
     pod.style.setProperty("--core-hue", variant.coreHue);
     pod.style.setProperty("--pod-growth", (0.48 + podProgress / 150).toFixed(2));
+    pod.style.setProperty("--pod-progress", `${podProgress}%`);
     pod.style.setProperty("--motion", motion.toFixed(2));
     pod.classList.toggle("ready", podProgress >= 100);
     pod.classList.toggle("artifact-ready", artifactActive);
@@ -1445,7 +1459,7 @@ $("#capsuleDrone")?.addEventListener("click", () => {
 });
 $("#droneUpgradeBtn")?.addEventListener("click", upgradeDrone);
 $("#specimenGrid")?.addEventListener("click", (event) => {
-  const paidPod = event.target.closest(".paid-pod");
+  const paidPod = event.target.closest('.paid-pod[data-buy-slot="stars"]');
   if (!paidPod) return;
   playTone("tap");
   buyFarmSlot4();

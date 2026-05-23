@@ -6740,6 +6740,373 @@ button {
   }
 }
 
+/* Chamber carousel pass: one product grows, other chambers scroll as future slots. */
+#farmRoom .specimen-grid {
+  left: 50%;
+  top: 48px;
+  width: min(286px, calc(100% - 86px));
+  height: 272px;
+  display: flex;
+  grid-template-columns: none;
+  grid-template-rows: none;
+  gap: 12px;
+  align-items: stretch;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: calc((100% - 156px) / 2);
+  padding: 8px calc((100% - 156px) / 2) 16px;
+  border-radius: 24px;
+  background:
+    linear-gradient(90deg, rgba(3, 16, 15, 0.82), transparent 13% 87%, rgba(3, 16, 15, 0.82)),
+    radial-gradient(ellipse at 50% 96%, rgba(129, 255, 216, 0.11), transparent 48%);
+  mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+  pointer-events: auto;
+  scrollbar-width: none;
+}
+
+#farmRoom .specimen-grid::-webkit-scrollbar {
+  display: none;
+}
+
+#farmRoom .specimen-grid::before,
+#farmRoom .specimen-grid::after {
+  content: "";
+  position: sticky;
+  top: 10px;
+  z-index: 8;
+  flex: 0 0 1px;
+  height: 232px;
+  pointer-events: none;
+}
+
+#farmRoom .specimen-grid::before {
+  left: 0;
+  margin-left: -1px;
+  box-shadow: 18px 0 32px rgba(3, 18, 16, 0.94);
+}
+
+#farmRoom .specimen-grid::after {
+  right: 0;
+  margin-right: -1px;
+  box-shadow: -18px 0 32px rgba(3, 18, 16, 0.94);
+}
+
+.specimen-pod {
+  flex: 0 0 126px;
+  height: 226px;
+  scroll-snap-align: center;
+  scroll-snap-stop: always;
+  transform: translateZ(0);
+  transition:
+    flex-basis 260ms ease,
+    transform 260ms ease,
+    border-color 260ms ease,
+    box-shadow 260ms ease,
+    filter 260ms ease;
+}
+
+.specimen-pod.active-pod {
+  flex-basis: 156px;
+  border-color: hsl(var(--accent-hue, 178) 96% 72% / 0.5);
+  background:
+    radial-gradient(circle at 50% 18%, rgba(255, 255, 255, 0.11), transparent 28%),
+    radial-gradient(circle at 50% 62%, hsl(var(--accent-hue, 178) 96% 62% / 0.23), transparent 48%),
+    linear-gradient(180deg, rgba(129, 255, 216, 0.09), rgba(255, 255, 255, 0.025)),
+    rgba(2, 13, 12, 0.55);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    inset 0 -16px 26px rgba(0, 0, 0, 0.24),
+    0 0 34px hsl(var(--accent-hue, 178) 96% 62% / 0.2);
+}
+
+.specimen-pod.active-pod::before {
+  left: 18px;
+  right: 18px;
+  top: 26px;
+  height: 28px;
+  opacity: 0.78;
+  border-width: 2px;
+  box-shadow:
+    0 0 18px hsl(var(--accent-hue, 178) 94% 64% / 0.22),
+    inset 0 0 14px hsl(var(--accent-hue, 178) 94% 64% / 0.08);
+}
+
+.specimen-pod.active-pod::after {
+  left: 24px;
+  right: 24px;
+  bottom: 21px;
+  height: 16px;
+  opacity: 0.92;
+  filter: blur(5px);
+  box-shadow: 0 0 20px hsl(var(--accent-hue, 178) 96% 64% / 0.3);
+}
+
+.specimen-pod.active-pod .pod-plant {
+  width: 84px;
+  height: 142px;
+  transform: translateY(18px) scale(calc(var(--pod-growth, 0.58) * 1.34));
+}
+
+.specimen-pod.active-pod .pod-plant::before {
+  left: 50%;
+  bottom: 18px;
+  width: 58px;
+  height: 112px;
+  opacity: 0.86;
+  filter: blur(3px);
+  animation: activeLightRise calc(1.55s / var(--motion, 1)) ease-in-out infinite;
+}
+
+.specimen-pod.active-pod .pod-plant::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 24px;
+  width: 66px;
+  height: 122px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 6%, hsl(var(--leaf-hue, 108) 98% 76% / 0.96) 0 5px, transparent 6px),
+    radial-gradient(circle at 32% 23%, hsl(var(--leaf-hue, 108) 98% 72% / 0.94) 0 4px, transparent 5px),
+    radial-gradient(circle at 66% 28%, hsl(var(--leaf-hue, 108) 98% 72% / 0.9) 0 5px, transparent 6px),
+    radial-gradient(circle at 26% 48%, hsl(var(--accent-hue, 178) 98% 72% / 0.82) 0 4px, transparent 5px),
+    radial-gradient(circle at 72% 56%, hsl(var(--accent-hue, 178) 98% 72% / 0.76) 0 3px, transparent 4px),
+    radial-gradient(circle at 50% 78%, hsl(var(--core-hue, 76) 98% 70% / 0.78) 0 4px, transparent 5px),
+    linear-gradient(78deg, transparent 0 44%, hsl(var(--accent-hue, 178) 96% 68% / 0.28) 45% 47%, transparent 48%),
+    linear-gradient(112deg, transparent 0 48%, hsl(var(--leaf-hue, 108) 96% 68% / 0.22) 49% 51%, transparent 52%);
+  filter:
+    drop-shadow(0 0 10px hsl(var(--leaf-hue, 108) 96% 68% / 0.6))
+    drop-shadow(0 0 22px hsl(var(--accent-hue, 178) 96% 62% / 0.32));
+  transform: translateX(-50%);
+  animation: productHelixPulse calc(2.2s / var(--motion, 1)) ease-in-out infinite;
+  pointer-events: none;
+}
+
+.specimen-pod.active-pod .pod-stem {
+  width: 2px;
+  height: 96px;
+  bottom: 18px;
+  box-shadow:
+    0 0 12px hsl(var(--stem-hue, 118) 96% 64% / 0.72),
+    0 0 28px hsl(var(--accent-hue, 178) 94% 58% / 0.34);
+}
+
+.specimen-pod.active-pod .pod-stem.side-a {
+  height: 76px;
+  transform: translateX(-50%) rotate(-24deg);
+}
+
+.specimen-pod.active-pod .pod-stem.side-b {
+  height: 82px;
+  transform: translateX(-50%) rotate(27deg);
+}
+
+.specimen-pod.active-pod .pod-leaf {
+  width: 11px;
+  height: 11px;
+  box-shadow:
+    0 0 10px hsl(var(--leaf-hue, 108) 92% 66% / 0.9),
+    0 0 22px hsl(var(--accent-hue, 178) 92% 60% / 0.38),
+    -12px -18px 0 -2px hsl(var(--leaf-hue, 108) 96% 70% / 0.72),
+    12px -26px 0 -3px hsl(var(--accent-hue, 178) 96% 72% / 0.58),
+    -4px -42px 0 -3px hsl(var(--core-hue, 76) 98% 70% / 0.72);
+}
+
+.specimen-pod.active-pod .pod-leaf.leaf-1 {
+  left: 27px;
+  bottom: 58px;
+}
+
+.specimen-pod.active-pod .pod-leaf.leaf-2 {
+  right: 26px;
+  bottom: 78px;
+}
+
+.specimen-pod.active-pod .pod-leaf.leaf-3 {
+  left: 39px;
+  bottom: 112px;
+  width: 12px;
+  height: 12px;
+}
+
+.specimen-pod.active-pod .pod-core {
+  bottom: 76px;
+  width: 12px;
+  height: 12px;
+  box-shadow:
+    0 0 14px hsl(var(--core-hue, 76) 96% 66% / 0.96),
+    0 0 32px hsl(var(--accent-hue, 178) 94% 62% / 0.48),
+    0 -34px 0 -3px hsl(var(--leaf-hue, 108) 96% 70% / 0.78),
+    -19px -18px 0 -4px hsl(var(--leaf-hue, 108) 96% 68% / 0.62),
+    20px -12px 0 -4px hsl(var(--accent-hue, 178) 96% 70% / 0.56);
+}
+
+.specimen-pod.active-pod .pod-sun,
+.specimen-pod.active-pod .pod-artifact,
+.specimen-pod.active-pod .pod-id {
+  z-index: 10;
+}
+
+.specimen-pod.growing {
+  animation: chamberLife 2.7s ease-in-out infinite;
+}
+
+.specimen-pod.growing .pod-plant {
+  filter:
+    drop-shadow(0 0 12px hsl(var(--accent-hue, 178) 96% 64% / 0.48))
+    drop-shadow(0 0 24px hsl(var(--leaf-hue, 108) 94% 62% / 0.26));
+  animation:
+    productMegaGrow calc(2.5s / var(--motion, 1)) ease-in-out infinite,
+    podSway calc(3.2s / var(--motion, 1)) ease-in-out infinite;
+}
+
+.specimen-pod.growing .pod-core {
+  animation:
+    podCore calc(1.7s / var(--motion, 1)) ease-in-out infinite,
+    coreFlash 2.1s ease-in-out infinite;
+}
+
+.specimen-pod.growing .pod-id::before {
+  content: "";
+  position: absolute;
+  left: -22px;
+  right: -22px;
+  top: -7px;
+  height: 3px;
+  border-radius: 999px;
+  background:
+    linear-gradient(90deg, rgba(66, 242, 183, 0.12), hsl(var(--accent-hue, 178) 96% 64% / 0.86) var(--pod-progress, 0%), rgba(255, 255, 255, 0.08) 0);
+  box-shadow: 0 0 14px hsl(var(--accent-hue, 178) 96% 64% / 0.38);
+}
+
+.specimen-pod.bursting {
+  filter: brightness(1.16) saturate(1.18);
+}
+
+.specimen-pod.bursting::before {
+  animation: chamberBoostRing 920ms ease-out infinite;
+}
+
+.specimen-pod.locked-pod,
+.specimen-pod.future-pod {
+  flex-basis: 116px;
+  opacity: 0.78;
+}
+
+.specimen-pod.future-pod {
+  border-style: solid;
+  border-color: rgba(255, 211, 107, 0.32);
+  background:
+    radial-gradient(circle at 50% 45%, rgba(255, 211, 107, 0.16), transparent 38%),
+    linear-gradient(180deg, rgba(255, 211, 107, 0.09), rgba(88, 220, 255, 0.035)),
+    rgba(2, 13, 12, 0.52);
+}
+
+.specimen-pod.future-pod .pod-buy-cta {
+  border-color: rgba(255, 211, 107, 0.24);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 211, 107, 0.14), transparent 50%),
+    rgba(3, 18, 15, 0.62);
+}
+
+.specimen-pod.future-pod .pod-buy-cta b {
+  font-size: 14px;
+}
+
+.specimen-pod.future-pod .pod-buy-cta i {
+  min-width: 52px;
+  color: rgba(255, 239, 191, 0.9);
+}
+
+.specimen-pod.future-pod > .pod-artifact,
+.specimen-pod.future-pod > .pod-id,
+.specimen-pod.future-pod > .pod-sun {
+  display: none;
+}
+
+.specimen-pod.future-pod .pod-buy-cta {
+  display: grid;
+}
+
+#farmRoom .root-network {
+  top: 270px;
+}
+
+@keyframes activeLightRise {
+  0%, 100% { opacity: 0.3; transform: translateX(-50%) translateY(16px) scaleY(0.62); }
+  50% { opacity: 1; transform: translateX(-50%) translateY(-12px) scaleY(1.18); }
+}
+
+@keyframes productMegaGrow {
+  0%, 100% { scale: 1; }
+  42% { scale: 1.06 1.14; }
+  70% { scale: 1.02 1.04; }
+}
+
+@keyframes productHelixPulse {
+  0%, 100% {
+    opacity: 0.62;
+    transform: translateX(-50%) translateY(8px) scale(0.94);
+  }
+  50% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(-6px) scale(1.08);
+  }
+}
+
+@keyframes chamberLife {
+  0%, 100% {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.18),
+      inset 0 -16px 26px rgba(0, 0, 0, 0.24),
+      0 0 26px hsl(var(--accent-hue, 178) 96% 62% / 0.18);
+  }
+  50% {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.22),
+      inset 0 -16px 26px rgba(0, 0, 0, 0.22),
+      0 0 44px hsl(var(--accent-hue, 178) 96% 62% / 0.32),
+      0 0 64px hsl(var(--leaf-hue, 108) 94% 64% / 0.16);
+  }
+}
+
+@keyframes coreFlash {
+  0%, 100% { box-shadow: 0 0 12px hsl(var(--core-hue, 76) 96% 66% / 0.8); }
+  50% {
+    box-shadow:
+      0 0 18px hsl(var(--core-hue, 76) 96% 70% / 1),
+      0 0 36px hsl(var(--accent-hue, 178) 94% 62% / 0.52);
+  }
+}
+
+@keyframes chamberBoostRing {
+  0% { transform: rotateX(68deg) scale(0.92); opacity: 0.54; }
+  70% { transform: rotateX(68deg) scale(1.18); opacity: 0.96; }
+  100% { transform: rotateX(68deg) scale(0.96); opacity: 0.62; }
+}
+
+@media (max-height: 760px) {
+  #farmRoom .specimen-grid {
+    top: 40px;
+    height: 256px;
+  }
+
+  .specimen-pod {
+    height: 212px;
+  }
+
+  .specimen-pod.active-pod .pod-plant {
+    transform: translateY(14px) scale(calc(var(--pod-growth, 0.58) * 1.2));
+  }
+
+  .root-network {
+    top: 264px;
+  }
+}
+
 .missions-space {
   position: relative;
   min-height: calc(100vh - 160px);
