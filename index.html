@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#06110f">
     <title>Green Farm Tycoon</title>
-    <link rel="stylesheet" href="styles.css?v=42">
+    <link rel="stylesheet" href="styles.css?v=57">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="app.js?v=37" defer></script>
+    <script src="app.js?v=42" defer></script>
   </head>
   <body>
     <main class="app room-farm" aria-label="Green Farm Tycoon MVP">
@@ -37,17 +37,23 @@
         </div>
         <div class="profile-actions">
           <button class="profile-chip" id="leagueBtn" type="button">League</button>
-          <button class="profile-chip" id="settingsBtn" type="button">Settings</button>
+          <button class="profile-chip settings-chip" id="settingsBtn" type="button" aria-label="Open settings" title="Settings">
+            <span class="settings-gear" aria-hidden="true">
+              <i></i><i></i><i></i><i></i><i></i><i></i>
+            </span>
+          </button>
         </div>
       </section>
 
       <section class="resource-row" aria-label="Resources">
-        <div class="resource leaf-resource"><span>☘</span><strong id="scoreValue">0</strong></div>
+        <div class="resource leaf-resource" aria-label="Croclis coin balance">
+          <span class="croclis-coin-icon" aria-hidden="true">
+            <img src="assets/croclis-token-mark.png" alt="">
+          </span>
+          <strong id="scoreValue">0</strong>
+        </div>
         <div class="resource water"><span>◌</span><strong id="energyValue">10</strong></div>
         <div class="resource power"><span>⚡</span><strong id="resonanceValue">0</strong></div>
-        <button class="resource stars-wallet" id="resetBtn" title="Reset progress" aria-label="Reset progress">
-          <span>★</span><strong>10</strong><b>＋</b>
-        </button>
       </section>
 
       <aside class="process-rail" aria-label="Process status">
@@ -66,6 +72,12 @@
           <div class="capsule-dome" aria-hidden="true"></div>
           <div class="capsule-glass"></div>
           <div class="capsule-light top" aria-hidden="true"></div>
+          <button class="capsule-data-module" id="dataModuleBtn" type="button" aria-label="Open digital module upgrades">
+            <span class="data-core" aria-hidden="true"><i></i><i></i><i></i></span>
+            <b id="dataModuleLevelBadge">D1</b>
+            <small id="dataModuleSignal">IDLE</small>
+          </button>
+          <div class="drone-data-stream" aria-hidden="true"><i></i><i></i><i></i></div>
           <div class="capsule-light base" aria-hidden="true"></div>
           <div class="growth-ring" id="growthRing"><span id="growthPercent">0%</span></div>
           <div class="drone-dock-rail" aria-hidden="true">
@@ -240,14 +252,8 @@
             <span id="mainActionIcon">●</span>
             <strong id="mainActionText">Grow</strong>
           </button>
-          <div class="meter-card water-card" aria-hidden="true"><span>💧</span><i></i></div>
-          <div class="meter-card power-card" aria-hidden="true"><span>⚡</span><i></i></div>
           <button class="meter-card auto-card" id="autoCollectBtn" aria-label="Toggle auto collect">
             <span>⟳</span><b id="autoCollectState">Off</b>
-          </button>
-          <button class="stars-action" id="starsBtn" aria-label="Buy energy with Stars">
-            <span>★</span>
-            <strong>10</strong>
           </button>
         </section>
 
@@ -326,10 +332,35 @@
           <div class="zen-current" aria-hidden="true">
             <i></i><i></i><i></i>
           </div>
+          <div class="zen-nano-chamber" aria-hidden="true">
+            <div class="zen-dna-helix">
+              <i></i><i></i><i></i><i></i><i></i><i></i>
+            </div>
+            <span class="zen-particle p1"></span>
+            <span class="zen-particle p2"></span>
+            <span class="zen-particle p3"></span>
+            <span class="zen-particle p4"></span>
+            <span class="zen-particle p5"></span>
+            <span class="zen-particle p6"></span>
+          </div>
+          <div class="zen-dna-targets" aria-label="DNA focus elements">
+            <button class="zen-dna-target" data-dna-index="0" type="button"><span></span><b>DNA</b></button>
+            <button class="zen-dna-target" data-dna-index="1" type="button"><span></span><b>DNA</b></button>
+            <button class="zen-dna-target" data-dna-index="2" type="button"><span></span><b>DNA</b></button>
+          </div>
+          <div class="zen-session-panel" aria-label="Meditation session">
+            <span id="zenSessionTimer">01:00</span>
+            <b id="zenSessionPhase">Ready</b>
+          </div>
           <div class="zen-modes" aria-label="Meditation duration">
-            <button class="zen-mode active" data-zen-duration="300000">5m</button>
-            <button class="zen-mode" data-zen-duration="180000">3m</button>
-            <button class="zen-mode" data-zen-duration="600000">10m</button>
+            <button class="zen-mode active" data-zen-duration="60000">1 хв</button>
+            <button class="zen-mode" data-zen-duration="120000">2 хв</button>
+            <button class="zen-mode" data-zen-duration="180000">3 хв</button>
+          </div>
+          <div class="zen-sound-modes" aria-label="Meditation sound">
+            <button class="zen-sound active" data-zen-sound="deep" type="button"><span>◐</span><b>Deep</b></button>
+            <button class="zen-sound" data-zen-sound="rain" type="button"><span>≋</span><b>Rain</b></button>
+            <button class="zen-sound" data-zen-sound="pulse" type="button"><span>◇</span><b>Pulse</b></button>
           </div>
           <button class="primary-action compact zen-action" id="meditateBtn">
             <span id="zenActionIcon">◎</span>
@@ -406,7 +437,7 @@
           <header class="sheet-header">
             <div>
               <span>Settings</span>
-              <strong>Game controls</strong>
+              <strong>Controls & policy</strong>
             </div>
             <button class="sheet-close" type="button" data-close-sheet aria-label="Close">×</button>
           </header>
@@ -415,6 +446,35 @@
             <strong>Sound</strong>
             <b id="soundState">On</b>
           </button>
+          <label class="settings-slider" for="soundVolume">
+            <span>
+              <strong>Sound volume</strong>
+              <b id="soundVolumeValue">70%</b>
+            </span>
+            <input id="soundVolume" type="range" min="0" max="100" step="5" value="70">
+          </label>
+          <button class="settings-row" id="vibrationBtn" type="button" aria-label="Toggle vibration">
+            <span id="vibrationIcon">▦</span>
+            <strong>Vibration</strong>
+            <b id="vibrationState">On</b>
+          </button>
+          <label class="settings-slider" for="vibrationLevel">
+            <span>
+              <strong>Vibration power</strong>
+              <b id="vibrationValue">60%</b>
+            </span>
+            <input id="vibrationLevel" type="range" min="0" max="100" step="5" value="60">
+          </label>
+          <div class="policy-actions" aria-label="Legal policy links">
+            <a class="policy-link" href="privacy.html" target="_blank" rel="noopener">
+              <span>Privacy</span>
+              <b>Data & rights</b>
+            </a>
+            <a class="policy-link" href="terms.html" target="_blank" rel="noopener">
+              <span>Terms</span>
+              <b>Rules & support</b>
+            </a>
+          </div>
         </div>
       </section>
 
@@ -450,6 +510,35 @@
           <button class="drone-upgrade-btn" id="droneUpgradeBtn" type="button">
             <span id="droneUpgradeText">Upgrade</span>
             <b id="droneCostValue">56 score · 5 energy</b>
+          </button>
+        </div>
+      </section>
+
+      <section class="control-sheet data-module-sheet" id="dataModuleSheet" hidden aria-label="Digital module upgrades">
+        <button class="sheet-backdrop" type="button" data-close-sheet aria-label="Close digital module"></button>
+        <div class="sheet-panel compact">
+          <header class="sheet-header">
+            <div>
+              <span>Digital core</span>
+              <strong id="dataModuleSheetLevel">Level 1</strong>
+            </div>
+            <button class="sheet-close" type="button" data-close-sheet aria-label="Close">×</button>
+          </header>
+          <div class="data-module-preview">
+            <span class="data-core mini" aria-hidden="true"><i></i><i></i><i></i></span>
+            <div>
+              <strong>Capsule intelligence</strong>
+              <small>Drone uploads scan data here when it reaches the top lid.</small>
+            </div>
+          </div>
+          <div class="drone-stats data-module-stats">
+            <span><b id="dataSyncValue">Idle</b><small>sync</small></span>
+            <span><b id="dataSignalValue">+6%</b><small>signal</small></span>
+            <span><b id="dataMemoryValue">12</b><small>memory</small></span>
+          </div>
+          <button class="drone-upgrade-btn" id="dataModuleUpgradeBtn" type="button">
+            <span id="dataModuleUpgradeText">Upgrade core</span>
+            <b id="dataModuleCostValue">70 score · 2 zen</b>
           </button>
         </div>
       </section>

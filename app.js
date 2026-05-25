@@ -10,7 +10,17 @@ window.addEventListener("load", () => window.scrollTo({ top: 0, left: 0 }));
 
 const GROW_DURATION_MS = 30_000;
 const BOOST_MS = 4_500;
-const ZEN_DEFAULT_DURATION_MS = 300_000;
+const ZEN_DEFAULT_DURATION_MS = 60_000;
+const ZEN_DURATION_OPTIONS = [60_000, 120_000, 180_000];
+const ZEN_SOUND_OPTIONS = ["deep", "rain", "pulse"];
+const ZEN_DNA_WINDOW_MS = 9_000;
+const ZEN_DNA_SHOW_START_MS = 2_200;
+const ZEN_DNA_SHOW_END_MS = 6_800;
+const ZEN_SOUND_PRESETS = {
+  deep: { master: 0.105, filter: 330, lfo: 0.045, lfoGain: 76, a: 87.31, b: 130.81, shimmer: 261.63, air: 680, airGain: 0.038 },
+  rain: { master: 0.095, filter: 420, lfo: 0.03, lfoGain: 54, a: 73.42, b: 110, shimmer: 196, air: 1180, airGain: 0.075 },
+  pulse: { master: 0.11, filter: 510, lfo: 0.075, lfoGain: 96, a: 98, b: 146.83, shimmer: 293.66, air: 860, airGain: 0.044 }
+};
 const BREATH_LOOP_MS = 12_000;
 const MISSION_WAIT_MS = 10_000;
 const MISSIONS = [
@@ -67,28 +77,28 @@ const PLANT_VARIANTS = Array.from({ length: 100 }, (_, index) => {
 
 const DRONE_SKINS = [
   {
-    id: "mint",
-    name: "Mint Service",
+    id: "bubbles",
+    name: "Bubbles",
     tag: "Base",
     route: "Owned",
-    note: "Clean capsule-service shell for the first drone.",
-    effect: "Stable scan"
+    note: "Soft balloon shell with a calm floating service pulse.",
+    effect: "Air float"
   },
   {
-    id: "solar",
-    name: "Solar Bee",
-    tag: "Action reward",
+    id: "smile",
+    name: "Smile",
+    tag: "Fun reward",
     route: "Tasks",
-    note: "Warm pollination shell with a brighter service pulse.",
-    effect: "Honey glow"
+    note: "Friendly face shell for a warmer farm-control feeling.",
+    effect: "Mood glow"
   },
   {
-    id: "void",
-    name: "Void Pulse",
+    id: "aurora",
+    name: "Aurora Core",
     tag: "Stars rare",
     route: "Stars",
-    note: "Premium dark shell for rare drone drops and future sales.",
-    effect: "Rare aura"
+    note: "Premium prism shell for rare drops and future paid skins.",
+    effect: "Prism aura"
   }
 ];
 
@@ -109,10 +119,18 @@ const defaultState = {
   zenStartedAt: 0,
   zenPausedAt: 0,
   zenElapsed: 0,
+  zenSound: "deep",
+  zenEnergy: 0,
+  zenSessionDna: 0,
+  zenDnaClaims: {},
   soundOn: true,
+  soundVolume: 70,
+  vibrationOn: true,
+  vibrationLevel: 60,
   playerName: "You",
   droneLevel: 1,
-  droneSkin: "mint",
+  droneSkin: "bubbles",
+  dataModuleLevel: 1,
   unlockedSlots: { "0": true },
   missions: {
     opened: {},
@@ -130,6 +148,13 @@ const setText = (selector, value) => {
 const setStyle = (selector, prop, value) => {
   const node = $(selector);
   if (node) node.style.setProperty(prop, value);
+};
+const setInputValue = (selector, value) => {
+  const node = $(selector);
+  if (node) {
+    node.value = value;
+    node.style.setProperty("--range-fill", `${value}%`);
+  }
 };
 const setClass = (selector, className, enabled) => {
   const node = $(selector);
@@ -164,8 +189,28 @@ const loadingState = {
   startedAt: Date.now()
 };
 
+function settingPercent(value, fallback = 70) {
+  const number = Number(value);
+  return clamp(Number.isFinite(number) ? number : fallback, 0, 100);
+}
+
+function triggerHaptic(type = "tap") {
+  if (!state.vibrationOn) return;
+  const level = settingPercent(state.vibrationLevel, 60);
+  if (level <= 0) return;
+  const style = level >= 75 || type === "stars" || type === "collect" ? "heavy" : level >= 40 ? "medium" : "light";
+  try {
+    tg?.HapticFeedback?.impactOccurred(style);
+  } catch {}
+  try {
+    navigator.vibrate?.(style === "heavy" ? 34 : style === "medium" ? 22 : 12);
+  } catch {}
+}
+
 function playTone(type = "tap") {
-  if (!state.soundOn) return;
+  triggerHaptic(type);
+  const volume = settingPercent(state.soundVolume, 70) / 100;
+  if (!state.soundOn || volume <= 0) return;
   try {
     audioContext ||= new (window.AudioContext || window.webkitAudioContext)();
     if (audioContext.state === "suspended") audioContext.resume();
@@ -192,7 +237,7 @@ function playTone(type = "tap") {
     osc.frequency.setValueAtTime(startFreq, now);
     osc.frequency.exponentialRampToValueAtTime(endFreq, now + duration);
     gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(type === "zen" ? 0.055 : 0.075, now + 0.018);
+    gain.gain.exponentialRampToValueAtTime((type === "zen" ? 0.055 : 0.075) * volume, now + 0.018);
     gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
 
     osc.connect(filter);
@@ -227,7 +272,7 @@ function playZenBreathCue() {
   filter.type = "lowpass";
   filter.frequency.setValueAtTime(920, now);
   gain.gain.setValueAtTime(0.0001, now);
-  gain.gain.exponentialRampToValueAtTime(0.026, now + 0.08);
+  gain.gain.exponentialRampToValueAtTime(0.026 * (settingPercent(state.soundVolume, 70) / 100), now + 0.08);
   gain.gain.exponentialRampToValueAtTime(0.0001, now + 2.8);
   filter.connect(gain);
   gain.connect(zenAmbient.master);
@@ -249,6 +294,8 @@ function startZenAmbient() {
     if (audioContext.state === "suspended") audioContext.resume();
 
     const now = audioContext.currentTime;
+    const preset = ZEN_SOUND_PRESETS[normalizeZenSound(state.zenSound)] || ZEN_SOUND_PRESETS.deep;
+    const volume = settingPercent(state.soundVolume, 70) / 100;
     const master = audioContext.createGain();
     const droneFilter = audioContext.createBiquadFilter();
     const airFilter = audioContext.createBiquadFilter();
@@ -262,25 +309,25 @@ function startZenAmbient() {
     const noise = createNoiseSource(audioContext);
 
     master.gain.setValueAtTime(0.0001, now);
-    master.gain.exponentialRampToValueAtTime(0.115, now + 1.8);
+    master.gain.exponentialRampToValueAtTime(Math.max(0.0001, preset.master * volume), now + 1.8);
     master.connect(audioContext.destination);
 
     droneFilter.type = "lowpass";
-    droneFilter.frequency.setValueAtTime(340, now);
+    droneFilter.frequency.setValueAtTime(preset.filter, now);
     droneFilter.Q.setValueAtTime(0.8, now);
 
     lfo.type = "sine";
-    lfo.frequency.setValueAtTime(0.045, now);
-    lfoGain.gain.setValueAtTime(82, now);
+    lfo.frequency.setValueAtTime(preset.lfo, now);
+    lfoGain.gain.setValueAtTime(preset.lfoGain, now);
     lfo.connect(lfoGain);
     lfoGain.connect(droneFilter.frequency);
 
     droneA.type = "sine";
     droneB.type = "sine";
     shimmer.type = "triangle";
-    droneA.frequency.setValueAtTime(87.31, now);
-    droneB.frequency.setValueAtTime(130.81, now);
-    shimmer.frequency.setValueAtTime(261.63, now);
+    droneA.frequency.setValueAtTime(preset.a, now);
+    droneB.frequency.setValueAtTime(preset.b, now);
+    shimmer.frequency.setValueAtTime(preset.shimmer, now);
 
     droneGain.gain.setValueAtTime(0.18, now);
     droneA.connect(droneGain);
@@ -290,9 +337,9 @@ function startZenAmbient() {
     droneFilter.connect(master);
 
     airFilter.type = "bandpass";
-    airFilter.frequency.setValueAtTime(760, now);
+    airFilter.frequency.setValueAtTime(preset.air, now);
     airFilter.Q.setValueAtTime(0.32, now);
-    airGain.gain.setValueAtTime(0.055, now);
+    airGain.gain.setValueAtTime(preset.airGain * volume, now);
     noise.connect(airFilter);
     airFilter.connect(airGain);
     airGain.connect(master);
@@ -343,8 +390,19 @@ function loadState() {
     const restored = { ...base, ...JSON.parse(saved) };
     restored.growthDuration ||= GROW_DURATION_MS;
     restored.missions = normalizeMissionState(restored.missions);
+    restored.soundVolume = settingPercent(restored.soundVolume, 70);
+    restored.vibrationOn = restored.vibrationOn !== false;
+    restored.vibrationLevel = settingPercent(restored.vibrationLevel, 60);
+    restored.zenDuration = ZEN_DURATION_OPTIONS.includes(Number(restored.zenDuration))
+      ? Number(restored.zenDuration)
+      : ZEN_DEFAULT_DURATION_MS;
+    restored.zenSound = normalizeZenSound(restored.zenSound);
+    restored.zenEnergy = Math.max(0, Math.floor(Number(restored.zenEnergy) || 0));
+    restored.zenSessionDna = Math.max(0, Math.floor(Number(restored.zenSessionDna) || 0));
+    restored.zenDnaClaims = restored.zenDnaClaims && typeof restored.zenDnaClaims === "object" ? restored.zenDnaClaims : {};
     restored.droneLevel = safeDroneLevel(restored.droneLevel);
     restored.droneSkin = normalizeDroneSkin(restored.droneSkin);
+    restored.dataModuleLevel = safeDataModuleLevel(restored.dataModuleLevel);
     restored.unlockedSlots = normalizeUnlockedSlots(restored.unlockedSlots);
     if (!restored.plantedAt && restored.growth > 0) {
       restored.plantedAt = Date.now() - (restored.growth / 100) * restored.growthDuration;
@@ -357,6 +415,10 @@ function loadState() {
 
 function saveState() {
   localStorage.setItem("green-farm-mvp", JSON.stringify(state));
+}
+
+function normalizeZenSound(value = state.zenSound) {
+  return ZEN_SOUND_OPTIONS.includes(value) ? value : "deep";
 }
 
 function safeDroneLevel(value = state.droneLevel) {
@@ -404,6 +466,22 @@ function droneSpeedBonus(level = safeDroneLevel()) {
 
 function droneHarvestBonus(level = safeDroneLevel()) {
   return level * 2;
+}
+
+function safeDataModuleLevel(value = state.dataModuleLevel) {
+  const level = Math.floor(Number(value) || 1);
+  return clamp(level, 1, 9);
+}
+
+function dataModuleUpgradeCost(level = safeDataModuleLevel()) {
+  return {
+    score: 44 + level * 26,
+    resonance: 1 + level
+  };
+}
+
+function dataModuleSignalBonus(level = safeDataModuleLevel()) {
+  return level * 6;
 }
 
 function normalizeMissionState(value = {}) {
@@ -474,6 +552,7 @@ function playerSnapshot() {
     artifact: state.artifact,
     droneLevel: safeDroneLevel(),
     droneSkin: normalizeDroneSkin(),
+    dataModuleLevel: safeDataModuleLevel(),
     unlockedSlots: normalizeUnlockedSlots(),
     missions: state.missions
   });
@@ -539,11 +618,15 @@ function updateLoadingSplash(progress, message) {
 
 function hideLoadingSplash() {
   if (loadingState.hidden) return;
-  loadingState.hidden = true;
   updateLoadingSplash(100, "Capsule ready");
+  loadingState.hidden = true;
+  const splash = $("#loadingSplash");
   window.setTimeout(() => {
-    $("#loadingSplash")?.classList.add("is-hidden");
+    splash?.classList.add("is-hidden");
   }, 360);
+  window.setTimeout(() => {
+    if (splash?.classList.contains("is-hidden")) splash.hidden = true;
+  }, 920);
 }
 
 function scheduleLoadingCompletion() {
@@ -583,6 +666,7 @@ async function syncPlayer() {
           artifact: state.artifact,
           droneLevel: safeDroneLevel(),
           droneSkin: normalizeDroneSkin(),
+          dataModuleLevel: safeDataModuleLevel(),
           unlockedSlots: normalizeUnlockedSlots(),
           missions: state.missions
         }
@@ -600,6 +684,9 @@ async function syncPlayer() {
     }
     if (data.player?.droneSkin) {
       state.droneSkin = normalizeDroneSkin(data.player.droneSkin);
+    }
+    if (data.player?.dataModuleLevel) {
+      state.dataModuleLevel = Math.max(safeDataModuleLevel(), safeDataModuleLevel(data.player.dataModuleLevel));
     }
     if (data.player?.missions) {
       state.missions = mergeMissionState(state.missions, data.player.missions);
@@ -703,6 +790,20 @@ function zenPhase(elapsed) {
     scale: 1.16 - exhale * 0.16,
     breathProgress: 50 + exhale * 50
   };
+}
+
+function zenDnaCycle(elapsed) {
+  return Math.max(0, Math.floor(elapsed / ZEN_DNA_WINDOW_MS));
+}
+
+function zenDnaIsVisible(elapsed, isActive, isPaused) {
+  if (!isActive || isPaused) return false;
+  const windowProgress = elapsed % ZEN_DNA_WINDOW_MS;
+  return windowProgress >= ZEN_DNA_SHOW_START_MS && windowProgress <= ZEN_DNA_SHOW_END_MS;
+}
+
+function zenDnaClaimKey(elapsed, index) {
+  return `${zenDnaCycle(elapsed)}:${index}`;
 }
 
 function growthStage(progress) {
@@ -873,19 +974,26 @@ function renderMutationLab(progress) {
 
 function completeZenSession() {
   const reward = 3 + Math.min(9, state.artifact);
+  const dnaHits = Math.max(0, Math.floor(Number(state.zenSessionDna) || 0));
+  const energyBonus = 1 + Math.min(5, Math.floor(dnaHits / 3));
   state.sessions += 1;
-  state.resonance += reward;
+  state.resonance += reward + energyBonus;
   state.score += 8;
+  state.zenEnergy = Math.max(0, Math.floor(Number(state.zenEnergy) || 0)) + energyBonus;
   trackAction("zen_completed", {
     reward,
+    energyBonus,
+    dnaHits,
     durationMs: state.zenDuration || ZEN_DEFAULT_DURATION_MS
   });
   state.zenStartedAt = 0;
   state.zenPausedAt = 0;
   state.zenElapsed = 0;
+  state.zenSessionDna = 0;
+  state.zenDnaClaims = {};
   stopZenAmbient(2.2);
   playTone("zen");
-  toast(`Zen +${reward} \u26a1`);
+  toast(`Zen energy +${energyBonus} · Zen +${reward}`);
 }
 
 function renderZen() {
@@ -904,6 +1012,8 @@ function renderZen() {
 
   setText("#zenTimer", formatTime(remaining || duration));
   setText("#zenPhase", isActive ? phase.label : "Breathe");
+  setText("#zenSessionTimer", formatTime(remaining || duration));
+  setText("#zenSessionPhase", isActive ? phase.label : "Ready");
   setText("#zenActionIcon", isActive && !isPaused ? "\u23f8" : "\u25ce");
   setText("#zenActionText", isActive ? (isPaused ? "Resume" : "Pause") : "Start");
   setText("#zenState", isActive ? (isPaused ? "Paused" : phase.label) : state.sessions > 0 ? `x${state.sessions}` : "Calm");
@@ -913,6 +1023,7 @@ function renderZen() {
   setStyle("#zenOrb", "--zen-progress", `${progress}%`);
   setStyle("#zenOrb", "--zen-scale", phase.scale.toFixed(3));
   setStyle("#zenBreathLine", "--breath", `${phase.breathProgress}%`);
+  setStyle("#zenRoom", "--zen-progress", `${progress}%`);
   setClass("#zenRoom", "zen-running", isActive && !isPaused);
   setClass("#zenRoom", "zen-paused", isPaused);
 
@@ -925,6 +1036,19 @@ function renderZen() {
   document.querySelectorAll(".zen-mode").forEach((button) => {
     button.classList.toggle("active", Number(button.dataset.zenDuration) === duration);
     button.disabled = isActive && !isPaused;
+  });
+
+  document.querySelectorAll(".zen-sound").forEach((button) => {
+    button.classList.toggle("active", button.dataset.zenSound === normalizeZenSound(state.zenSound));
+  });
+
+  const dnaVisible = zenDnaIsVisible(elapsed, isActive, isPaused);
+  document.querySelectorAll(".zen-dna-target").forEach((button) => {
+    const index = Number(button.dataset.dnaIndex) || 0;
+    const claimed = Boolean(state.zenDnaClaims?.[zenDnaClaimKey(elapsed, index)]);
+    button.classList.toggle("active", dnaVisible && !claimed);
+    button.classList.toggle("claimed", dnaVisible && claimed);
+    button.disabled = !dnaVisible || claimed;
   });
 }
 
@@ -1025,7 +1149,7 @@ function renderDroneSkins(activeId = normalizeDroneSkin()) {
 function selectDroneSkin(id) {
   const skin = droneSkinById(id);
   state.droneSkin = skin.id;
-  playTone(skin.id === "void" ? "boost" : "tap");
+  playTone(skin.id === "aurora" ? "boost" : "tap");
   toast(`${skin.name} skin`);
   trackAction("drone_skin_selected", {
     skin: skin.id,
@@ -1065,6 +1189,70 @@ function upgradeDrone() {
     level: state.droneLevel,
     spentScore: cost.score,
     spentEnergy: cost.energy
+  });
+  render();
+  scheduleBackendSync(true);
+}
+
+function renderDataModule(progress = growthProgress()) {
+  const level = safeDataModuleLevel();
+  const cost = dataModuleUpgradeCost(level);
+  const syncActive = Boolean(state.plantedAt && progress < 100);
+  const ready = progress >= 100;
+  const signal = syncActive ? "SYNC" : ready ? "READY" : "IDLE";
+  const canUpgrade = level < 9 && state.score >= cost.score && state.resonance >= cost.resonance;
+
+  setText("#dataModuleLevelBadge", `D${level}`);
+  setText("#dataModuleSignal", signal);
+  setText("#dataModuleSheetLevel", `Level ${level}`);
+  setText("#dataSyncValue", signal);
+  setText("#dataSignalValue", `+${dataModuleSignalBonus(level)}%`);
+  setText("#dataMemoryValue", String(8 + level * 4));
+  setText("#dataModuleCostValue", level >= 9 ? "MAX" : `${cost.score} score · ${cost.resonance} zen`);
+  setText("#dataModuleUpgradeText", level >= 9 ? "Max core" : "Upgrade core");
+  setClass("#plantCapsule", "data-syncing", syncActive);
+  setClass("#plantCapsule", "data-ready", ready);
+
+  const module = $("#dataModuleBtn");
+  if (module) {
+    module.dataset.level = String(level);
+    module.dataset.signal = signal.toLowerCase();
+  }
+
+  const button = $("#dataModuleUpgradeBtn");
+  if (button) button.disabled = !canUpgrade;
+}
+
+function upgradeDataModule() {
+  const level = safeDataModuleLevel();
+  if (level >= 9) {
+    toast("Core max");
+    return;
+  }
+
+  const cost = dataModuleUpgradeCost(level);
+  if (state.score < cost.score || state.resonance < cost.resonance) {
+    toast("Need core resources");
+    trackAction("data_module_upgrade_blocked", {
+      level,
+      needScore: cost.score,
+      needResonance: cost.resonance,
+      score: state.score,
+      resonance: state.resonance
+    });
+    render();
+    return;
+  }
+
+  state.score -= cost.score;
+  state.resonance -= cost.resonance;
+  state.dataModuleLevel = level + 1;
+  playTone("boost");
+  toast(`Core D${state.dataModuleLevel}`);
+  trackAction("data_module_upgraded", {
+    level: state.dataModuleLevel,
+    spentScore: cost.score,
+    spentResonance: cost.resonance
   });
   render();
   scheduleBackendSync(true);
@@ -1193,6 +1381,7 @@ function render() {
   renderZen();
   renderMissions();
   renderDrone();
+  renderDataModule(progress);
   setText("#waterModule", waterLevel);
   setText("#lightModule", lightLevel);
   setText("#timeModule", progress >= 100 ? "OK" : state.plantedAt ? `${secondsLeft}s` : "--");
@@ -1204,6 +1393,14 @@ function render() {
   setClass("#autoCollectBtn", "armed", state.autoCollect && state.plantedAt && progress < 100);
   setText("#soundIcon", state.soundOn ? "\u266a" : "\u2022");
   setText("#soundState", state.soundOn ? "On" : "Off");
+  setText("#soundVolumeValue", `${Math.round(settingPercent(state.soundVolume, 70))}%`);
+  setInputValue("#soundVolume", settingPercent(state.soundVolume, 70));
+  setText("#vibrationIcon", state.vibrationOn ? "\u25a6" : "\u25a1");
+  setText("#vibrationState", state.vibrationOn ? "On" : "Off");
+  setText("#vibrationValue", state.vibrationOn ? `${Math.round(settingPercent(state.vibrationLevel, 60))}%` : "Off");
+  setInputValue("#vibrationLevel", settingPercent(state.vibrationLevel, 60));
+  setClass("#soundBtn", "active", state.soundOn);
+  setClass("#vibrationBtn", "active", state.vibrationOn);
   renderTelegramStatus();
   renderLeaderboard();
   scheduleBackendSync();
@@ -1435,11 +1632,32 @@ function synthArtifact() {
   render();
 }
 
+function claimZenDna(index) {
+  const elapsed = zenElapsed();
+  if (!state.zenStartedAt || state.zenPausedAt || !zenDnaIsVisible(elapsed, true, false)) return;
+
+  const claimKey = zenDnaClaimKey(elapsed, index);
+  state.zenDnaClaims ||= {};
+  if (state.zenDnaClaims[claimKey]) return;
+
+  state.zenDnaClaims[claimKey] = true;
+  state.zenSessionDna = Math.max(0, Math.floor(Number(state.zenSessionDna) || 0)) + 1;
+  playTone("zen");
+  toast("DNA locked");
+  trackAction("zen_dna_collected", {
+    index,
+    cycle: zenDnaCycle(elapsed)
+  });
+  render();
+}
+
 function meditate() {
   if (!state.zenStartedAt) {
     state.zenStartedAt = Date.now();
     state.zenPausedAt = 0;
     state.zenElapsed = 0;
+    state.zenSessionDna = 0;
+    state.zenDnaClaims = {};
     playTone("zen");
     startZenAmbient();
     toast("Zen started");
@@ -1498,6 +1716,7 @@ function openSheet(selector) {
   if (!sheet) return;
   closeSheets(selector);
   sheet.hidden = false;
+  sheet.classList.add("open");
   window.requestAnimationFrame(() => sheet.classList.add("open"));
 }
 
@@ -1541,7 +1760,16 @@ $("#capsuleDrone")?.addEventListener("click", () => {
   });
   render();
 });
+$("#dataModuleBtn")?.addEventListener("click", () => {
+  openSheet("#dataModuleSheet");
+  playTone("tap");
+  trackAction("data_module_opened", {
+    level: safeDataModuleLevel()
+  });
+  render();
+});
 $("#droneUpgradeBtn")?.addEventListener("click", upgradeDrone);
+$("#dataModuleUpgradeBtn")?.addEventListener("click", upgradeDataModule);
 $("#droneSkinGrid")?.addEventListener("click", (event) => {
   const skinButton = event.target.closest("[data-drone-skin]");
   if (!skinButton) return;
@@ -1593,12 +1821,31 @@ document.querySelectorAll(".zen-mode").forEach((button) => {
     state.zenStartedAt = 0;
     state.zenPausedAt = 0;
     state.zenElapsed = 0;
+    state.zenSessionDna = 0;
+    state.zenDnaClaims = {};
     playTone("tap");
     trackAction("zen_duration_selected", {
       durationMs: state.zenDuration
     });
     render();
   });
+});
+document.querySelectorAll(".zen-sound").forEach((button) => {
+  button.addEventListener("click", () => {
+    state.zenSound = normalizeZenSound(button.dataset.zenSound);
+    if (state.zenStartedAt && !state.zenPausedAt && $(".app")?.classList.contains("room-zen")) {
+      stopZenAmbient(0.25);
+      window.setTimeout(startZenAmbient, 280);
+    }
+    playTone("tap");
+    trackAction("zen_sound_selected", {
+      sound: state.zenSound
+    });
+    render();
+  });
+});
+document.querySelectorAll(".zen-dna-target").forEach((button) => {
+  button.addEventListener("click", () => claimZenDna(Number(button.dataset.dnaIndex) || 0));
 });
 $("#soundBtn")?.addEventListener("click", () => {
   state.soundOn = !state.soundOn;
@@ -1613,8 +1860,37 @@ $("#soundBtn")?.addEventListener("click", () => {
   });
   render();
 });
+$("#soundVolume")?.addEventListener("input", (event) => {
+  state.soundVolume = settingPercent(event.target.value, 70);
+  if (state.soundVolume > 0) state.soundOn = true;
+  render();
+});
+$("#soundVolume")?.addEventListener("change", () => playTone("tap"));
+$("#vibrationBtn")?.addEventListener("click", () => {
+  state.vibrationOn = !state.vibrationOn;
+  triggerHaptic("tap");
+  toast(state.vibrationOn ? "Vibration on" : "Vibration off");
+  trackAction("vibration_toggled", {
+    enabled: state.vibrationOn
+  });
+  render();
+});
+$("#vibrationLevel")?.addEventListener("input", (event) => {
+  state.vibrationLevel = settingPercent(event.target.value, 60);
+  if (state.vibrationLevel > 0) state.vibrationOn = true;
+  render();
+});
+$("#vibrationLevel")?.addEventListener("change", () => triggerHaptic("tap"));
 $("#resetBtn")?.addEventListener("click", () => {
-  state = { ...defaultState, soundOn: state.soundOn, playerName: state.playerName, missions: normalizeMissionState() };
+  state = {
+    ...defaultState,
+    soundOn: state.soundOn,
+    soundVolume: state.soundVolume,
+    vibrationOn: state.vibrationOn,
+    vibrationLevel: state.vibrationLevel,
+    playerName: state.playerName,
+    missions: normalizeMissionState()
+  };
   playTone("tap");
   toast("Reset");
   trackAction("progress_reset_clicked");

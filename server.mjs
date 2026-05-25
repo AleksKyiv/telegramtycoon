@@ -61,7 +61,7 @@ const contentTypes = {
   ".jpeg": "image/jpeg",
   ".svg": "image/svg+xml"
 };
-const allowedDroneSkins = new Set(["mint", "solar", "void"]);
+const allowedDroneSkins = new Set(["bubbles", "smile", "aurora"]);
 
 let db = await readDatabase();
 
@@ -354,6 +354,9 @@ function upsertPlayer({ clientId, user, state, verified }) {
   const droneSkin = state?.droneSkin === undefined
     ? safeDroneSkin(existing.droneSkin)
     : safeDroneSkin(state.droneSkin);
+  const dataModuleLevel = state?.dataModuleLevel === undefined
+    ? safeDataModuleLevel(existing.dataModuleLevel)
+    : safeDataModuleLevel(state.dataModuleLevel);
   const missions = mergeMissions(existing.missions, state?.missions);
   const unlockedSlots = mergeUnlockedSlots(existing.unlockedSlots, state?.unlockedSlots);
   const name = displayName(user, existing.name || "Guest");
@@ -370,6 +373,7 @@ function upsertPlayer({ clientId, user, state, verified }) {
     artifact,
     droneLevel,
     droneSkin,
+    dataModuleLevel,
     missions,
     unlockedSlots,
     starsSpent: safeNumber(existing.starsSpent),
@@ -736,6 +740,7 @@ async function adminOverview() {
       artifact: player.artifact,
       droneLevel: player.droneLevel,
       droneSkin: safeDroneSkin(player.droneSkin),
+      dataModuleLevel: safeDataModuleLevel(player.dataModuleLevel),
       unlockedSlots: safeUnlockedSlots(player.unlockedSlots),
       missions: player.missions || { opened: {}, claimed: {} },
       missionsClaimed: Object.keys(player.missions?.claimed || {}).length,
@@ -1025,9 +1030,13 @@ function safeDroneLevel(value) {
   return Math.min(9, Math.max(1, safeNumber(value) || 1));
 }
 
+function safeDataModuleLevel(value) {
+  return Math.min(9, Math.max(1, safeNumber(value) || 1));
+}
+
 function safeDroneSkin(value) {
-  const skin = String(value || "mint").toLowerCase();
-  return allowedDroneSkins.has(skin) ? skin : "mint";
+  const skin = String(value || "bubbles").toLowerCase();
+  return allowedDroneSkins.has(skin) ? skin : "bubbles";
 }
 
 function safeUnlockedSlots(value) {
@@ -1066,6 +1075,7 @@ function safeStateSummary(state) {
     artifact: safeNumber(state?.artifact),
     droneLevel: safeDroneLevel(state?.droneLevel),
     droneSkin: safeDroneSkin(state?.droneSkin),
+    dataModuleLevel: safeDataModuleLevel(state?.dataModuleLevel),
     unlockedSlots: safeUnlockedSlots(state?.unlockedSlots),
     missionsClaimed: Object.keys(missions.claimed).length
   };
@@ -1290,6 +1300,7 @@ function playerToRow(player) {
       artifact: safeNumber(player.artifact),
       droneLevel: safeDroneLevel(player.droneLevel),
       droneSkin: safeDroneSkin(player.droneSkin),
+      dataModuleLevel: safeDataModuleLevel(player.dataModuleLevel),
       unlockedSlots: safeUnlockedSlots(player.unlockedSlots),
       missions: safeMissions(player.missions)
     },
@@ -1311,6 +1322,7 @@ function playerFromRow(row) {
     artifact: safeNumber(row.artifact),
     droneLevel: safeDroneLevel(row.state?.droneLevel),
     droneSkin: safeDroneSkin(row.state?.droneSkin),
+    dataModuleLevel: safeDataModuleLevel(row.state?.dataModuleLevel),
     unlockedSlots: safeUnlockedSlots(row.state?.unlockedSlots),
     missions: safeMissions(row.state?.missions),
     starsSpent: safeNumber(row.stars_spent),
