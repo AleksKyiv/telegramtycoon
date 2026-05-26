@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#06110f">
     <title>Green Farm Tycoon</title>
-    <link rel="stylesheet" href="styles.css?v=57">
+    <link rel="stylesheet" href="styles.css?v=62">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="app.js?v=42" defer></script>
+    <script src="app.js?v=45" defer></script>
   </head>
   <body>
     <main class="app room-farm" aria-label="Green Farm Tycoon MVP">
@@ -202,6 +202,12 @@
               <span class="pod-id" id="podId5">NEXT</span>
             </button>
           </div>
+          <button class="chamber-nav chamber-nav-prev" id="chamberPrevBtn" type="button" aria-label="Previous plant chambers">
+            <span>&lsaquo;</span>
+          </button>
+          <button class="chamber-nav chamber-nav-next" id="chamberNextBtn" type="button" aria-label="Next plant chambers">
+            <span>&rsaquo;</span>
+          </button>
           <div class="root-network" aria-hidden="true">
             <i class="root-line root-line-a"></i>
             <i class="root-line root-line-b"></i>
@@ -274,6 +280,9 @@
 
           <div class="mutation-capsule" id="mutationCapsule" aria-hidden="true">
             <div class="capsule-shell"></div>
+            <div class="lab-reactor-field">
+              <span></span><span></span><span></span>
+            </div>
             <div class="dna-helix">
               <i></i><i></i><i></i><i></i><i></i><i></i>
               <i></i><i></i><i></i><i></i><i></i><i></i>
@@ -302,6 +311,11 @@
               <i><b></b></i>
               <span>Auto</span>
               <strong id="mutationAutoState">Off</strong>
+            </button>
+            <button class="mutation-stars" id="rareMutationBtn" type="button" aria-label="Create unique mutation with 10 Stars">
+              <span>Unique mutation</span>
+              <strong>★ 10</strong>
+              <b id="uniqueMutationCount">0 rare cores</b>
             </button>
           </section>
         </section>
@@ -343,10 +357,29 @@
             <span class="zen-particle p5"></span>
             <span class="zen-particle p6"></span>
           </div>
+          <div class="zen-gene-capsule" aria-label="Zen DNA selector">
+            <span class="zen-gene-title">DNA core</span>
+            <button class="zen-gene-card active" data-zen-gene="sprout" type="button" aria-label="Select sprout DNA">
+              <i></i><b>01</b>
+            </button>
+            <button class="zen-gene-card" data-zen-gene="crystal" type="button" aria-label="Select crystal DNA">
+              <i></i><b>02</b>
+            </button>
+            <button class="zen-gene-card" data-zen-gene="aura" type="button" aria-label="Select aura DNA">
+              <i></i><b>03</b>
+            </button>
+          </div>
+          <div class="zen-nano-pot" aria-label="Upgradeable nano pot">
+            <span class="zen-pot-wave wave-a"></span>
+            <span class="zen-pot-wave wave-b"></span>
+            <span class="zen-pot-rim"></span>
+            <span class="zen-pot-core"><i></i><b id="zenPotLevel">N1</b></span>
+            <span class="zen-pot-grid" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+          </div>
           <div class="zen-dna-targets" aria-label="DNA focus elements">
-            <button class="zen-dna-target" data-dna-index="0" type="button"><span></span><b>DNA</b></button>
-            <button class="zen-dna-target" data-dna-index="1" type="button"><span></span><b>DNA</b></button>
-            <button class="zen-dna-target" data-dna-index="2" type="button"><span></span><b>DNA</b></button>
+            <button class="zen-dna-target" data-dna-index="0" type="button"><span></span><b>TAP</b></button>
+            <button class="zen-dna-target" data-dna-index="1" type="button"><span></span><b>TAP</b></button>
+            <button class="zen-dna-target" data-dna-index="2" type="button"><span></span><b>TAP</b></button>
           </div>
           <div class="zen-session-panel" aria-label="Meditation session">
             <span id="zenSessionTimer">01:00</span>

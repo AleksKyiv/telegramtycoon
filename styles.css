@@ -8955,3 +8955,547 @@ button {
   0%, 100% { box-shadow: 0 0 10px rgba(104, 255, 215, 0.16), inset 0 0 8px rgba(113, 255, 219, 0.08); }
   50% { box-shadow: 0 0 19px rgba(104, 255, 215, 0.28), inset 0 0 13px rgba(113, 255, 219, 0.14); }
 }
+
+/* Zen gene module: upgradeable nano pot plus a small selectable DNA capsule. */
+#zenRoom {
+  --zen-gene-rgb: 116, 255, 218;
+  --zen-gene-accent: #74ffda;
+  --zen-gene-soft: rgba(116, 255, 218, 0.18);
+}
+
+#zenRoom.zen-gene-crystal {
+  --zen-gene-rgb: 190, 142, 255;
+  --zen-gene-accent: #bd8eff;
+  --zen-gene-soft: rgba(190, 142, 255, 0.2);
+}
+
+#zenRoom.zen-gene-aura {
+  --zen-gene-rgb: 255, 214, 112;
+  --zen-gene-accent: #ffd670;
+  --zen-gene-soft: rgba(255, 214, 112, 0.2);
+}
+
+.app.room-zen .zen-gene-capsule {
+  position: absolute;
+  z-index: 8;
+  top: 31%;
+  left: 50%;
+  width: 188px;
+  height: 50px;
+  display: grid;
+  grid-template-columns: 52px repeat(3, 1fr);
+  align-items: center;
+  gap: 5px;
+  padding: 6px 8px;
+  border: 1px solid rgba(var(--zen-gene-rgb), 0.38);
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.095), rgba(255, 255, 255, 0.025)),
+    rgba(2, 14, 15, 0.54);
+  box-shadow:
+    0 0 24px rgba(var(--zen-gene-rgb), 0.14),
+    inset 0 0 18px rgba(var(--zen-gene-rgb), 0.08);
+  transform: translateX(-50%);
+  backdrop-filter: blur(5px);
+}
+
+.zen-gene-title {
+  color: rgba(231, 255, 250, 0.72);
+  font-size: 8px;
+  font-weight: 900;
+  line-height: 1.05;
+  text-transform: uppercase;
+}
+
+.zen-gene-card {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(160, 255, 230, 0.18);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.045);
+  color: rgba(232, 255, 250, 0.75);
+  box-shadow: inset 0 0 12px rgba(255, 255, 255, 0.04);
+}
+
+.zen-gene-card i {
+  position: absolute;
+  inset: 8px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 40% 30%, rgba(255, 255, 255, 0.46), transparent 26%),
+    radial-gradient(circle, rgba(var(--zen-gene-rgb), 0.72), rgba(var(--zen-gene-rgb), 0.1) 62%, transparent);
+  filter: drop-shadow(0 0 7px rgba(var(--zen-gene-rgb), 0.5));
+}
+
+.zen-gene-card b {
+  position: relative;
+  font-size: 8px;
+  line-height: 1;
+  text-shadow: 0 0 5px rgba(0, 0, 0, 0.8);
+}
+
+.zen-gene-card.active {
+  border-color: rgba(var(--zen-gene-rgb), 0.76);
+  background: rgba(var(--zen-gene-rgb), 0.14);
+  box-shadow:
+    0 0 18px rgba(var(--zen-gene-rgb), 0.28),
+    inset 0 0 14px rgba(var(--zen-gene-rgb), 0.14);
+}
+
+.zen-gene-card[data-zen-gene="crystal"] i {
+  background:
+    radial-gradient(circle at 40% 30%, rgba(255, 255, 255, 0.48), transparent 24%),
+    conic-gradient(from 45deg, rgba(196, 143, 255, 0.92), rgba(119, 255, 224, 0.58), rgba(196, 143, 255, 0.92));
+}
+
+.zen-gene-card[data-zen-gene="aura"] i {
+  background:
+    radial-gradient(circle at 40% 30%, rgba(255, 255, 255, 0.48), transparent 24%),
+    conic-gradient(from 45deg, rgba(255, 220, 117, 0.94), rgba(118, 255, 218, 0.5), rgba(255, 220, 117, 0.94));
+}
+
+.app.room-zen .zen-nano-pot {
+  position: absolute;
+  z-index: 7;
+  left: 50%;
+  bottom: 28%;
+  width: 176px;
+  height: 82px;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.zen-pot-rim {
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  bottom: 18px;
+  height: 28px;
+  border: 1px solid rgba(var(--zen-gene-rgb), 0.48);
+  border-radius: 50%;
+  background:
+    radial-gradient(ellipse at 50% 36%, rgba(var(--zen-gene-rgb), 0.34), rgba(4, 20, 20, 0.3) 48%, rgba(2, 10, 12, 0.7) 74%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.02));
+  box-shadow:
+    0 0 28px rgba(var(--zen-gene-rgb), 0.3),
+    inset 0 0 20px rgba(var(--zen-gene-rgb), 0.18);
+}
+
+.zen-pot-core {
+  position: absolute;
+  left: 50%;
+  bottom: 4px;
+  width: 72px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(var(--zen-gene-rgb), 0.5);
+  border-radius: 13px 13px 20px 20px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.035)),
+    rgba(2, 15, 16, 0.76);
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, 0.28),
+    inset 0 0 18px rgba(var(--zen-gene-rgb), 0.12);
+  transform: translateX(-50%);
+}
+
+.zen-pot-core i {
+  position: absolute;
+  inset: 8px 15px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, rgba(var(--zen-gene-rgb), 0.72), transparent);
+  box-shadow: 0 0 12px rgba(var(--zen-gene-rgb), 0.46);
+}
+
+.zen-pot-core b {
+  position: relative;
+  color: rgba(235, 255, 250, 0.86);
+  font-size: 9px;
+  line-height: 1;
+}
+
+.zen-pot-grid {
+  position: absolute;
+  left: 28px;
+  right: 28px;
+  bottom: 48px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.zen-pot-grid i {
+  height: 9px;
+  border-radius: 999px;
+  background: rgba(var(--zen-gene-rgb), 0.2);
+  box-shadow: 0 0 8px rgba(var(--zen-gene-rgb), 0.18);
+}
+
+.zen-pot-wave {
+  position: absolute;
+  left: 50%;
+  bottom: 24px;
+  width: 190px;
+  height: 62px;
+  border: 1px solid rgba(var(--zen-gene-rgb), 0.2);
+  border-radius: 50%;
+  transform: translateX(-50%) scale(0.72);
+  opacity: 0.28;
+  animation: zenPotWave 5.6s ease-out infinite;
+}
+
+.zen-pot-wave.wave-b {
+  animation-delay: -2.8s;
+}
+
+#zenRoom.zen-running .zen-pot-wave {
+  animation-duration: 4.2s;
+}
+
+.app.room-zen .zen-dna-target {
+  width: 46px;
+  height: 46px;
+  border-color: rgba(var(--zen-gene-rgb), 0.68);
+  background:
+    radial-gradient(circle at 36% 24%, rgba(255, 255, 255, 0.42), transparent 28%),
+    radial-gradient(circle, rgba(var(--zen-gene-rgb), 0.38), rgba(2, 18, 18, 0.88) 68%);
+  box-shadow:
+    0 0 26px rgba(var(--zen-gene-rgb), 0.42),
+    inset 0 0 18px rgba(var(--zen-gene-rgb), 0.16);
+}
+
+.app.room-zen .zen-dna-target span {
+  inset: 11px;
+  border-color: rgba(var(--zen-gene-rgb), 0.62);
+}
+
+.app.room-zen .zen-dna-target span::before,
+.app.room-zen .zen-dna-target span::after {
+  left: 7px;
+  right: 7px;
+  height: 2px;
+  background: rgba(var(--zen-gene-rgb), 0.88);
+  box-shadow: 0 0 8px rgba(var(--zen-gene-rgb), 0.62);
+}
+
+.app.room-zen .zen-dna-target b {
+  display: block;
+  bottom: -15px;
+  padding: 3px 6px;
+  border-radius: 999px;
+  background: rgba(2, 13, 15, 0.82);
+  color: rgba(239, 255, 250, 0.94);
+  font-size: 8px;
+  box-shadow: 0 0 12px rgba(var(--zen-gene-rgb), 0.28);
+}
+
+.app.room-zen .zen-dna-target.active {
+  opacity: 1 !important;
+  transform: translate(-50%, -50%) scale(1) !important;
+  pointer-events: auto !important;
+  animation: zenDnaTapPulse 0.95s ease-in-out infinite;
+}
+
+@keyframes zenPotWave {
+  0% { transform: translateX(-50%) scale(0.68); opacity: 0; }
+  24% { opacity: 0.34; }
+  100% { transform: translateX(-50%) scale(1.18); opacity: 0; }
+}
+
+@keyframes zenDnaTapPulse {
+  0%, 100% {
+    box-shadow:
+      0 0 22px rgba(var(--zen-gene-rgb), 0.38),
+      inset 0 0 18px rgba(var(--zen-gene-rgb), 0.16);
+  }
+  50% {
+    box-shadow:
+      0 0 40px rgba(var(--zen-gene-rgb), 0.66),
+      inset 0 0 24px rgba(var(--zen-gene-rgb), 0.26);
+  }
+}
+
+/* Farm chamber arrows: explicit capsule movement controls. */
+.chamber-nav {
+  position: absolute;
+  top: 360px;
+  z-index: 28;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(129, 255, 216, 0.46);
+  border-radius: 11px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.035)),
+    rgba(2, 14, 13, 0.66);
+  box-shadow:
+    0 10px 22px rgba(0, 0, 0, 0.24),
+    0 0 16px rgba(92, 255, 210, 0.12),
+    inset 0 0 13px rgba(129, 255, 216, 0.09);
+  color: rgba(233, 255, 250, 0.94);
+  backdrop-filter: blur(4px);
+  pointer-events: auto;
+}
+
+.chamber-nav-prev {
+  left: calc(50% - 137px);
+}
+
+.chamber-nav-next {
+  right: calc(50% - 137px);
+}
+
+.chamber-nav span {
+  display: block;
+  margin-top: -4px;
+  color: rgba(137, 255, 222, 0.96);
+  font-size: 31px;
+  font-weight: 900;
+  line-height: 1;
+  text-shadow: 0 0 10px rgba(92, 255, 210, 0.3);
+}
+
+.chamber-nav:active {
+  transform: translateY(1px) scale(0.98);
+}
+
+.chamber-nav:disabled {
+  opacity: 0.26;
+  pointer-events: none;
+}
+
+@media (max-width: 390px) {
+  .chamber-nav {
+    top: 356px;
+    width: 32px;
+    height: 32px;
+  }
+
+  .chamber-nav-prev {
+    left: calc(50% - 128px);
+  }
+
+  .chamber-nav-next {
+    right: calc(50% - 128px);
+  }
+}
+
+/* Lab v2: premium mutation flow and clearer biotech reactor state. */
+.mutation-lab {
+  background:
+    radial-gradient(ellipse at 50% 38%, rgba(88, 220, 255, 0.18), transparent 31%),
+    radial-gradient(ellipse at 50% 66%, rgba(66, 242, 183, 0.16), transparent 38%),
+    radial-gradient(circle at 18% 22%, rgba(255, 111, 207, 0.09), transparent 28%),
+    linear-gradient(rgba(129, 255, 216, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(129, 255, 216, 0.035) 1px, transparent 1px),
+    rgba(3, 15, 14, 0.82);
+}
+
+.mutation-lab::before,
+.mutation-lab::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+}
+
+.mutation-lab::before {
+  inset: 18px;
+  z-index: 1;
+  border: 1px solid rgba(129, 255, 216, 0.08);
+  border-radius: 22px;
+  background:
+    linear-gradient(90deg, transparent, rgba(129, 255, 216, 0.09), transparent) 50% 124px / 72% 1px no-repeat,
+    linear-gradient(90deg, transparent, rgba(129, 255, 216, 0.06), transparent) 50% 365px / 84% 1px no-repeat;
+}
+
+.mutation-lab::after {
+  left: 50%;
+  top: 104px;
+  z-index: 2;
+  width: 230px;
+  height: 286px;
+  border-radius: 50%;
+  background:
+    repeating-radial-gradient(ellipse at 50% 50%, rgba(129, 255, 216, 0.11) 0 1px, transparent 1px 22px);
+  opacity: 0.24;
+  transform: translateX(-50%);
+  animation: labScannerBreath 7s ease-in-out infinite;
+}
+
+.lab-reactor-field {
+  position: absolute;
+  inset: 26px 18px;
+  z-index: 1;
+  border-radius: 18px 18px 32px 32px;
+  pointer-events: none;
+}
+
+.lab-reactor-field span {
+  position: absolute;
+  left: 50%;
+  width: 2px;
+  height: 82%;
+  border-radius: 999px;
+  background: linear-gradient(180deg, transparent, rgba(126, 255, 222, 0.68), rgba(255, 111, 207, 0.38), transparent);
+  opacity: 0.38;
+  filter: drop-shadow(0 0 8px rgba(126, 255, 222, 0.44));
+  transform-origin: 50% 50%;
+  animation: labEnergyThread 5.8s ease-in-out infinite;
+}
+
+.lab-reactor-field span:nth-child(1) { top: 8%; transform: translateX(-50%) rotate(-18deg); }
+.lab-reactor-field span:nth-child(2) { top: 6%; transform: translateX(-50%) rotate(0deg); animation-delay: -1.8s; }
+.lab-reactor-field span:nth-child(3) { top: 8%; transform: translateX(-50%) rotate(18deg); animation-delay: -3.4s; }
+
+.mutation-capsule {
+  filter: drop-shadow(0 0 18px rgba(66, 242, 183, 0.14));
+}
+
+.capsule-shell {
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.15), transparent 18% 82%, rgba(255, 255, 255, 0.12)),
+    radial-gradient(ellipse at 50% 18%, rgba(88, 220, 255, 0.2), transparent 35%),
+    radial-gradient(ellipse at 50% 72%, rgba(66, 242, 183, 0.16), transparent 42%),
+    rgba(6, 33, 29, 0.38);
+}
+
+.mutation-stars {
+  position: relative;
+  min-height: 54px;
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 1px solid rgba(255, 211, 107, 0.58);
+  border-radius: 15px;
+  background:
+    radial-gradient(circle at 18% 22%, rgba(255, 255, 255, 0.18), transparent 28%),
+    linear-gradient(135deg, rgba(255, 211, 107, 0.23), rgba(255, 111, 207, 0.13) 48%, rgba(88, 220, 255, 0.12)),
+    rgba(8, 22, 20, 0.92);
+  color: var(--text);
+  box-shadow:
+    0 0 28px rgba(255, 211, 107, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  overflow: hidden;
+}
+
+.mutation-stars::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 0 24%, rgba(255, 255, 255, 0.2) 42%, transparent 58% 100%);
+  opacity: 0.4;
+  transform: translateX(-70%);
+  animation: labPremiumSweep 4.4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.mutation-stars span,
+.mutation-stars strong,
+.mutation-stars b {
+  position: relative;
+  z-index: 1;
+}
+
+.mutation-stars span {
+  min-width: 0;
+  color: rgba(255, 248, 220, 0.94);
+  font-size: 13px;
+  font-weight: 950;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.mutation-stars strong {
+  min-width: 56px;
+  color: var(--gold);
+  font-size: 18px;
+  text-align: right;
+  text-shadow: 0 0 14px rgba(255, 211, 107, 0.38);
+}
+
+.mutation-stars b {
+  grid-column: 1 / -1;
+  color: rgba(126, 255, 222, 0.82);
+  font-size: 9px;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.mutation-actions {
+  bottom: 18px;
+  grid-template-columns: 1fr 76px;
+  gap: 8px;
+}
+
+.mutation-confirm,
+.mutation-auto {
+  min-height: 58px;
+}
+
+#labRoom.rare-active .mutation-lab {
+  border-color: rgba(255, 211, 107, 0.46);
+  box-shadow:
+    inset 0 0 90px rgba(255, 211, 107, 0.1),
+    0 20px 64px rgba(0, 0, 0, 0.28),
+    0 0 34px rgba(255, 211, 107, 0.12);
+}
+
+#labRoom.rare-active .mutation-capsule {
+  animation: labRareLift 1.4s ease-in-out infinite;
+}
+
+#labRoom.rare-active .dna-helix i {
+  background: linear-gradient(90deg, var(--gold), var(--pink), var(--cyan), var(--gold));
+  box-shadow:
+    0 0 14px rgba(255, 211, 107, 0.78),
+    0 0 28px rgba(255, 111, 207, 0.34);
+}
+
+#labRoom.rare-active .helix-glow {
+  background: linear-gradient(180deg, rgba(255, 211, 107, 0.4), rgba(255, 111, 207, 0.28), rgba(66, 242, 183, 0.32));
+  filter: blur(12px);
+}
+
+@keyframes labScannerBreath {
+  0%, 100% { transform: translateX(-50%) scale(0.96); opacity: 0.14; }
+  50% { transform: translateX(-50%) scale(1.04); opacity: 0.32; }
+}
+
+@keyframes labEnergyThread {
+  0%, 100% { opacity: 0.18; filter: drop-shadow(0 0 5px rgba(126, 255, 222, 0.22)); }
+  50% { opacity: 0.68; filter: drop-shadow(0 0 14px rgba(126, 255, 222, 0.5)); }
+}
+
+@keyframes labPremiumSweep {
+  0%, 100% { transform: translateX(-78%); opacity: 0; }
+  42%, 58% { opacity: 0.46; }
+  78% { transform: translateX(86%); opacity: 0; }
+}
+
+@keyframes labRareLift {
+  0%, 100% { transform: translateX(-50%) translateY(0); }
+  50% { transform: translateX(-50%) translateY(-4px); }
+}
+
+@media (max-height: 760px) {
+  .mutation-stars {
+    min-height: 48px;
+    padding: 8px 12px;
+  }
+
+  .mutation-stars span {
+    font-size: 11px;
+  }
+
+  .mutation-stars strong {
+    font-size: 16px;
+  }
+}

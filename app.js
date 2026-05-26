@@ -13,9 +13,10 @@ const BOOST_MS = 4_500;
 const ZEN_DEFAULT_DURATION_MS = 60_000;
 const ZEN_DURATION_OPTIONS = [60_000, 120_000, 180_000];
 const ZEN_SOUND_OPTIONS = ["deep", "rain", "pulse"];
+const ZEN_GENE_OPTIONS = ["sprout", "crystal", "aura"];
 const ZEN_DNA_WINDOW_MS = 9_000;
-const ZEN_DNA_SHOW_START_MS = 2_200;
-const ZEN_DNA_SHOW_END_MS = 6_800;
+const ZEN_DNA_SHOW_START_MS = 900;
+const ZEN_DNA_SHOW_END_MS = 7_600;
 const ZEN_SOUND_PRESETS = {
   deep: { master: 0.105, filter: 330, lfo: 0.045, lfoGain: 76, a: 87.31, b: 130.81, shimmer: 261.63, air: 680, airGain: 0.038 },
   rain: { master: 0.095, filter: 420, lfo: 0.03, lfoGain: 54, a: 73.42, b: 110, shimmer: 196, air: 1180, airGain: 0.075 },
@@ -111,6 +112,8 @@ const defaultState = {
   growthDuration: GROW_DURATION_MS,
   boostUntil: 0,
   artifact: 0,
+  labUniqueMutations: 0,
+  labRareUntil: 0,
   sessions: 0,
   plantVariant: 0,
   autoCollect: false,
@@ -120,6 +123,7 @@ const defaultState = {
   zenPausedAt: 0,
   zenElapsed: 0,
   zenSound: "deep",
+  zenGene: "sprout",
   zenEnergy: 0,
   zenSessionDna: 0,
   zenDnaClaims: {},
@@ -397,9 +401,12 @@ function loadState() {
       ? Number(restored.zenDuration)
       : ZEN_DEFAULT_DURATION_MS;
     restored.zenSound = normalizeZenSound(restored.zenSound);
+    restored.zenGene = normalizeZenGene(restored.zenGene);
     restored.zenEnergy = Math.max(0, Math.floor(Number(restored.zenEnergy) || 0));
     restored.zenSessionDna = Math.max(0, Math.floor(Number(restored.zenSessionDna) || 0));
     restored.zenDnaClaims = restored.zenDnaClaims && typeof restored.zenDnaClaims === "object" ? restored.zenDnaClaims : {};
+    restored.labUniqueMutations = Math.max(0, Math.floor(Number(restored.labUniqueMutations) || 0));
+    restored.labRareUntil = Math.max(0, Number(restored.labRareUntil) || 0);
     restored.droneLevel = safeDroneLevel(restored.droneLevel);
     restored.droneSkin = normalizeDroneSkin(restored.droneSkin);
     restored.dataModuleLevel = safeDataModuleLevel(restored.dataModuleLevel);
@@ -419,6 +426,10 @@ function saveState() {
 
 function normalizeZenSound(value = state.zenSound) {
   return ZEN_SOUND_OPTIONS.includes(value) ? value : "deep";
+}
+
+function normalizeZenGene(value = state.zenGene) {
+  return ZEN_GENE_OPTIONS.includes(value) ? value : "sprout";
 }
 
 function safeDroneLevel(value = state.droneLevel) {
@@ -550,6 +561,7 @@ function playerSnapshot() {
     resonance: state.resonance,
     sessions: state.sessions,
     artifact: state.artifact,
+    labUniqueMutations: state.labUniqueMutations,
     droneLevel: safeDroneLevel(),
     droneSkin: normalizeDroneSkin(),
     dataModuleLevel: safeDataModuleLevel(),
@@ -910,6 +922,31 @@ function renderSpecimenPods(progress, motion) {
     setText(`#podArtifact${index}`, artifactActive ? "NEW" : `${artifactChance}%`);
     setText(`#podId${index}`, String(variant.id + 1).padStart(3, "0"));
   });
+  updateChamberNav();
+}
+
+function scrollSpecimenChambers(direction) {
+  const grid = $("#specimenGrid");
+  if (!grid) return;
+
+  const podWidth = grid.querySelector(".specimen-pod")?.getBoundingClientRect().width || 140;
+  grid.scrollBy({
+    left: direction * (podWidth + 14),
+    behavior: "smooth"
+  });
+  playTone("tap");
+  window.setTimeout(updateChamberNav, 260);
+}
+
+function updateChamberNav() {
+  const grid = $("#specimenGrid");
+  const prev = $("#chamberPrevBtn");
+  const next = $("#chamberNextBtn");
+  if (!grid || !prev || !next) return;
+
+  const maxScroll = Math.max(0, grid.scrollWidth - grid.clientWidth - 2);
+  prev.disabled = grid.scrollLeft <= 2;
+  next.disabled = grid.scrollLeft >= maxScroll;
 }
 
 function renderCapsuleBaseCubes(progress) {
@@ -955,11 +992,13 @@ function renderTokenFlow(progress, secondsLeft) {
 function renderMutationLab(progress) {
   const variant = currentPlantVariant();
   const labLevel = 4 + Math.min(9, state.artifact);
-  const fusionProgress = clamp(46 + state.artifact * 7 + Math.round(progress / 5), 42, 99);
-  const rareChance = clamp(12 + state.artifact * 3 + Math.round(progress / 12), 12, 64);
+  const uniqueCount = Math.max(0, Math.floor(Number(state.labUniqueMutations) || 0));
+  const fusionProgress = clamp(46 + state.artifact * 7 + uniqueCount * 3 + Math.round(progress / 5), 42, 99);
+  const rareChance = clamp(12 + state.artifact * 3 + uniqueCount * 6 + Math.round(progress / 12), 12, 88);
   const familyA = ["Neon Lettuce", "Crystal Sprout", "Solar Moss", "Aqua Fern"][variant.id % 4];
   const familyB = ["Prism Root", "Glow Chard", "Lunar Mint", "Cyan Basil"][(variant.id + state.artifact) % 4];
-  const tier = rareChance >= 42 ? "Epic chance" : rareChance >= 24 ? "Rare chance" : "Stable chance";
+  const tier = rareChance >= 72 ? "Unique chance" : rareChance >= 42 ? "Epic chance" : rareChance >= 24 ? "Rare chance" : "Stable chance";
+  const rareActive = state.labRareUntil > Date.now();
 
   setText("#fusionProgressLabel", `${fusionProgress}%`);
   setStyle("#fusionProgressBar", "--fusion", `${fusionProgress}%`);
@@ -969,7 +1008,9 @@ function renderMutationLab(progress) {
   setText("#mutationTier", tier);
   setText("#labLevelValue", labLevel);
   setText("#mutationAutoState", state.mutationAuto ? "On" : "Off");
+  setText("#uniqueMutationCount", `${uniqueCount} rare cores`);
   setClass("#mutationAutoBtn", "active", state.mutationAuto);
+  setClass("#labRoom", "rare-active", rareActive);
 }
 
 function completeZenSession() {
@@ -1020,12 +1061,19 @@ function renderZen() {
   setText("#zenDepthValue", Math.round(progress));
   setText("#zenFlowValue", isActive ? phase.label : "Quiet");
   setText("#zenRewardValue", `+${3 + Math.min(9, state.artifact)}`);
+  setText("#zenPotLevel", `N${clamp(1 + Math.floor((state.sessions || 0) / 3), 1, 9)}`);
   setStyle("#zenOrb", "--zen-progress", `${progress}%`);
   setStyle("#zenOrb", "--zen-scale", phase.scale.toFixed(3));
   setStyle("#zenBreathLine", "--breath", `${phase.breathProgress}%`);
   setStyle("#zenRoom", "--zen-progress", `${progress}%`);
   setClass("#zenRoom", "zen-running", isActive && !isPaused);
   setClass("#zenRoom", "zen-paused", isPaused);
+
+  const zenGene = normalizeZenGene(state.zenGene);
+  const zenRoom = $("#zenRoom");
+  if (zenRoom) {
+    ZEN_GENE_OPTIONS.forEach((gene) => zenRoom.classList.toggle(`zen-gene-${gene}`, gene === zenGene));
+  }
 
   if (isActive && !isPaused && $(".app")?.classList.contains("room-zen")) {
     startZenAmbient();
@@ -1040,6 +1088,10 @@ function renderZen() {
 
   document.querySelectorAll(".zen-sound").forEach((button) => {
     button.classList.toggle("active", button.dataset.zenSound === normalizeZenSound(state.zenSound));
+  });
+
+  document.querySelectorAll(".zen-gene-card").forEach((button) => {
+    button.classList.toggle("active", button.dataset.zenGene === zenGene);
   });
 
   const dnaVisible = zenDnaIsVisible(elapsed, isActive, isPaused);
@@ -1490,6 +1542,11 @@ function applyStarsReward(product = {}) {
     return;
   }
 
+  if (product.id === "unique_mutation_10" || product.reward?.uniqueMutation) {
+    applyUniqueMutationReward(product);
+    return;
+  }
+
   const rewardEnergy = Number(product.reward?.energy || 12);
   state.energy += rewardEnergy;
   playTone("stars");
@@ -1508,6 +1565,20 @@ function mockStarsBuy(productId = "energy_pack_10") {
       stars: 10,
       productId,
       slot: 4,
+      mode: "preview"
+    });
+    return;
+  }
+
+  if (productId === "unique_mutation_10") {
+    applyStarsReward({
+      id: "unique_mutation_10",
+      reward: { uniqueMutation: 1, artifact: 2, resonance: 3, score: 24 }
+    });
+    trackAction("stars_preview_mock", {
+      stars: 10,
+      productId,
+      uniqueMutation: 1,
       mode: "preview"
     });
     return;
@@ -1600,6 +1671,35 @@ function buyFarmSlot4() {
     return null;
   }
   return buyStarsProduct("farm_slot_4");
+}
+
+function applyUniqueMutationReward(product = {}) {
+  const reward = product.reward || {};
+  const artifactGain = Math.max(1, Number(reward.artifact || 2));
+  const resonanceGain = Math.max(1, Number(reward.resonance || 3));
+  const scoreGain = Math.max(8, Number(reward.score || 24));
+
+  state.artifact += artifactGain;
+  state.resonance += resonanceGain;
+  state.score += scoreGain;
+  state.labUniqueMutations = Math.max(0, Math.floor(Number(state.labUniqueMutations) || 0)) + 1;
+  state.labRareUntil = Date.now() + 7_000;
+  state.plantVariant = (state.plantVariant + 17 + state.labUniqueMutations) % PLANT_VARIANTS.length;
+  playTone("stars");
+  toast(`Unique mutation +${artifactGain}`);
+  trackAction("lab_unique_mutation_created", {
+    productId: product.id || "unique_mutation_10",
+    artifactGain,
+    resonanceGain,
+    scoreGain,
+    uniqueMutations: state.labUniqueMutations
+  });
+  render();
+  scheduleBackendSync(true);
+}
+
+function buyUniqueMutation() {
+  return buyStarsProduct("unique_mutation_10");
 }
 
 function telegramPlatform() {
@@ -1751,6 +1851,7 @@ $("#mutationAutoBtn")?.addEventListener("click", () => {
   render();
 });
 $("#synthBtn")?.addEventListener("click", synthArtifact);
+$("#rareMutationBtn")?.addEventListener("click", buyUniqueMutation);
 $("#meditateBtn")?.addEventListener("click", meditate);
 $("#capsuleDrone")?.addEventListener("click", () => {
   openSheet("#droneSheet");
@@ -1785,6 +1886,9 @@ $("#specimenGrid")?.addEventListener("click", (event) => {
     stars: 10
   });
 });
+$("#chamberPrevBtn")?.addEventListener("click", () => scrollSpecimenChambers(-1));
+$("#chamberNextBtn")?.addEventListener("click", () => scrollSpecimenChambers(1));
+$("#specimenGrid")?.addEventListener("scroll", updateChamberNav, { passive: true });
 $("#missionsGrid")?.addEventListener("click", (event) => {
   const openButton = event.target.closest("[data-open-mission]");
   const claimButton = event.target.closest("[data-claim-mission]");
@@ -1840,6 +1944,16 @@ document.querySelectorAll(".zen-sound").forEach((button) => {
     playTone("tap");
     trackAction("zen_sound_selected", {
       sound: state.zenSound
+    });
+    render();
+  });
+});
+document.querySelectorAll(".zen-gene-card").forEach((button) => {
+  button.addEventListener("click", () => {
+    state.zenGene = normalizeZenGene(button.dataset.zenGene);
+    playTone("zen");
+    trackAction("zen_gene_selected", {
+      gene: state.zenGene
     });
     render();
   });

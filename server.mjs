@@ -42,6 +42,14 @@ const starsProducts = {
     label: "Chamber Slot",
     stars: 10,
     reward: { slot: 3 }
+  },
+  unique_mutation_10: {
+    id: "unique_mutation_10",
+    title: "Unique Mutation",
+    description: "Creates a rare lab mutation and boosts your artifact core.",
+    label: "Unique Mutation",
+    stars: 10,
+    reward: { uniqueMutation: 1, artifact: 2, resonance: 3, score: 24 }
   }
 };
 const STARS_WITHDRAWAL_HOLD_DAYS = 21;
@@ -491,6 +499,9 @@ function handleSuccessfulPayment(message) {
   const player = db.players[order.playerId];
   if (player) {
     player.energy = safeNumber(player.energy) + safeNumber(product.reward.energy);
+    player.score = safeNumber(player.score) + safeNumber(product.reward.score);
+    player.resonance = safeNumber(player.resonance) + safeNumber(product.reward.resonance);
+    player.artifact = safeNumber(player.artifact) + safeNumber(product.reward.artifact);
     if (product.reward.slot !== undefined) {
       player.unlockedSlots = mergeUnlockedSlots(player.unlockedSlots, { [String(product.reward.slot)]: true });
     }
