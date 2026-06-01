@@ -76,6 +76,55 @@ const PLANT_VARIANTS = Array.from({ length: 100 }, (_, index) => {
   };
 });
 
+const FARM_SLOT_COUNT = 6;
+const FARM_STRAINS = [
+  {
+    id: "neon_basil",
+    name: "NEON BASIL",
+    shortName: "BASIL",
+    type: "common",
+    durationMs: 30_000,
+    score: 22,
+    biomass: 3,
+    geneStrands: 0,
+    variantShift: 0
+  },
+  {
+    id: "cyber_rukola",
+    name: "CYBER RUKOLA",
+    shortName: "RUKOLA",
+    type: "common",
+    durationMs: 42_000,
+    score: 34,
+    biomass: 4,
+    geneStrands: 1,
+    variantShift: 13
+  },
+  {
+    id: "glitch_sunflower",
+    name: "GLITCH SUNFLR",
+    shortName: "SUNFLR",
+    type: "common",
+    durationMs: 58_000,
+    score: 48,
+    biomass: 6,
+    geneStrands: 2,
+    variantShift: 29
+  },
+  {
+    id: "chroma_mint",
+    name: "CHROMA MINT",
+    shortName: "CHROMA",
+    type: "rare",
+    durationMs: 72_000,
+    score: 86,
+    biomass: 9,
+    geneStrands: 0,
+    variantShift: 47
+  }
+];
+const FARM_STRAIN_IDS = FARM_STRAINS.map((strain) => strain.id);
+
 const DRONE_SKINS = [
   {
     id: "bubbles",
@@ -106,12 +155,21 @@ const DRONE_SKINS = [
 const defaultState = {
   score: 0,
   energy: 10,
+  biomass: 0,
+  inventory: {
+    geneStrands: 0,
+    quantumNutrients: 0,
+    harvests: {},
+    strains: {}
+  },
   resonance: 0,
   growth: 0,
   plantedAt: 0,
   growthDuration: GROW_DURATION_MS,
   boostUntil: 0,
   artifact: 0,
+  activeSlot: 0,
+  farmSlots: [],
   labUniqueMutations: 0,
   labRareUntil: 0,
   sessions: 0,
@@ -135,7 +193,7 @@ const defaultState = {
   droneLevel: 1,
   droneSkin: "bubbles",
   dataModuleLevel: 1,
-  unlockedSlots: { "0": true },
+  unlockedSlots: { "0": true, "1": true, "2": true },
   missions: {
     opened: {},
     claimed: {}
@@ -181,6 +239,7 @@ let backendState = {
   available: false,
   status: "Local",
   syncing: false,
+  hydrated: false,
   lastSyncAt: 0,
   lastSnapshot: "",
   playerId: null,
@@ -388,12 +447,18 @@ function loadState() {
   const user = tg?.initDataUnsafe?.user;
   const base = { ...defaultState };
   if (user?.first_name) base.playerName = user.first_name;
-  if (!saved) return base;
+  if (!saved) {
+    base.inventory = normalizeInventory(base.inventory);
+    base.unlockedSlots = normalizeUnlockedSlots(base.unlockedSlots);
+    base.farmSlots = normalizeFarmSlots(base.farmSlots, base);
+    return base;
+  }
 
   try {
     const restored = { ...base, ...JSON.parse(saved) };
     restored.growthDuration ||= GROW_DURATION_MS;
     restored.missions = normalizeMissionState(restored.missions);
+    restored.biomass = Math.max(0, Math.floor(Number(restored.biomass) || 0));
     restored.soundVolume = settingPercent(restored.soundVolume, 70);
     restored.vibrationOn = restored.vibrationOn !== false;
     restored.vibrationLevel = settingPercent(restored.vibrationLevel, 60);
@@ -411,9 +476,12 @@ function loadState() {
     restored.droneSkin = normalizeDroneSkin(restored.droneSkin);
     restored.dataModuleLevel = safeDataModuleLevel(restored.dataModuleLevel);
     restored.unlockedSlots = normalizeUnlockedSlots(restored.unlockedSlots);
+    restored.inventory = normalizeInventory(restored.inventory);
+    restored.activeSlot = clamp(Math.floor(Number(restored.activeSlot) || 0), 0, FARM_SLOT_COUNT - 1);
     if (!restored.plantedAt && restored.growth > 0) {
       restored.plantedAt = Date.now() - (restored.growth / 100) * restored.growthDuration;
     }
+    restored.farmSlots = normalizeFarmSlots(restored.farmSlots, restored);
     return restored;
   } catch {
     return base;
@@ -446,13 +514,111 @@ function normalizeDroneSkin(value = state.droneSkin) {
 }
 
 function normalizeUnlockedSlots(value = state.unlockedSlots) {
-  const slots = { "0": true };
+  const slots = { "0": true, "1": true, "2": true };
   if (!value || typeof value !== "object") return slots;
   Object.entries(value).forEach(([key, item]) => {
     const index = clamp(Math.floor(Number(key) || 0), 0, 8);
     if (item) slots[String(index)] = true;
   });
   return slots;
+}
+
+function farmStrainById(value) {
+  return FARM_STRAINS.find((strain) => strain.id === value) || null;
+}
+
+function defaultFarmStrainForSlot(index) {
+  if (index === 3) return "chroma_mint";
+  return FARM_STRAINS[Math.min(index, 2)]?.id || FARM_STRAINS[0].id;
+}
+
+function normalizeInventory(value = {}) {
+  return {
+    geneStrands: Math.max(0, Math.floor(Number(value.geneStrands) || 0)),
+    quantumNutrients: Math.max(0, Math.floor(Number(value.quantumNutrients) || 0)),
+    harvests: value.harvests && typeof value.harvests === "object" ? { ...value.harvests } : {},
+    strains: value.strains && typeof value.strains === "object" ? { ...value.strains } : {}
+  };
+}
+
+function normalizeFarmSlot(value = {}, index = 0, legacy = {}) {
+  const legacyPlant = index === 0 && !value?.strain && legacy.plantedAt;
+  const strain = farmStrainById(value?.strain)
+    ? value.strain
+    : legacyPlant
+      ? defaultFarmStrainForSlot(index)
+      : null;
+  const plantedAt = Math.max(0, Number(value?.plantedAt ?? (legacyPlant ? legacy.plantedAt : 0)) || 0);
+  const growthDuration = clamp(
+    Number(value?.growthDuration ?? (legacyPlant ? legacy.growthDuration : GROW_DURATION_MS)) || GROW_DURATION_MS,
+    8_000,
+    86_400_000
+  );
+  return {
+    id: index,
+    strain,
+    plantedAt: strain ? plantedAt : 0,
+    growthDuration,
+    plantVariant: Math.max(0, Math.floor(Number(value?.plantVariant ?? legacy.plantVariant ?? index * 13) || 0)) % PLANT_VARIANTS.length,
+    boostUntil: Math.max(0, Number(value?.boostUntil ?? (legacyPlant ? legacy.boostUntil : 0)) || 0),
+    readyNotified: Boolean(value?.readyNotified)
+  };
+}
+
+function normalizeFarmSlots(value = [], legacy = {}) {
+  const source = Array.isArray(value) ? value : [];
+  const shouldUseLegacy = !source.some((slot) => slot?.strain || slot?.plantedAt);
+  const legacySource = shouldUseLegacy ? legacy : {};
+  return Array.from({ length: FARM_SLOT_COUNT }, (_, index) => normalizeFarmSlot(source[index], index, legacySource));
+}
+
+function ensureFarmModel() {
+  state.inventory = normalizeInventory(state.inventory);
+  state.unlockedSlots = normalizeUnlockedSlots(state.unlockedSlots);
+  state.farmSlots = normalizeFarmSlots(state.farmSlots, state);
+  state.activeSlot = clamp(Math.floor(Number(state.activeSlot) || 0), 0, FARM_SLOT_COUNT - 1);
+  if (!isSlotUnlocked(state.activeSlot) || state.activeSlot >= 4) state.activeSlot = 0;
+}
+
+function farmSlotAt(index) {
+  ensureFarmModel();
+  return state.farmSlots[index] || state.farmSlots[0];
+}
+
+function activeFarmSlot() {
+  return farmSlotAt(state.activeSlot);
+}
+
+function farmSlotProgress(slot) {
+  if (!slot?.strain || !slot.plantedAt) return 0;
+  return clamp(((Date.now() - slot.plantedAt) / slot.growthDuration) * 100, 0, 100);
+}
+
+function farmSlotReady(slot) {
+  return Boolean(slot?.strain && farmSlotProgress(slot) >= 100);
+}
+
+function readyFarmSlots() {
+  ensureFarmModel();
+  return state.farmSlots
+    .filter((slot, index) => isSlotUnlocked(index) && index < 4 && farmSlotReady(slot));
+}
+
+function syncLegacyFarmFromActiveSlot() {
+  ensureFarmModel();
+  const slot = activeFarmSlot();
+  if (slot?.strain) {
+    state.plantedAt = slot.plantedAt;
+    state.growthDuration = slot.growthDuration;
+    state.plantVariant = slot.plantVariant;
+    state.boostUntil = slot.boostUntil;
+    return;
+  }
+
+  state.plantedAt = 0;
+  state.growth = 0;
+  state.growthDuration = GROW_DURATION_MS;
+  state.boostUntil = 0;
 }
 
 function isSlotUnlocked(index) {
@@ -493,6 +659,36 @@ function dataModuleUpgradeCost(level = safeDataModuleLevel()) {
 
 function dataModuleSignalBonus(level = safeDataModuleLevel()) {
   return level * 6;
+}
+
+function safeBiomass(value = state.biomass) {
+  return Math.max(0, Math.floor(Number(value) || 0));
+}
+
+function zenEnergyBalance() {
+  return Math.max(0, Math.floor(Number(state.zenEnergy) || 0));
+}
+
+function farmBiomassGain(harvest) {
+  return 2 + Math.floor(Math.max(0, Number(harvest) || 0) / 16) + Math.min(4, Math.floor(state.artifact / 2));
+}
+
+function labBiomassCost() {
+  return Math.max(4, 7 - Math.min(3, Math.floor(zenEnergyBalance() / 2)));
+}
+
+function labEnergyCost() {
+  return zenEnergyBalance() > 0 ? 4 : 5;
+}
+
+function labGeneCost() {
+  return zenEnergyBalance() >= 3 ? 1 : 2;
+}
+
+function consumeZenBoost() {
+  if (zenEnergyBalance() <= 0) return false;
+  state.zenEnergy = zenEnergyBalance() - 1;
+  return true;
 }
 
 function normalizeMissionState(value = {}) {
@@ -554,10 +750,13 @@ function apiUrl(path) {
   return `${API_BASE}${path}`;
 }
 
-function playerSnapshot() {
-  return JSON.stringify({
+function serverStatePayload() {
+  ensureFarmModel();
+  return {
     score: state.score,
     energy: state.energy,
+    biomass: state.biomass,
+    inventory: normalizeInventory(state.inventory),
     resonance: state.resonance,
     sessions: state.sessions,
     artifact: state.artifact,
@@ -566,8 +765,41 @@ function playerSnapshot() {
     droneSkin: normalizeDroneSkin(),
     dataModuleLevel: safeDataModuleLevel(),
     unlockedSlots: normalizeUnlockedSlots(),
-    missions: state.missions
-  });
+    missions: state.missions,
+    farm: {
+      plantedAt: Math.max(0, Number(state.plantedAt) || 0),
+      growthDuration: Math.max(8_000, Number(state.growthDuration) || GROW_DURATION_MS),
+      plantVariant: Math.max(0, Math.floor(Number(state.plantVariant) || 0)),
+      boostUntil: Math.max(0, Number(state.boostUntil) || 0),
+      autoCollect: Boolean(state.autoCollect),
+      activeSlot: Math.max(0, Math.floor(Number(state.activeSlot) || 0)),
+      slots: state.farmSlots.map((slot, index) => ({
+        id: index,
+        strain: farmStrainById(slot.strain) ? slot.strain : null,
+        plantedAt: Math.max(0, Number(slot.plantedAt) || 0),
+        growthDuration: Math.max(8_000, Number(slot.growthDuration) || GROW_DURATION_MS),
+        plantVariant: Math.max(0, Math.floor(Number(slot.plantVariant) || 0)),
+        boostUntil: Math.max(0, Number(slot.boostUntil) || 0),
+        readyNotified: Boolean(slot.readyNotified)
+      }))
+    },
+    lab: {
+      uniqueMutations: Math.max(0, Math.floor(Number(state.labUniqueMutations) || 0)),
+      rareUntil: Math.max(0, Number(state.labRareUntil) || 0)
+    },
+    zen: {
+      energy: Math.max(0, Math.floor(Number(state.zenEnergy) || 0)),
+      duration: state.zenDuration || ZEN_DEFAULT_DURATION_MS,
+      sound: normalizeZenSound(),
+      gene: normalizeZenGene(),
+      attentionHits: Math.max(0, Math.floor(Number(state.zenSessionDna) || 0))
+    },
+    hydrated: backendState.hydrated
+  };
+}
+
+function playerSnapshot() {
+  return JSON.stringify(serverStatePayload());
 }
 
 function renderLeaderboard() {
@@ -661,6 +893,89 @@ function scheduleBackendSync(force = false) {
   });
 }
 
+function normalizeServerFarm(value = {}) {
+  return {
+    plantedAt: Math.max(0, Number(value.plantedAt) || 0),
+    growthDuration: clamp(Number(value.growthDuration) || GROW_DURATION_MS, 8_000, 86_400_000),
+    plantVariant: Math.max(0, Math.floor(Number(value.plantVariant) || 0)),
+    boostUntil: Math.max(0, Number(value.boostUntil) || 0),
+    autoCollect: value.autoCollect === true,
+    activeSlot: clamp(Math.floor(Number(value.activeSlot) || 0), 0, FARM_SLOT_COUNT - 1),
+    slots: normalizeFarmSlots(value.slots, value)
+  };
+}
+
+function farmProgressFor(plantedAt, growthDuration) {
+  if (!plantedAt) return 0;
+  return clamp(((Date.now() - plantedAt) / growthDuration) * 100, 0, 100);
+}
+
+function applyServerPlayerState(player = {}) {
+  if (!backendState.hydrated) {
+    state.score = Math.max(Number(state.score) || 0, Number(player.score) || 0);
+    state.energy = Math.max(Number(state.energy) || 0, Number(player.energy) || 0);
+    state.biomass = Math.max(Number(state.biomass) || 0, Number(player.biomass ?? player.state?.biomass) || 0);
+    const localInventory = normalizeInventory(state.inventory);
+    const remoteInventory = normalizeInventory(player.inventory);
+    state.inventory = {
+      geneStrands: Math.max(localInventory.geneStrands, remoteInventory.geneStrands),
+      quantumNutrients: Math.max(localInventory.quantumNutrients, remoteInventory.quantumNutrients),
+      harvests: { ...remoteInventory.harvests, ...localInventory.harvests },
+      strains: { ...remoteInventory.strains, ...localInventory.strains }
+    };
+    state.resonance = Math.max(Number(state.resonance) || 0, Number(player.resonance) || 0);
+    state.sessions = Math.max(Number(state.sessions) || 0, Number(player.sessions) || 0);
+    state.artifact = Math.max(Number(state.artifact) || 0, Number(player.artifact) || 0);
+  }
+
+  state.droneLevel = Math.max(safeDroneLevel(), safeDroneLevel(player.droneLevel));
+  if (player.droneSkin) state.droneSkin = normalizeDroneSkin(player.droneSkin);
+  state.dataModuleLevel = Math.max(safeDataModuleLevel(), safeDataModuleLevel(player.dataModuleLevel));
+  state.missions = mergeMissionState(state.missions, player.missions);
+  state.unlockedSlots = { ...normalizeUnlockedSlots(state.unlockedSlots), ...normalizeUnlockedSlots(player.unlockedSlots) };
+
+  if (player.lab) {
+    state.labUniqueMutations = Math.max(
+      Math.floor(Number(state.labUniqueMutations) || 0),
+      Math.floor(Number(player.lab.uniqueMutations) || 0)
+    );
+    state.labRareUntil = Math.max(Number(state.labRareUntil) || 0, Number(player.lab.rareUntil) || 0);
+  }
+
+  if (player.zen) {
+    state.zenEnergy = Math.max(
+      Math.floor(Number(state.zenEnergy) || 0),
+      Math.floor(Number(player.zen.energy) || 0)
+    );
+    state.zenDuration = ZEN_DURATION_OPTIONS.includes(Number(player.zen.duration))
+      ? Number(player.zen.duration)
+      : state.zenDuration;
+    state.zenSound = normalizeZenSound(player.zen.sound || state.zenSound);
+    state.zenGene = normalizeZenGene(player.zen.gene || state.zenGene);
+  }
+
+  if (player.farm) {
+    const serverFarm = normalizeServerFarm(player.farm);
+    if (!backendState.hydrated && Array.isArray(player.farm.slots)) {
+      state.farmSlots = normalizeFarmSlots(player.farm.slots, serverFarm);
+      state.activeSlot = clamp(Math.floor(Number(player.farm.activeSlot) || 0), 0, FARM_SLOT_COUNT - 1);
+    }
+    const localProgress = farmProgressFor(state.plantedAt, state.growthDuration);
+    const serverProgress = farmProgressFor(serverFarm.plantedAt, serverFarm.growthDuration);
+    const shouldUseServerFarm = serverFarm.plantedAt && (!state.plantedAt || serverProgress > localProgress);
+    if (shouldUseServerFarm) {
+      state.plantedAt = serverFarm.plantedAt;
+      state.growthDuration = serverFarm.growthDuration;
+      state.plantVariant = serverFarm.plantVariant;
+      state.boostUntil = serverFarm.boostUntil;
+    }
+    state.autoCollect = state.autoCollect || serverFarm.autoCollect;
+  }
+
+  backendState.hydrated = true;
+  saveState();
+}
+
 async function syncPlayer() {
   try {
     updateLoadingSplash(78, "Connecting server");
@@ -670,18 +985,7 @@ async function syncPlayer() {
       body: JSON.stringify({
         clientId: CLIENT_ID,
         initData: tg?.initData || "",
-        state: {
-          score: state.score,
-          energy: state.energy,
-          resonance: state.resonance,
-          sessions: state.sessions,
-          artifact: state.artifact,
-          droneLevel: safeDroneLevel(),
-          droneSkin: normalizeDroneSkin(),
-          dataModuleLevel: safeDataModuleLevel(),
-          unlockedSlots: normalizeUnlockedSlots(),
-          missions: state.missions
-        }
+        state: serverStatePayload()
       })
     });
     if (!response.ok) throw new Error("Backend sync failed");
@@ -691,22 +995,8 @@ async function syncPlayer() {
     backendState.playerId = data.player?.id || backendState.playerId;
     backendState.rank = data.rank || backendState.rank;
     backendState.leaderboard = data.leaderboard || backendState.leaderboard;
-    if (data.player?.droneLevel) {
-      state.droneLevel = Math.max(safeDroneLevel(), safeDroneLevel(data.player.droneLevel));
-    }
-    if (data.player?.droneSkin) {
-      state.droneSkin = normalizeDroneSkin(data.player.droneSkin);
-    }
-    if (data.player?.dataModuleLevel) {
-      state.dataModuleLevel = Math.max(safeDataModuleLevel(), safeDataModuleLevel(data.player.dataModuleLevel));
-    }
-    if (data.player?.missions) {
-      state.missions = mergeMissionState(state.missions, data.player.missions);
-    }
-    if (data.player?.unlockedSlots) {
-      state.unlockedSlots = { ...normalizeUnlockedSlots(state.unlockedSlots), ...normalizeUnlockedSlots(data.player.unlockedSlots) };
-    }
-    renderLeaderboard();
+    applyServerPlayerState(data.player);
+    render();
     updateLoadingSplash(94, "Leaderboard synced");
     scheduleLoadingCompletion();
   } catch {
@@ -719,16 +1009,7 @@ async function syncPlayer() {
 }
 
 function stateSummary() {
-  return {
-    score: state.score,
-    energy: state.energy,
-    resonance: state.resonance,
-    sessions: state.sessions,
-    artifact: state.artifact,
-    droneLevel: safeDroneLevel(),
-    unlockedSlots: normalizeUnlockedSlots(),
-    missions: state.missions
-  };
+  return serverStatePayload();
 }
 
 function trackAction(type, details = {}) {
@@ -762,11 +1043,18 @@ function toast(message) {
 }
 
 function growthProgress() {
+  const slot = activeFarmSlot();
+  if (slot?.strain) return farmSlotProgress(slot);
   if (!state.plantedAt) return 0;
   return clamp(((Date.now() - state.plantedAt) / state.growthDuration) * 100, 0, 100);
 }
 
 function remainingSeconds(progress) {
+  const slot = activeFarmSlot();
+  if (slot?.strain) {
+    if (progress >= 100) return 0;
+    return Math.ceil((slot.growthDuration - (Date.now() - slot.plantedAt)) / 1000);
+  }
   if (!state.plantedAt || progress >= 100) return 0;
   return Math.ceil((state.growthDuration - (Date.now() - state.plantedAt)) / 1000);
 }
@@ -925,6 +1213,82 @@ function renderSpecimenPods(progress, motion) {
   updateChamberNav();
 }
 
+function renderSpecimenPodsV2(progress, motion) {
+  ensureFarmModel();
+  document.querySelectorAll(".specimen-pod").forEach((pod, index) => {
+    const slot = farmSlotAt(index);
+    const strain = farmStrainById(slot.strain);
+    const slotProgress = Math.round(farmSlotProgress(slot));
+    const variant = PLANT_VARIANTS[(slot.plantVariant + index * 13) % PLANT_VARIANTS.length];
+    const slotUnlocked = isSlotUnlocked(index);
+    const isFuturePremium = index >= 4;
+    const isGrowing = Boolean(strain && slotProgress < 100);
+    const isReady = Boolean(strain && slotProgress >= 100);
+
+    pod.classList.toggle("active-pod", index === state.activeSlot);
+    pod.classList.toggle("empty-pod", !strain);
+    pod.classList.toggle("locked-pod", !slotUnlocked && index < 4);
+    pod.classList.toggle("paid-pod", index === 3 && !slotUnlocked);
+    pod.classList.toggle("unlocked-pod", index === 3 && slotUnlocked);
+    pod.classList.toggle("future-pod", isFuturePremium);
+    pod.classList.toggle("growing", isGrowing);
+    pod.classList.toggle("bursting", slot.boostUntil > Date.now());
+    pod.style.setProperty("--chamber-index", index);
+    pod.style.setProperty("--leaf-hue", variant.leafHue);
+    pod.style.setProperty("--stem-hue", variant.stemHue);
+    pod.style.setProperty("--accent-hue", variant.accentHue);
+    pod.style.setProperty("--core-hue", variant.coreHue);
+
+    if (isFuturePremium) {
+      pod.style.setProperty("--pod-growth", "0.32");
+      pod.style.setProperty("--pod-progress", "0%");
+      pod.style.setProperty("--motion", "0.25");
+      pod.classList.remove("ready", "artifact-ready");
+      setText(`#podSun${index}`, "");
+      setText(`#podArtifact${index}`, "Stars");
+      setText(`#podId${index}`, "NEXT");
+      return;
+    }
+
+    if (index === 3 && !slotUnlocked) {
+      pod.style.setProperty("--pod-growth", "0.5");
+      pod.style.setProperty("--pod-progress", "0%");
+      pod.style.setProperty("--motion", "0.35");
+      pod.classList.remove("ready", "artifact-ready");
+      setText("#podSun3", "");
+      setText("#podArtifact3", "10");
+      setText("#podId3", "START");
+      return;
+    }
+
+    if (!strain) {
+      pod.style.setProperty("--pod-growth", "0.28");
+      pod.style.setProperty("--pod-progress", "0%");
+      pod.style.setProperty("--motion", "0.25");
+      pod.classList.remove("ready", "artifact-ready");
+      setText(`#podSun${index}`, "--");
+      setText(`#podArtifact${index}`, "Empty");
+      setText(`#podId${index}`, "TAP");
+      return;
+    }
+
+    const artifactChance = clamp(10 + index * 4 + state.artifact * 3 + Math.floor(slotProgress / 14), 8, 72);
+    const sunValue = clamp(54 + ((variant.coreHue + slotProgress + index * 11) % 43), 48, 99);
+    const artifactActive = slotProgress >= 70 && ((state.score + index + variant.id) % 3 === 0 || isReady);
+
+    pod.style.setProperty("--pod-growth", (0.48 + slotProgress / 150).toFixed(2));
+    pod.style.setProperty("--pod-progress", `${slotProgress}%`);
+    pod.style.setProperty("--motion", motion.toFixed(2));
+    pod.classList.toggle("ready", isReady);
+    pod.classList.toggle("artifact-ready", artifactActive);
+
+    setText(`#podSun${index}`, sunValue);
+    setText(`#podArtifact${index}`, isReady ? "READY" : `${artifactChance}%`);
+    setText(`#podId${index}`, isReady ? strain.shortName : `${slotProgress}%`);
+  });
+  updateChamberNav();
+}
+
 function scrollSpecimenChambers(direction) {
   const grid = $("#specimenGrid");
   if (!grid) return;
@@ -1003,12 +1367,14 @@ function renderMutationLab(progress) {
   setText("#fusionProgressLabel", `${fusionProgress}%`);
   setStyle("#fusionProgressBar", "--fusion", `${fusionProgress}%`);
   setText("#fusionDnaA", `DNA A: ${familyA}`);
-  setText("#fusionDnaB", `DNA B: ${familyB}`);
+  setText("#fusionDnaB", `DNA B: ${familyB} · Bio ${safeBiomass()} · GS ${normalizeInventory(state.inventory).geneStrands}`);
   setText("#rareChance", `${rareChance}%`);
   setText("#mutationTier", tier);
   setText("#labLevelValue", labLevel);
   setText("#mutationAutoState", state.mutationAuto ? "On" : "Off");
   setText("#uniqueMutationCount", `${uniqueCount} rare cores`);
+  setText("#synthCostLabel", `${labBiomassCost()} bio · ${labGeneCost()} GS · ${labEnergyCost()} energy`);
+  setText("#synthBoostLabel", zenEnergyBalance() > 0 ? "Zen boost ready" : "Needs Zen charge");
   setClass("#mutationAutoBtn", "active", state.mutationAuto);
   setClass("#labRoom", "rare-active", rareActive);
 }
@@ -1017,13 +1383,16 @@ function completeZenSession() {
   const reward = 3 + Math.min(9, state.artifact);
   const dnaHits = Math.max(0, Math.floor(Number(state.zenSessionDna) || 0));
   const energyBonus = 1 + Math.min(5, Math.floor(dnaHits / 3));
+  const artifactBonus = Math.min(3, Math.floor(state.artifact / 2));
+  const totalZenEnergy = energyBonus + artifactBonus;
   state.sessions += 1;
-  state.resonance += reward + energyBonus;
+  state.resonance += reward + totalZenEnergy;
   state.score += 8;
-  state.zenEnergy = Math.max(0, Math.floor(Number(state.zenEnergy) || 0)) + energyBonus;
+  state.zenEnergy = zenEnergyBalance() + totalZenEnergy;
   trackAction("zen_completed", {
     reward,
-    energyBonus,
+    energyBonus: totalZenEnergy,
+    artifactBonus,
     dnaHits,
     durationMs: state.zenDuration || ZEN_DEFAULT_DURATION_MS
   });
@@ -1034,7 +1403,7 @@ function completeZenSession() {
   state.zenDnaClaims = {};
   stopZenAmbient(2.2);
   playTone("zen");
-  toast(`Zen energy +${energyBonus} · Zen +${reward}`);
+  toast(`Zen energy +${totalZenEnergy} · Zen +${reward}`);
 }
 
 function renderZen() {
@@ -1376,14 +1745,17 @@ function setFarmStageClass(stage) {
 }
 
 function render() {
+  syncLegacyFarmFromActiveSlot();
   const progress = Math.round(growthProgress());
   state.growth = progress;
 
   const rank = Math.max(2, 12 - Math.floor(state.score / 80));
   const stage = growthStage(progress);
-  const isGrowing = state.plantedAt && progress < 100;
-  const actionState = progress >= 100 ? "collect" : state.plantedAt ? "boost" : "grow";
-  const action = progress >= 100 ? ["", "Collect"] : state.plantedAt ? ["", "Boost"] : ["", "Grow"];
+  const activeSlot = activeFarmSlot();
+  const activeStrain = farmStrainById(activeSlot?.strain);
+  const isGrowing = activeSlot?.strain && progress < 100;
+  const actionState = progress >= 100 && activeSlot?.strain ? "collect" : activeSlot?.strain ? "boost" : "grow";
+  const action = progress >= 100 && activeSlot?.strain ? ["", "Collect"] : activeSlot?.strain ? ["", "Boost"] : ["", "Plant"];
   const processState = progress >= 100 ? "Ready" : isGrowing ? "Run" : "Idle";
   const plantScale = state.plantedAt ? 0.92 + (progress / 100) * 0.34 : 0.76;
   const motion = state.plantedAt ? 0.7 + progress / 180 : 0.42;
@@ -1413,7 +1785,7 @@ function render() {
   setStyle("#plantVisual", "--plant-scale", plantScale.toFixed(2));
   setStyle("#plantVisual", "--motion", motion.toFixed(2));
   applyPlantVariant(variant, progress, motion);
-  renderSpecimenPods(progress, motion);
+  renderSpecimenPodsV2(progress, motion);
   renderCapsuleBaseCubes(progress);
   renderTokenFlow(progress, secondsLeft);
   setText("#plantStage", stage);
@@ -1459,12 +1831,14 @@ function render() {
 
   setFarmStageClass(stage);
   saveState();
-  scheduleAutoCollect(progress);
+  scheduleAutoCollectV2();
 }
 
 function collectHarvest(auto = false) {
   const harvest = 18 + state.artifact * 4 + droneHarvestBonus();
+  const biomassGain = farmBiomassGain(harvest);
   state.score += harvest;
+  state.biomass = safeBiomass() + biomassGain;
   state.resonance += state.artifact > 0 ? 1 : 0;
   state.plantedAt = 0;
   state.growth = 0;
@@ -1472,9 +1846,11 @@ function collectHarvest(auto = false) {
   state.boostUntil = 0;
   state.plantVariant = (state.plantVariant + 1 + state.artifact) % PLANT_VARIANTS.length;
   playTone("collect");
-  toast(auto ? `Auto +${harvest} \u2726` : `+${harvest} \u2726`);
+  toast(auto ? `Auto +${harvest} · Bio +${biomassGain}` : `+${harvest} · Bio +${biomassGain}`);
   trackAction(auto ? "farm_auto_collected" : "farm_collected", {
     harvest,
+    biomassGain,
+    biomass: state.biomass,
     artifact: state.artifact
   });
   render();
@@ -1505,25 +1881,182 @@ function farmAction() {
 
   state.energy -= 1;
   if (!state.plantedAt) {
+    const zenBoosted = consumeZenBoost();
     state.growthDuration = Math.max(18_000, GROW_DURATION_MS - state.artifact * 1_500);
     state.growthDuration = Math.max(12_000, state.growthDuration - droneSpeedBonus());
+    if (zenBoosted) state.growthDuration = Math.max(9_000, Math.round(state.growthDuration * 0.78));
     state.plantedAt = Date.now();
     playTone("grow");
-    toast("Planted");
+    toast(zenBoosted ? "Planted · Zen boosted" : "Planted");
     trackAction("farm_grow_clicked", {
       growthDuration: state.growthDuration,
-      plantVariant: state.plantVariant
+      plantVariant: state.plantVariant,
+      zenBoosted,
+      zenEnergyLeft: zenEnergyBalance()
     });
   } else {
-    state.plantedAt -= BOOST_MS + state.artifact * 450 + safeDroneLevel() * 260;
+    const zenBoosted = consumeZenBoost();
+    const boostMs = BOOST_MS + state.artifact * 450 + safeDroneLevel() * 260 + (zenBoosted ? 2_200 : 0);
+    state.plantedAt -= boostMs;
     state.boostUntil = Date.now() + 2_800;
     playTone("boost");
-    toast("Boost");
+    toast(zenBoosted ? "Boost · Zen" : "Boost");
     trackAction("farm_boost_clicked", {
       progress: Math.round(progress),
-      boostMs: BOOST_MS + state.artifact * 450
+      boostMs,
+      zenBoosted,
+      zenEnergyLeft: zenEnergyBalance()
     });
   }
+  render();
+}
+
+function farmRewardTier() {
+  const roll = Math.random();
+  if (roll > 0.94) return { multiplier: 4, label: "Quantum", color: "#ffb800" };
+  if (roll > 0.77) return { multiplier: 1.8, label: "Enhanced", color: "#7effde" };
+  if (roll > 0.45) return { multiplier: 1, label: "Stable", color: "#74ffda" };
+  return { multiplier: 0.6, label: "Light", color: "#9aa8b8" };
+}
+
+function plantFarmSlot(index = state.activeSlot) {
+  ensureFarmModel();
+  if (!isSlotUnlocked(index) || index >= 4) {
+    toast(index === 3 ? "Unlock slot first" : "Slot locked");
+    return false;
+  }
+
+  const slot = farmSlotAt(index);
+  if (slot.strain) return false;
+  if (state.energy <= 0) {
+    toast("Need energy");
+    trackAction("farm_blocked_no_energy", { slot: index + 1, action: "plant" });
+    return false;
+  }
+
+  const strain = farmStrainById(defaultFarmStrainForSlot(index));
+  const zenBoosted = consumeZenBoost();
+  state.energy -= 1;
+  slot.strain = strain.id;
+  slot.plantedAt = Date.now();
+  slot.growthDuration = Math.max(
+    9_000,
+    Math.round((strain.durationMs - state.artifact * 1_200 - droneSpeedBonus()) * (zenBoosted ? 0.78 : 1))
+  );
+  slot.plantVariant = (state.plantVariant + strain.variantShift + index * 11 + state.artifact) % PLANT_VARIANTS.length;
+  slot.boostUntil = 0;
+  slot.readyNotified = false;
+  state.activeSlot = index;
+  syncLegacyFarmFromActiveSlot();
+  playTone("grow");
+  toast(zenBoosted ? `${strain.shortName} + Zen` : `${strain.shortName} planted`);
+  trackAction("farm_slot_planted", {
+    slot: index + 1,
+    strain: strain.id,
+    growthDuration: slot.growthDuration,
+    zenBoosted,
+    zenEnergyLeft: zenEnergyBalance()
+  });
+  return true;
+}
+
+function boostFarmSlot(index = state.activeSlot) {
+  ensureFarmModel();
+  const slot = farmSlotAt(index);
+  if (!slot?.strain || farmSlotReady(slot)) return false;
+  if (state.energy <= 0) {
+    toast("Need energy");
+    trackAction("farm_blocked_no_energy", { slot: index + 1, action: "boost" });
+    return false;
+  }
+
+  const zenBoosted = consumeZenBoost();
+  const boostMs = BOOST_MS + state.artifact * 450 + safeDroneLevel() * 260 + (zenBoosted ? 2_200 : 0);
+  state.energy -= 1;
+  slot.plantedAt -= boostMs;
+  slot.boostUntil = Date.now() + 2_800;
+  state.activeSlot = index;
+  syncLegacyFarmFromActiveSlot();
+  playTone("boost");
+  toast(zenBoosted ? "Boost + Zen" : "Boost");
+  trackAction("farm_slot_boosted", {
+    slot: index + 1,
+    strain: slot.strain,
+    progress: Math.round(farmSlotProgress(slot)),
+    boostMs,
+    zenBoosted,
+    zenEnergyLeft: zenEnergyBalance()
+  });
+  return true;
+}
+
+function collectHarvestV2(auto = false, index = state.activeSlot, shouldRender = true) {
+  ensureFarmModel();
+  const slot = farmSlotAt(index);
+  if (!farmSlotReady(slot)) return false;
+
+  const strain = farmStrainById(slot.strain) || FARM_STRAINS[0];
+  const tier = farmRewardTier();
+  const harvest = Math.round((strain.score + state.artifact * 4 + droneHarvestBonus()) * tier.multiplier);
+  const biomassGain = strain.biomass + farmBiomassGain(harvest);
+  const geneGain = strain.geneStrands;
+  state.score += harvest;
+  state.biomass = safeBiomass() + biomassGain;
+  state.resonance += state.artifact > 0 ? 1 : 0;
+  state.inventory = normalizeInventory(state.inventory);
+  state.inventory.geneStrands += geneGain;
+  state.inventory.harvests[strain.id] = Math.max(0, Math.floor(Number(state.inventory.harvests[strain.id]) || 0)) + 1;
+  slot.strain = null;
+  slot.plantedAt = 0;
+  slot.growthDuration = GROW_DURATION_MS;
+  slot.boostUntil = 0;
+  slot.readyNotified = false;
+  state.activeSlot = index;
+  state.plantVariant = (state.plantVariant + 1 + state.artifact + index) % PLANT_VARIANTS.length;
+  syncLegacyFarmFromActiveSlot();
+  playTone("collect");
+  toast(auto ? `Auto ${strain.shortName} +${harvest}` : `${tier.label} +${harvest} Bio +${biomassGain}`);
+  trackAction(auto ? "farm_auto_collected" : "farm_collected", {
+    slot: index + 1,
+    strain: strain.id,
+    harvest,
+    biomassGain,
+    geneGain,
+    rewardTier: tier.label,
+    biomass: state.biomass,
+    artifact: state.artifact
+  });
+  if (shouldRender) render();
+  return true;
+}
+
+function scheduleAutoCollectV2() {
+  if (!state.autoCollect || autoCollectTimer || !readyFarmSlots().length) return;
+  autoCollectTimer = window.setTimeout(() => {
+    autoCollectTimer = null;
+    const ready = readyFarmSlots();
+    if (!state.autoCollect || !ready.length) return;
+    ready.forEach((slot) => collectHarvestV2(true, slot.id, false));
+    render();
+  }, 700);
+}
+
+function farmActionV2() {
+  ensureFarmModel();
+  const slot = activeFarmSlot();
+  const progress = farmSlotProgress(slot);
+  if (farmSlotReady(slot)) {
+    collectHarvestV2(false, state.activeSlot);
+    return;
+  }
+
+  if (!slot?.strain) {
+    plantFarmSlot(state.activeSlot);
+    render();
+    return;
+  }
+
+  boostFarmSlot(state.activeSlot);
   render();
 }
 
@@ -1711,23 +2244,53 @@ function telegramPlatform() {
 }
 
 function synthArtifact() {
-  if (state.energy < 5) {
-    toast("Need 5 \u26a1");
-    trackAction("lab_blocked_no_energy", {
-      energy: state.energy,
-      cost: 5
+  const bioCost = labBiomassCost();
+  const energyCost = labEnergyCost();
+  const geneCost = labGeneCost();
+  const inventory = normalizeInventory(state.inventory);
+  if (safeBiomass() < bioCost) {
+    toast(`Need ${bioCost} bio`);
+    trackAction("lab_blocked_no_biomass", {
+      biomass: safeBiomass(),
+      cost: bioCost
     });
     return;
   }
-  state.energy -= 5;
+  if (inventory.geneStrands < geneCost) {
+    toast(`Need ${geneCost} GS`);
+    trackAction("lab_blocked_no_genes", {
+      geneStrands: inventory.geneStrands,
+      cost: geneCost
+    });
+    return;
+  }
+  if (state.energy < energyCost) {
+    toast(`Need ${energyCost} \u26a1`);
+    trackAction("lab_blocked_no_energy", {
+      energy: state.energy,
+      cost: energyCost
+    });
+    return;
+  }
+  const zenBoosted = consumeZenBoost();
+  state.energy -= energyCost;
+  state.biomass = safeBiomass() - bioCost;
+  state.inventory = inventory;
+  state.inventory.geneStrands -= geneCost;
   state.artifact += 1;
   state.plantVariant = (state.plantVariant + 7) % PLANT_VARIANTS.length;
-  state.score += 8;
+  state.score += zenBoosted ? 14 : 8;
+  state.resonance += zenBoosted ? 2 : 1;
+  state.zenGene = state.artifact % 3 === 0 ? "aura" : state.artifact % 2 === 0 ? "crystal" : "sprout";
   playTone("lab");
-  toast("Artifact +1");
+  toast(zenBoosted ? "Artifact +1 · Zen linked" : "Artifact +1");
   trackAction("lab_mutation_clicked", {
     artifact: state.artifact,
-    energyCost: 5
+    biomassCost: bioCost,
+    geneCost,
+    energyCost,
+    zenBoosted,
+    zenGene: state.zenGene
   });
   render();
 }
@@ -1830,7 +2393,7 @@ function closeSheets(exceptSelector = "") {
   });
 }
 
-$("#mainActionBtn")?.addEventListener("click", farmAction);
+$("#mainActionBtn")?.addEventListener("click", farmActionV2);
 $("#starsBtn")?.addEventListener("click", buyStarsEnergy);
 $("#autoCollectBtn")?.addEventListener("click", () => {
   state.autoCollect = !state.autoCollect;
@@ -1877,14 +2440,41 @@ $("#droneSkinGrid")?.addEventListener("click", (event) => {
   selectDroneSkin(skinButton.dataset.droneSkin);
 });
 $("#specimenGrid")?.addEventListener("click", (event) => {
-  const paidPod = event.target.closest('.paid-pod[data-buy-slot="stars"]');
-  if (!paidPod) return;
+  const pod = event.target.closest(".specimen-pod");
+  if (!pod) return;
+  const index = clamp(Math.floor(Number(pod.dataset.pod) || 0), 0, FARM_SLOT_COUNT - 1);
+  const paidPod = pod.closest('.paid-pod[data-buy-slot="stars"]');
+  if (paidPod) {
+    playTone("tap");
+    buyFarmSlot4();
+    trackAction("farm_slot_buy_clicked", {
+      slot: Number(paidPod.dataset.pod || 3) + 1,
+      stars: 10
+    });
+    return;
+  }
+
+  if (index >= 4 || !isSlotUnlocked(index)) {
+    playTone("tap");
+    toast("Slot locked");
+    return;
+  }
+
   playTone("tap");
-  buyFarmSlot4();
-  trackAction("farm_slot_buy_clicked", {
-    slot: Number(paidPod.dataset.pod || 3) + 1,
-    stars: 10
-  });
+  state.activeSlot = index;
+  const slot = farmSlotAt(index);
+  if (farmSlotReady(slot)) {
+    collectHarvestV2(false, index);
+    return;
+  }
+  if (!slot.strain) {
+    plantFarmSlot(index);
+    render();
+    return;
+  }
+  syncLegacyFarmFromActiveSlot();
+  toast(`Slot ${index + 1} selected`);
+  render();
 });
 $("#chamberPrevBtn")?.addEventListener("click", () => scrollSpecimenChambers(-1));
 $("#chamberNextBtn")?.addEventListener("click", () => scrollSpecimenChambers(1));

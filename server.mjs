@@ -26,6 +26,8 @@ const dataStoreRuntime = {
   lastSyncAt: null,
   fallbackActive: false
 };
+const farmSlotCount = 6;
+const farmStrainIds = new Set(["neon_basil", "cyber_rukola", "glitch_sunflower", "chroma_mint"]);
 const starsProducts = {
   energy_pack_10: {
     id: "energy_pack_10",
@@ -70,6 +72,8 @@ const contentTypes = {
   ".svg": "image/svg+xml"
 };
 const allowedDroneSkins = new Set(["bubbles", "smile", "aurora"]);
+const allowedZenSounds = new Set(["deep", "rain", "pulse"]);
+const allowedZenGenes = new Set(["sprout", "crystal", "aura"]);
 
 let db = await readDatabase();
 
@@ -191,7 +195,8 @@ async function handleApi(request, response, url) {
       clientId: body.clientId,
       user: auth.user,
       state: body.state,
-      verified: auth.verified
+      verified: auth.verified,
+      eventType: "player_sync"
     });
     const { player } = result;
     logPlayerProgress(result);
@@ -212,14 +217,15 @@ async function handleApi(request, response, url) {
       return sendJson(response, 401, { error: auth.error });
     }
 
+    const eventType = safeEventType(body.type);
     const result = upsertPlayer({
       clientId: body.clientId,
       user: auth.user,
       state: body.state,
-      verified: auth.verified
+      verified: auth.verified,
+      eventType
     });
     const { player } = result;
-    const eventType = safeEventType(body.type);
 
     logEvent(eventType, {
       kind: "player_action",
@@ -346,13 +352,15 @@ async function handleTelegramWebhook(request, response) {
   return sendJson(response, 200, { ok: true });
 }
 
-function upsertPlayer({ clientId, user, state, verified }) {
+function upsertPlayer({ clientId, user, state, verified, eventType = "player_sync" }) {
   const now = new Date().toISOString();
   const id = user?.id ? `tg:${user.id}` : `guest:${safeId(clientId)}`;
   const existing = db.players[id] || {};
   const isNew = !db.players[id];
   const score = safeNumber(state?.score);
   const energy = safeNumber(state?.energy);
+  const biomass = safeNumber(state?.biomass);
+  const inventory = mergeInventory(existing.inventory, state?.inventory);
   const resonance = safeNumber(state?.resonance);
   const sessions = safeNumber(state?.sessions);
   const artifact = safeNumber(state?.artifact);
@@ -367,6 +375,15 @@ function upsertPlayer({ clientId, user, state, verified }) {
     : safeDataModuleLevel(state.dataModuleLevel);
   const missions = mergeMissions(existing.missions, state?.missions);
   const unlockedSlots = mergeUnlockedSlots(existing.unlockedSlots, state?.unlockedSlots);
+  const farm = mergeFarmState(existing.farm, state?.farm, { eventType });
+  const lab = mergeLabState(existing.lab, state?.lab || {
+    uniqueMutations: state?.labUniqueMutations
+  });
+  const zen = mergeZenState(existing.zen, state?.zen || {
+    energy: state?.zenEnergy,
+    sound: state?.zenSound,
+    gene: state?.zenGene
+  });
   const name = displayName(user, existing.name || "Guest");
 
   const player = {
@@ -376,6 +393,8 @@ function upsertPlayer({ clientId, user, state, verified }) {
     name,
     score: Math.max(safeNumber(existing.score), score),
     energy,
+    biomass,
+    inventory,
     resonance,
     sessions,
     artifact,
@@ -384,6 +403,9 @@ function upsertPlayer({ clientId, user, state, verified }) {
     dataModuleLevel,
     missions,
     unlockedSlots,
+    farm,
+    lab,
+    zen,
     starsSpent: safeNumber(existing.starsSpent),
     purchases: safeNumber(existing.purchases),
     verified,
@@ -504,6 +526,12 @@ function handleSuccessfulPayment(message) {
     player.artifact = safeNumber(player.artifact) + safeNumber(product.reward.artifact);
     if (product.reward.slot !== undefined) {
       player.unlockedSlots = mergeUnlockedSlots(player.unlockedSlots, { [String(product.reward.slot)]: true });
+    }
+    if (product.reward.uniqueMutation !== undefined) {
+      player.lab = mergeLabState(player.lab, {
+        uniqueMutations: safeNumber(player.lab?.uniqueMutations) + safeNumber(product.reward.uniqueMutation),
+        rareUntil: Date.now() + 7_000
+      });
     }
     player.starsSpent = safeNumber(player.starsSpent) + product.stars;
     player.purchases = safeNumber(player.purchases) + 1;
@@ -746,6 +774,8 @@ async function adminOverview() {
       name: player.name,
       score: player.score,
       energy: player.energy,
+      biomass: safeNumber(player.biomass),
+      inventory: safeInventory(player.inventory),
       resonance: player.resonance,
       sessions: player.sessions,
       artifact: player.artifact,
@@ -1060,6 +1090,150 @@ function safeUnlockedSlots(value) {
   return slots;
 }
 
+function safeBoolean(value) {
+  return value === true;
+}
+
+function safeTimestamp(value) {
+  const time = Number(value);
+  if (!Number.isFinite(time) || time <= 0) return 0;
+  return Math.min(Math.round(time), Date.now() + 86_400_000);
+}
+
+function safeDuration(value, fallback, min, max) {
+  const duration = safeNumber(value) || fallback;
+  return Math.min(max, Math.max(min, duration));
+}
+
+function safePlantVariant(value) {
+  return Math.min(200, Math.max(0, safeNumber(value)));
+}
+
+function safeInventory(value) {
+  return {
+    geneStrands: safeNumber(value?.geneStrands),
+    quantumNutrients: safeNumber(value?.quantumNutrients),
+    harvests: value?.harvests && typeof value.harvests === "object" ? { ...value.harvests } : {},
+    strains: value?.strains && typeof value.strains === "object" ? { ...value.strains } : {}
+  };
+}
+
+function mergeInventory(existing, incoming) {
+  const current = safeInventory(existing);
+  const next = safeInventory(incoming);
+  return {
+    geneStrands: Math.max(current.geneStrands, next.geneStrands),
+    quantumNutrients: Math.max(current.quantumNutrients, next.quantumNutrients),
+    harvests: { ...current.harvests, ...next.harvests },
+    strains: { ...current.strains, ...next.strains }
+  };
+}
+
+function safeFarmSlot(value, index = 0) {
+  const strain = farmStrainIds.has(value?.strain) ? value.strain : null;
+  return {
+    id: index,
+    strain,
+    plantedAt: strain ? safeTimestamp(value?.plantedAt) : 0,
+    growthDuration: safeDuration(value?.growthDuration, 32_000, 8_000, 86_400_000),
+    plantVariant: safePlantVariant(value?.plantVariant),
+    boostUntil: safeTimestamp(value?.boostUntil),
+    readyNotified: safeBoolean(value?.readyNotified)
+  };
+}
+
+function safeFarmSlots(value) {
+  const source = Array.isArray(value) ? value : [];
+  return Array.from({ length: farmSlotCount }, (_, index) => safeFarmSlot(source[index], index));
+}
+
+function safeFarmState(value) {
+  const plantedAt = safeTimestamp(value?.plantedAt);
+  return {
+    plantedAt,
+    growthDuration: safeDuration(value?.growthDuration, 32_000, 8_000, 86_400_000),
+    plantVariant: safePlantVariant(value?.plantVariant),
+    boostUntil: safeTimestamp(value?.boostUntil),
+    autoCollect: safeBoolean(value?.autoCollect),
+    activeSlot: Math.min(farmSlotCount - 1, Math.max(0, safeNumber(value?.activeSlot))),
+    slots: safeFarmSlots(value?.slots)
+  };
+}
+
+function mergeFarmState(existing, incoming, context = {}) {
+  const current = safeFarmState(existing);
+  const next = safeFarmState(incoming);
+  const collected = context.eventType === "farm_collected" || context.eventType === "farm_auto_collected";
+  const startedOrBoosted = ["farm_grow_clicked", "farm_boost_clicked", "farm_slot_planted", "farm_slot_boosted"].includes(context.eventType);
+
+  if (collected) {
+    return {
+      ...next,
+      plantedAt: 0,
+      boostUntil: 0
+    };
+  }
+
+  if (next.plantedAt || startedOrBoosted) return next;
+
+  if (current.plantedAt) {
+    return {
+      ...current,
+      autoCollect: next.autoCollect
+    };
+  }
+
+  return next;
+}
+
+function safeLabState(value) {
+  return {
+    uniqueMutations: Math.min(9999, safeNumber(value?.uniqueMutations)),
+    rareUntil: safeTimestamp(value?.rareUntil)
+  };
+}
+
+function mergeLabState(existing, incoming) {
+  const current = safeLabState(existing);
+  const next = safeLabState(incoming);
+  return {
+    uniqueMutations: Math.max(current.uniqueMutations, next.uniqueMutations),
+    rareUntil: Math.max(current.rareUntil, next.rareUntil)
+  };
+}
+
+function safeZenSound(value) {
+  const sound = String(value || "deep").toLowerCase();
+  return allowedZenSounds.has(sound) ? sound : "deep";
+}
+
+function safeZenGene(value) {
+  const gene = String(value || "sprout").toLowerCase();
+  return allowedZenGenes.has(gene) ? gene : "sprout";
+}
+
+function safeZenState(value) {
+  return {
+    energy: Math.min(999999, safeNumber(value?.energy)),
+    duration: safeDuration(value?.duration, 60_000, 30_000, 600_000),
+    sound: safeZenSound(value?.sound),
+    gene: safeZenGene(value?.gene),
+    attentionHits: Math.min(999999, safeNumber(value?.attentionHits))
+  };
+}
+
+function mergeZenState(existing, incoming) {
+  const current = safeZenState(existing);
+  const next = safeZenState(incoming);
+  return {
+    energy: Math.max(current.energy, next.energy),
+    duration: next.duration || current.duration,
+    sound: next.sound,
+    gene: next.gene,
+    attentionHits: Math.max(current.attentionHits, next.attentionHits)
+  };
+}
+
 function mergeUnlockedSlots(existing, incoming) {
   return {
     ...safeUnlockedSlots(existing),
@@ -1081,6 +1255,8 @@ function safeStateSummary(state) {
   return {
     score: safeNumber(state?.score),
     energy: safeNumber(state?.energy),
+    biomass: safeNumber(state?.biomass),
+    inventory: safeInventory(state?.inventory),
     resonance: safeNumber(state?.resonance),
     sessions: safeNumber(state?.sessions),
     artifact: safeNumber(state?.artifact),
@@ -1088,6 +1264,14 @@ function safeStateSummary(state) {
     droneSkin: safeDroneSkin(state?.droneSkin),
     dataModuleLevel: safeDataModuleLevel(state?.dataModuleLevel),
     unlockedSlots: safeUnlockedSlots(state?.unlockedSlots),
+    farm: safeFarmState(state?.farm),
+    lab: safeLabState(state?.lab || { uniqueMutations: state?.labUniqueMutations }),
+    zen: safeZenState(state?.zen || {
+      energy: state?.zenEnergy,
+      duration: state?.zenDuration,
+      sound: state?.zenSound,
+      gene: state?.zenGene
+    }),
     missionsClaimed: Object.keys(missions.claimed).length
   };
 }
@@ -1306,6 +1490,8 @@ function playerToRow(player) {
     state: {
       score: safeNumber(player.score),
       energy: safeNumber(player.energy),
+      biomass: safeNumber(player.biomass),
+      inventory: safeInventory(player.inventory),
       resonance: safeNumber(player.resonance),
       sessions: safeNumber(player.sessions),
       artifact: safeNumber(player.artifact),
@@ -1313,6 +1499,9 @@ function playerToRow(player) {
       droneSkin: safeDroneSkin(player.droneSkin),
       dataModuleLevel: safeDataModuleLevel(player.dataModuleLevel),
       unlockedSlots: safeUnlockedSlots(player.unlockedSlots),
+      farm: safeFarmState(player.farm),
+      lab: safeLabState(player.lab),
+      zen: safeZenState(player.zen),
       missions: safeMissions(player.missions)
     },
     created_at: player.createdAt || new Date().toISOString(),
@@ -1328,6 +1517,8 @@ function playerFromRow(row) {
     name: row.name || "Guest",
     score: safeNumber(row.score),
     energy: safeNumber(row.energy),
+    biomass: safeNumber(row.state?.biomass),
+    inventory: safeInventory(row.state?.inventory),
     resonance: safeNumber(row.resonance),
     sessions: safeNumber(row.sessions),
     artifact: safeNumber(row.artifact),
@@ -1335,6 +1526,9 @@ function playerFromRow(row) {
     droneSkin: safeDroneSkin(row.state?.droneSkin),
     dataModuleLevel: safeDataModuleLevel(row.state?.dataModuleLevel),
     unlockedSlots: safeUnlockedSlots(row.state?.unlockedSlots),
+    farm: safeFarmState(row.state?.farm),
+    lab: safeLabState(row.state?.lab),
+    zen: safeZenState(row.state?.zen),
     missions: safeMissions(row.state?.missions),
     starsSpent: safeNumber(row.stars_spent),
     purchases: safeNumber(row.purchases),
