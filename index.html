@@ -5,9 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#06110f">
     <title>Green Farm Tycoon</title>
-    <link rel="stylesheet" href="styles.css?v=62">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Exo+2:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css?v=104">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="app.js?v=48" defer></script>
+    <script src="game-core/config.js?v=4" defer></script>
+    <script src="game-core/state.js?v=4" defer></script>
+    <script src="app.js?v=71" defer></script>
   </head>
   <body>
     <main class="app room-farm" aria-label="Green Farm Tycoon MVP">
@@ -46,14 +51,20 @@
       </section>
 
       <section class="resource-row" aria-label="Resources">
-        <div class="resource leaf-resource" aria-label="Croclis coin balance">
+        <div class="resource leaf-resource main-resource" aria-label="Main farm balance">
           <span class="croclis-coin-icon" aria-hidden="true">
             <img src="assets/croclis-token-mark.png" alt="">
           </span>
           <strong id="scoreValue">0</strong>
         </div>
-        <div class="resource water"><span>◌</span><strong id="energyValue">10</strong></div>
-        <div class="resource power"><span>⚡</span><strong id="resonanceValue">0</strong></div>
+        <div class="resource crc-resource" aria-label="CRC balance">
+          <span class="crc-coin-icon" aria-hidden="true">
+            <i></i>
+          </span>
+          <strong id="energyValue">10</strong>
+          <b>CRC</b>
+        </div>
+        <div class="resource power"><span>⚡</span><strong id="resonanceValue">0</strong><b>ZEN</b></div>
       </section>
 
       <aside class="process-rail" aria-label="Process status">
@@ -62,11 +73,70 @@
         <i id="processPulse" aria-hidden="true"></i>
       </aside>
 
-      <section class="room active" id="farmRoom" aria-label="Farm room">
+      <section class="room active exact-donor-mode" id="farmRoom" aria-label="Farm room">
         <div class="room-title">
           <span>Farm</span>
           <strong id="plantStage">Seed</strong>
         </div>
+
+        <div class="farm-donor-screen" aria-label="Donor-style farm interface">
+          <div class="donor-capsule-stage" aria-label="Capsule stage">
+            <button class="capsule-drone donor-side-drone" id="donorDroneBtn" type="button" aria-label="Open drone upgrades">
+              <span class="drone-orbit" aria-hidden="true"></span>
+              <span class="drone-scan" aria-hidden="true"></span>
+              <span class="drone-antenna" aria-hidden="true"></span>
+              <span class="drone-wing left" aria-hidden="true"></span>
+              <span class="drone-body">
+                <i></i>
+                <em></em>
+                <b id="donorDroneLevelBadge">L1</b>
+              </span>
+              <span class="drone-wing right" aria-hidden="true"></span>
+              <span class="drone-arm left" aria-hidden="true"></span>
+              <span class="drone-arm right" aria-hidden="true"></span>
+              <span class="drone-node node-a" aria-hidden="true"></span>
+              <span class="drone-node node-b" aria-hidden="true"></span>
+              <span class="drone-tail" aria-hidden="true"></span>
+            </button>
+            <section class="donor-capsule-shell" aria-label="Farm capsule">
+              <div class="donor-capsule-lid">
+                <span class="donor-capsule-id">
+                  <span class="donor-capsule-emblem" id="donorCapsuleEmblem" aria-hidden="true"></span>
+                  <span class="donor-capsule-mark" id="donorCapsuleMark">Capsule 01</span>
+                </span>
+                <button class="donor-capsule-upgrade" id="donorCapsuleUpgradeBtn" type="button">Upgrade</button>
+              </div>
+              <div class="donor-capsule-body">
+                <div class="farm-grid" id="farm-grid"></div>
+              </div>
+              <div class="donor-capsule-controls" aria-label="Capsule navigation">
+                <button class="donor-capsule-arrow" id="donorCapsulePrevBtn" type="button" aria-label="Previous capsule">‹</button>
+                <div class="donor-capsule-dots" id="donorCapsuleDots" aria-hidden="true"></div>
+                <button class="donor-capsule-arrow" id="donorCapsuleNextBtn" type="button" aria-label="Next capsule">›</button>
+              </div>
+            </section>
+            <div class="donor-side-tools" aria-label="Capsule tools">
+              <div class="qa-row">
+                <button class="qa qa-auto" id="donorAutoHarvestBtn" type="button"><span class="qa-ic">↻</span><span class="qa-lb">Auto</span></button>
+                <button class="qa qa-boost" id="donorBoostBtn" type="button"><span class="qa-ic">ϟ</span><span class="qa-lb">Boost</span></button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <section class="farm-reference-panel" aria-label="Selected plant details">
+          <div class="farm-reference-main">
+            <span id="farmSelectedTier">Common strain</span>
+            <strong id="farmSelectedPlant">NEON BASIL</strong>
+            <b id="farmSelectedStatus">Choose plant</b>
+          </div>
+          <div class="farm-reference-stats">
+            <span><b id="farmSelectedReward">+22</b><small>gain</small></span>
+            <span><b id="farmSelectedGene">+0 GS</b><small>genes</small></span>
+            <span><b id="farmSelectedCost">10 CRC</b><small>cost</small></span>
+            <span><b id="farmSelectedTimer">05:00</b><small>time</small></span>
+          </div>
+        </section>
 
         <section class="capsule" id="plantCapsule" aria-label="Growth capsule">
           <div class="capsule-dome" aria-hidden="true"></div>
@@ -146,6 +216,7 @@
                 <i class="pod-core"></i>
               </span>
               <span class="pod-artifact"><i>◇</i><b id="podArtifact0">12%</b></span>
+              <span class="pod-state" id="podState0">Selected</span>
               <span class="pod-id" id="podId0">001</span>
             </button>
             <button class="specimen-pod empty-pod locked-pod" data-pod="1" aria-label="Locked plant chamber 2">
@@ -156,6 +227,7 @@
                 <i class="pod-core"></i>
               </span>
               <span class="pod-artifact"><i>◇</i><b id="podArtifact1">15%</b></span>
+              <span class="pod-state" id="podState1">Locked</span>
               <span class="pod-id" id="podId1">014</span>
             </button>
             <button class="specimen-pod empty-pod locked-pod" data-pod="2" aria-label="Locked plant chamber 3">
@@ -166,6 +238,7 @@
                 <i class="pod-core"></i>
               </span>
               <span class="pod-artifact"><i>◇</i><b id="podArtifact2">18%</b></span>
+              <span class="pod-state" id="podState2">Locked</span>
               <span class="pod-id" id="podId2">027</span>
             </button>
             <button class="specimen-pod empty-pod paid-pod" data-pod="3" data-buy-slot="stars" aria-label="Buy plant chamber 4 for 10 Stars">
@@ -176,6 +249,7 @@
                 <i class="pod-core"></i>
               </span>
               <span class="pod-artifact"><i>◇</i><b id="podArtifact3">21%</b></span>
+              <span class="pod-state" id="podState3">Buy slot</span>
               <span class="pod-buy-cta" aria-hidden="true"><b>START</b><i>★ 10</i></span>
               <span class="pod-id" id="podId3">040</span>
             </button>
@@ -187,6 +261,7 @@
                 <i class="pod-core"></i>
               </span>
               <span class="pod-artifact"><i>◇</i><b id="podArtifact4">★</b></span>
+              <span class="pod-state" id="podState4">Soon</span>
               <span class="pod-buy-cta" aria-hidden="true"><b>CORE</b><i>SOON</i></span>
               <span class="pod-id" id="podId4">NEXT</span>
             </button>
@@ -198,6 +273,7 @@
                 <i class="pod-core"></i>
               </span>
               <span class="pod-artifact"><i>◇</i><b id="podArtifact5">★</b></span>
+              <span class="pod-state" id="podState5">Soon</span>
               <span class="pod-buy-cta" aria-hidden="true"><b>ZEN</b><i>SOON</i></span>
               <span class="pod-id" id="podId5">NEXT</span>
             </button>
@@ -276,6 +352,7 @@
             <i><b id="fusionProgressBar"></b></i>
             <em id="fusionDnaA">DNA A: Neon Lettuce</em>
             <em id="fusionDnaB">DNA B: Crystal Sprout</em>
+            <div class="lab-harvest-strip" id="labHarvestStrip" aria-label="Lab harvest materials"></div>
           </div>
 
           <div class="mutation-capsule" id="mutationCapsule" aria-hidden="true">
@@ -403,7 +480,7 @@
           <div class="zen-metrics" aria-label="Zen session metrics">
             <span><b id="zenDepthValue">0</b><small>Depth</small></span>
             <span><b id="zenFlowValue">Quiet</b><small>Flow</small></span>
-            <span><b id="zenRewardValue">+3</b><small>Zen</small></span>
+            <span><b id="zenRewardValue">+60</b><small>CRC</small></span>
           </div>
         </section>
       </section>
@@ -425,6 +502,10 @@
               <small>energy</small>
             </div>
           </header>
+          <section class="tasks-daily-block" aria-label="Daily missions">
+            <div class="tasks-daily-title">Daily Missions</div>
+            <div id="donorMissionsList"></div>
+          </section>
           <div class="missions-progress">
             <span id="missionsProgress"></span>
             <b id="missionsClaimed">0/4</b>
@@ -433,11 +514,52 @@
         </section>
       </section>
 
+      <section class="room" id="shopRoom" aria-label="Shop room">
+        <div class="room-title"><span>Shop</span><strong>Stars</strong></div>
+        <section class="shop-space" aria-label="Shop offers">
+          <div class="shop-orbit" aria-hidden="true">
+            <i></i><i></i><i></i>
+          </div>
+          <header class="shop-header">
+            <div>
+              <span>Star Market</span>
+              <strong>Capsule upgrades</strong>
+              <small>Buy paid slots and future premium farm modules from one room.</small>
+            </div>
+            <div class="shop-core">
+              <b>★</b>
+              <small>Stars</small>
+            </div>
+          </header>
+          <div class="shop-grid">
+            <button class="shop-card featured" id="shopFarmSlotBtn" type="button">
+              <span>Farm slot</span>
+              <strong>Open chamber 04</strong>
+              <small>Add one premium slot inside the first capsule.</small>
+              <b>★ 10</b>
+            </button>
+            <button class="shop-card" id="shopMutationBtn" type="button">
+              <span>Lab core</span>
+              <strong>Unique mutation</strong>
+              <small>Create a rare mutation core for the lab.</small>
+              <b>★ 10</b>
+            </button>
+            <div class="shop-card muted">
+              <span>Drone skin</span>
+              <strong>Premium shells</strong>
+              <small>Visual drone skins will live here later.</small>
+              <b>Soon</b>
+            </div>
+          </div>
+        </section>
+      </section>
+
       <nav class="nav" aria-label="Rooms">
         <button class="nav-item active" data-room="farm"><span>🌿</span><b>Farm</b></button>
         <button class="nav-item" data-room="lab"><span>⚗</span><b>Lab</b></button>
         <button class="nav-item" data-room="zen"><span>◎</span><b>Zen</b></button>
         <button class="nav-item" data-room="missions"><span>✦</span><b>Tasks</b></button>
+        <button class="nav-item nav-shop" data-room="shop" id="bottomShopBtn" type="button"><span>✦</span><b>Shop</b></button>
       </nav>
 
       <section class="control-sheet league-sheet" id="leagueSheet" hidden aria-label="Player league">
@@ -542,26 +664,26 @@
           </section>
           <button class="drone-upgrade-btn" id="droneUpgradeBtn" type="button">
             <span id="droneUpgradeText">Upgrade</span>
-            <b id="droneCostValue">56 score · 5 energy</b>
+            <b id="droneCostValue">56 CRC · 5 energy</b>
           </button>
         </div>
       </section>
 
-      <section class="control-sheet data-module-sheet" id="dataModuleSheet" hidden aria-label="Digital module upgrades">
+      <section class="control-sheet data-module-sheet" id="dataModuleSheet" hidden aria-label="Capsule upgrades">
         <button class="sheet-backdrop" type="button" data-close-sheet aria-label="Close digital module"></button>
         <div class="sheet-panel compact">
           <header class="sheet-header">
             <div>
-              <span>Digital core</span>
-              <strong id="dataModuleSheetLevel">Level 1</strong>
+              <span>Capsule upgrade</span>
+              <strong id="dataModuleSheetLevel">Capsule level 1</strong>
             </div>
             <button class="sheet-close" type="button" data-close-sheet aria-label="Close">×</button>
           </header>
           <div class="data-module-preview">
             <span class="data-core mini" aria-hidden="true"><i></i><i></i><i></i></span>
             <div>
-              <strong>Capsule intelligence</strong>
-              <small>Drone uploads scan data here when it reaches the top lid.</small>
+              <strong>Whole capsule systems</strong>
+              <small>Upgrade the lid and global capsule systems for every slot inside.</small>
             </div>
           </div>
           <div class="drone-stats data-module-stats">
@@ -570,11 +692,50 @@
             <span><b id="dataMemoryValue">12</b><small>memory</small></span>
           </div>
           <button class="drone-upgrade-btn" id="dataModuleUpgradeBtn" type="button">
-            <span id="dataModuleUpgradeText">Upgrade core</span>
-            <b id="dataModuleCostValue">70 score · 2 zen</b>
+            <span id="dataModuleUpgradeText">Upgrade capsule</span>
+            <b id="dataModuleCostValue">70 CRC · 2 ZEN</b>
           </button>
         </div>
       </section>
+
+      <section class="control-sheet farm-plant-sheet" id="farmPlantSheet" hidden aria-label="Choose plant strain">
+        <button class="sheet-backdrop" type="button" data-close-sheet aria-label="Close plant chooser"></button>
+        <div class="sheet-panel">
+          <header class="sheet-header">
+            <div>
+              <span>Plant chamber</span>
+              <strong id="farmPlantSheetTitle">Slot 1</strong>
+            </div>
+            <small id="farmPlantSheetHint">Choose strain</small>
+            <button class="sheet-close" type="button" data-close-sheet aria-label="Close">×</button>
+          </header>
+          <div class="farm-plant-summary">
+            <strong id="farmPlantSelectionName">Neon Basil</strong>
+            <span id="farmPlantSelectionMeta">Common · 30s grow · +22</span>
+            <b id="farmPlantSelectionBonus">+0 gene strands</b>
+          </div>
+          <div class="farm-strain-grid" id="farmStrainGrid" aria-label="Available plant strains"></div>
+          <div class="farm-plant-actions">
+            <button class="btn-cancel plant-cancel" type="button" data-close-sheet>Cancel</button>
+            <button class="btn-ok plant-confirm" id="farmPlantConfirmBtn" type="button">Plant strain</button>
+          </div>
+        </div>
+      </section>
+
+      <div class="modal-bg donor-modal-bg" id="donorFarmModal" hidden>
+        <div class="modal donor-modal">
+          <div class="modal-h">
+            <span>Plant capsule</span>
+            <strong>Slot <b id="modal-sn">1</b></strong>
+            <small>Tap to preview · double tap to plant</small>
+          </div>
+          <div class="seed-grid" id="seed-grid"></div>
+          <div class="m-acts">
+            <button class="btn-cancel" id="donorFarmCancelBtn" type="button">Cancel</button>
+            <button class="btn-ok" id="donorFarmConfirmBtn" type="button">Plant</button>
+          </div>
+        </div>
+      </div>
     </main>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>

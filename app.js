@@ -8,199 +8,177 @@ if ("scrollRestoration" in window.history) {
 
 window.addEventListener("load", () => window.scrollTo({ top: 0, left: 0 }));
 
-const GROW_DURATION_MS = 30_000;
-const BOOST_MS = 4_500;
-const ZEN_DEFAULT_DURATION_MS = 60_000;
-const ZEN_DURATION_OPTIONS = [60_000, 120_000, 180_000];
-const ZEN_SOUND_OPTIONS = ["deep", "rain", "pulse"];
-const ZEN_GENE_OPTIONS = ["sprout", "crystal", "aura"];
-const ZEN_DNA_WINDOW_MS = 9_000;
-const ZEN_DNA_SHOW_START_MS = 900;
-const ZEN_DNA_SHOW_END_MS = 7_600;
-const ZEN_SOUND_PRESETS = {
-  deep: { master: 0.105, filter: 330, lfo: 0.045, lfoGain: 76, a: 87.31, b: 130.81, shimmer: 261.63, air: 680, airGain: 0.038 },
-  rain: { master: 0.095, filter: 420, lfo: 0.03, lfoGain: 54, a: 73.42, b: 110, shimmer: 196, air: 1180, airGain: 0.075 },
-  pulse: { master: 0.11, filter: 510, lfo: 0.075, lfoGain: 96, a: 98, b: 146.83, shimmer: 293.66, air: 860, airGain: 0.044 }
-};
-const BREATH_LOOP_MS = 12_000;
-const MISSION_WAIT_MS = 10_000;
-const MISSIONS = [
-  {
-    id: "telegram_channel",
-    type: "telegram",
-    title: "Green Channel",
-    label: "Join",
-    url: "https://t.me/Qwanttarium_bot",
-    reward: { energy: 25 },
-    note: "Starter energy"
-  },
-  {
-    id: "youtube_signal",
-    type: "youtube",
-    title: "YouTube Signal",
-    label: "Open",
-    url: "https://www.youtube.com/",
-    reward: { energy: 15 },
-    note: "Watch path"
-  },
-  {
-    id: "instagram_growth",
-    type: "instagram",
-    title: "Instagram Growth",
-    label: "Open",
-    url: "https://www.instagram.com/",
-    reward: { energy: 15 },
-    note: "Social pulse"
-  },
-  {
-    id: "tiktok_pulse",
-    type: "tiktok",
-    title: "TikTok Pulse",
-    label: "Open",
-    url: "https://www.tiktok.com/",
-    reward: { energy: 15 },
-    note: "Viral sprout"
-  }
-];
-const PLANT_VARIANTS = Array.from({ length: 100 }, (_, index) => {
-  const seed = index + 1;
-  return {
-    id: index,
-    leafHue: 82 + ((seed * 37) % 66),
-    stemHue: 92 + ((seed * 19) % 48),
-    accentHue: 166 + ((seed * 29) % 82),
-    coreHue: 52 + ((seed * 11) % 54),
-    branchSpread: 0.78 + (((seed * 17) % 46) / 100),
-    leafScale: 0.68 + (((seed * 13) % 36) / 100),
-    filamentSpeed: 0.82 + (((seed * 23) % 44) / 100)
-  };
-});
-
-const FARM_SLOT_COUNT = 6;
-const FARM_STRAINS = [
-  {
-    id: "neon_basil",
-    name: "NEON BASIL",
-    shortName: "BASIL",
-    type: "common",
-    durationMs: 30_000,
-    score: 22,
-    biomass: 3,
-    geneStrands: 0,
-    variantShift: 0
-  },
-  {
-    id: "cyber_rukola",
-    name: "CYBER RUKOLA",
-    shortName: "RUKOLA",
-    type: "common",
-    durationMs: 42_000,
-    score: 34,
-    biomass: 4,
-    geneStrands: 1,
-    variantShift: 13
-  },
-  {
-    id: "glitch_sunflower",
-    name: "GLITCH SUNFLR",
-    shortName: "SUNFLR",
-    type: "common",
-    durationMs: 58_000,
-    score: 48,
-    biomass: 6,
-    geneStrands: 2,
-    variantShift: 29
-  },
-  {
-    id: "chroma_mint",
-    name: "CHROMA MINT",
-    shortName: "CHROMA",
-    type: "rare",
-    durationMs: 72_000,
-    score: 86,
-    biomass: 9,
-    geneStrands: 0,
-    variantShift: 47
-  }
-];
-const FARM_STRAIN_IDS = FARM_STRAINS.map((strain) => strain.id);
-
-const DRONE_SKINS = [
-  {
-    id: "bubbles",
-    name: "Bubbles",
-    tag: "Base",
-    route: "Owned",
-    note: "Soft balloon shell with a calm floating service pulse.",
-    effect: "Air float"
-  },
-  {
-    id: "smile",
-    name: "Smile",
-    tag: "Fun reward",
-    route: "Tasks",
-    note: "Friendly face shell for a warmer farm-control feeling.",
-    effect: "Mood glow"
-  },
-  {
-    id: "aurora",
-    name: "Aurora Core",
-    tag: "Stars rare",
-    route: "Stars",
-    note: "Premium prism shell for rare drops and future paid skins.",
-    effect: "Prism aura"
-  }
-];
-
-const defaultState = {
-  score: 0,
-  energy: 10,
-  biomass: 0,
-  inventory: {
-    geneStrands: 0,
-    quantumNutrients: 0,
-    harvests: {},
-    strains: {}
-  },
-  resonance: 0,
-  growth: 0,
-  plantedAt: 0,
-  growthDuration: GROW_DURATION_MS,
-  boostUntil: 0,
-  artifact: 0,
-  activeSlot: 0,
-  farmSlots: [],
-  labUniqueMutations: 0,
-  labRareUntil: 0,
-  sessions: 0,
-  plantVariant: 0,
-  autoCollect: false,
-  mutationAuto: false,
-  zenDuration: ZEN_DEFAULT_DURATION_MS,
-  zenStartedAt: 0,
-  zenPausedAt: 0,
-  zenElapsed: 0,
-  zenSound: "deep",
-  zenGene: "sprout",
-  zenEnergy: 0,
-  zenSessionDna: 0,
-  zenDnaClaims: {},
-  soundOn: true,
-  soundVolume: 70,
-  vibrationOn: true,
-  vibrationLevel: 60,
-  playerName: "You",
-  droneLevel: 1,
-  droneSkin: "bubbles",
-  dataModuleLevel: 1,
-  unlockedSlots: { "0": true, "1": true, "2": true },
-  missions: {
-    opened: {},
-    claimed: {}
-  }
-};
+const { config: coreConfig = {}, state: coreState = {} } = window.CyberGreenCore || {};
+const {
+  GROW_DURATION_MS,
+  BOOST_MS,
+  ZEN_DEFAULT_DURATION_MS,
+  ZEN_DURATION_OPTIONS,
+  ZEN_GENE_OPTIONS,
+  ZEN_DNA_WINDOW_MS,
+  ZEN_DNA_SHOW_START_MS,
+  ZEN_DNA_SHOW_END_MS,
+  ZEN_SOUND_PRESETS,
+  BREATH_LOOP_MS,
+  MISSION_WAIT_MS,
+  MISSIONS,
+  PLANT_VARIANTS,
+  FARM_SLOT_COUNT,
+  FARM_STRAINS,
+  LAB_RECIPES,
+  DRONE_SKINS
+} = coreConfig;
+const { createInitialState, normalizeState, normalizeInventory, normalizeMissionState, normalizeFarmSlots, farmStrainById, defaultFarmStrainForSlot } = coreState;
+const normalizeZenSound = (value = state.zenSound) => coreState.normalizeZenSound(value);
+const normalizeZenGene = (value = state.zenGene) => coreState.normalizeZenGene(value);
+const safeDroneLevel = (value = state.droneLevel) => coreState.safeDroneLevel(value);
+const droneSkinById = (value = state.droneSkin) => coreState.droneSkinById(value);
+const normalizeDroneSkin = (value = state.droneSkin) => coreState.normalizeDroneSkin(value);
+const safeDataModuleLevel = (value = state.dataModuleLevel) => coreState.safeDataModuleLevel(value);
+const normalizeUnlockedSlots = (value = state.unlockedSlots) => coreState.normalizeUnlockedSlots(value);
+const EXACT_DONOR_MODE = true;
+const SINGLE_CAPSULE_MODE = false;
+const DONOR_RING_CIRCUMFERENCE = 251;
+const DONOR_CAPSULE_COUNT = 3;
 
 let state = loadState();
+let farmPlantingSlot = null;
+let farmPlantingStrain = null;
+let activeDonorCapsule = 0;
+let donorCapsuleSwipe = null;
+let donorCapsuleSwipeHandled = false;
+let plantDoubleTap = { source: "", strain: "", at: 0 };
+
+const DONOR_ICONS = {
+  basil: (c, s = 44) => `<svg viewBox="0 0 40 ${s}" width="40" height="${s}" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <line x1="20" y1="${s - 2}" x2="20" y2="10" stroke="${c}" stroke-width="2.5" stroke-linecap="round"/>
+    <circle cx="20" cy="24" r="2.5" fill="${c}"/>
+    <circle cx="20" cy="16" r="1.5" fill="${c}" opacity=".5"/>
+    <line x1="7" y1="${s - 4}" x2="4" y2="${s + 2}" stroke="${c}" stroke-width="1" opacity=".3"/>
+    <line x1="33" y1="${s - 4}" x2="36" y2="${s + 2}" stroke="${c}" stroke-width="1" opacity=".3"/>
+    <path d="M20,22 L6,12 L10,7 L20,22" fill="${c}" opacity=".72"/>
+    <path d="M20,22 L34,12 L30,7 L20,22" fill="${c}" opacity=".72"/>
+    <path d="M20,10 L14,4 L20,1 L26,4Z" fill="${c}" opacity=".9"/>
+    <circle cx="8" cy="10" r="1.5" fill="${c}" opacity=".45"/>
+    <circle cx="32" cy="10" r="1.5" fill="${c}" opacity=".45"/>
+    <line x1="8" y1="9" x2="4" y2="6" stroke="${c}" stroke-width=".8" opacity=".3"/>
+    <line x1="32" y1="9" x2="36" y2="6" stroke="${c}" stroke-width=".8" opacity=".3"/>
+  </svg>`,
+  rukola: (c, s = 44) => `<svg viewBox="0 0 40 ${s}" width="40" height="${s}" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <line x1="20" y1="${s - 2}" x2="20" y2="20" stroke="${c}" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="20" y1="20" x2="10" y2="8" stroke="${c}" stroke-width="2" stroke-linecap="round"/>
+    <line x1="20" y1="20" x2="30" y2="8" stroke="${c}" stroke-width="2" stroke-linecap="round"/>
+    <line x1="20" y1="20" x2="20" y2="6" stroke="${c}" stroke-width="2" stroke-linecap="round"/>
+    <ellipse cx="10" cy="6" rx="5" ry="3.5" fill="${c}" transform="rotate(-20,10,6)" opacity=".8"/>
+    <ellipse cx="30" cy="6" rx="5" ry="3.5" fill="${c}" transform="rotate(20,30,6)" opacity=".8"/>
+    <ellipse cx="20" cy="4" rx="4.5" ry="3" fill="${c}" opacity=".9"/>
+    <circle cx="20" cy="20" r="2" fill="${c}"/>
+    <circle cx="10" cy="8" r="1.5" fill="${c}" opacity=".5"/>
+    <circle cx="30" cy="8" r="1.5" fill="${c}" opacity=".5"/>
+    <line x1="5" y1="3" x2="8" y2="5" stroke="${c}" stroke-width=".8" opacity=".4"/>
+    <line x1="35" y1="3" x2="32" y2="5" stroke="${c}" stroke-width=".8" opacity=".4"/>
+  </svg>`,
+  sunflower: (c, s = 52) => `<svg viewBox="0 0 40 ${s}" width="40" height="${s}" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <line x1="20" y1="${s - 2}" x2="20" y2="22" stroke="${c}" stroke-width="2.8" stroke-linecap="round"/>
+    <circle cx="20" cy="14" r="9" stroke="${c}" stroke-width="1.5"/>
+    <circle cx="20" cy="14" r="4.5" fill="${c}" opacity=".75"/>
+    <circle cx="20" cy="14" r="2" fill="${c}"/>
+    <line x1="20" y1="3" x2="20" y2="5" stroke="${c}" stroke-width="2" stroke-linecap="round"/>
+    <line x1="20" y1="23" x2="20" y2="25" stroke="${c}" stroke-width="2" stroke-linecap="round"/>
+    <line x1="9" y1="14" x2="11" y2="14" stroke="${c}" stroke-width="2" stroke-linecap="round"/>
+    <line x1="29" y1="14" x2="31" y2="14" stroke="${c}" stroke-width="2" stroke-linecap="round"/>
+    <line x1="12.5" y1="6.5" x2="14" y2="8" stroke="${c}" stroke-width="2" stroke-linecap="round"/>
+    <line x1="27.5" y1="6.5" x2="26" y2="8" stroke="${c}" stroke-width="2" stroke-linecap="round"/>
+    <line x1="12.5" y1="21.5" x2="14" y2="20" stroke="${c}" stroke-width="2" stroke-linecap="round"/>
+    <line x1="27.5" y1="21.5" x2="26" y2="20" stroke="${c}" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="15" cy="${s - 5}" r="1.5" fill="${c}" opacity=".4"/>
+    <circle cx="25" cy="${s - 5}" r="1.5" fill="${c}" opacity=".4"/>
+  </svg>`,
+  wheat: (c, s = 52) => `<svg viewBox="0 0 40 ${s}" width="40" height="${s}" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <line x1="20" y1="${s - 2}" x2="20" y2="4" stroke="${c}" stroke-width="2.5" stroke-linecap="round"/>
+    <ellipse cx="20" cy="6" rx="3.5" ry="5.5" fill="${c}" opacity=".85"/>
+    <ellipse cx="13" cy="14" rx="3" ry="5" fill="${c}" transform="rotate(-25,13,14)" opacity=".75"/>
+    <ellipse cx="27" cy="14" rx="3" ry="5" fill="${c}" transform="rotate(25,27,14)" opacity=".75"/>
+    <ellipse cx="11" cy="22" rx="2.5" ry="4.5" fill="${c}" transform="rotate(-30,11,22)" opacity=".6"/>
+    <ellipse cx="29" cy="22" rx="2.5" ry="4.5" fill="${c}" transform="rotate(30,29,22)" opacity=".6"/>
+    <circle cx="20" cy="14" r="1.5" fill="${c}" opacity=".5"/>
+    <circle cx="20" cy="22" r="1.5" fill="${c}" opacity=".4"/>
+    <line x1="8" y1="14" x2="13" y2="14" stroke="${c}" stroke-width=".8" opacity=".3"/>
+    <line x1="32" y1="14" x2="27" y2="14" stroke="${c}" stroke-width=".8" opacity=".3"/>
+  </svg>`,
+  spirulina: (c, s = 52) => `<svg viewBox="0 0 40 ${s}" width="40" height="${s}" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M20 ${s - 2}V36" stroke="${c}" stroke-width="2.2" stroke-linecap="round"/>
+    <path d="M20 36c-7-2-10-6-9-11 7-1 11 2 9 11Z" fill="${c}" opacity=".46"/>
+    <path d="M20 36c7-2 10-6 9-11-7-1-11 2-9 11Z" fill="${c}" opacity=".54"/>
+    <path d="M13 19c0-7 5-12 11-10 6 2 7 10 1 14-5 4-13 1-13-5 0-5 5-8 10-6 4 2 5 7 1 10-3 2-8 1-8-3 0-3 3-5 6-4" stroke="${c}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="11" cy="29" r="2.1" fill="${c}" opacity=".62"/>
+    <circle cx="29" cy="29" r="2.1" fill="${c}" opacity=".68"/>
+    <circle cx="20" cy="34" r="2.5" fill="${c}" opacity=".78"/>
+    <circle cx="9" cy="18" r="1.4" fill="${c}" opacity=".42"/>
+    <circle cx="31" cy="16" r="1.6" fill="${c}" opacity=".48"/>
+    <circle cx="24" cy="9" r="1.2" fill="white" opacity=".5"/>
+  </svg>`,
+  chroma: (c, s = 48) => `<svg viewBox="0 0 40 ${s}" width="40" height="${s}" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M20,${s - 2} Q22,${s - 14} 20,${s - 22} Q18,${s - 30} 20,${s - 36}" stroke="${c}" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+    <path d="M20,${s - 22} Q10,${s - 28} 8,${s - 38} Q14,${s - 38} 18,${s - 28}" fill="${c}" opacity=".75"/>
+    <path d="M20,${s - 22} Q30,${s - 28} 32,${s - 38} Q26,${s - 38} 22,${s - 28}" fill="${c}" opacity=".75"/>
+    <path d="M20,${s - 30} Q12,${s - 36} 10,${s - 44}" stroke="${c}" stroke-width="1.5" fill="none" stroke-linecap="round" opacity=".6"/>
+    <path d="M20,${s - 30} Q28,${s - 36} 30,${s - 44}" stroke="${c}" stroke-width="1.5" fill="none" stroke-linecap="round" opacity=".6"/>
+    <circle cx="20" cy="${s - 22}" r="2.5" fill="${c}"/>
+    <circle cx="8" cy="${s - 38}" r="2" fill="${c}" opacity=".6"/>
+    <circle cx="32" cy="${s - 38}" r="2" fill="${c}" opacity=".6"/>
+    <circle cx="20" cy="${s - 36}" r="3" fill="${c}" opacity=".85"/>
+    <circle cx="20" cy="${s - 36}" r="1.5" fill="white" opacity=".5"/>
+  </svg>`
+};
+
+const DONOR_CAPSULE_TYPES = [
+  {
+    name: "Nanogreen",
+    icon: `<svg viewBox="0 0 42 42" aria-hidden="true" focusable="false">
+      <path d="M21 34V15" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/>
+      <path d="M20 24C14 19 8 20 6 27c6 2 11 0 14-5Z" fill="currentColor" opacity=".78"/>
+      <path d="M22 22c6-6 12-5 15 1-5 4-11 4-15-1Z" fill="currentColor" opacity=".88"/>
+      <path d="M21 15c-4-4-3-9 1-12 4 3 4 8-1 12Z" fill="currentColor"/>
+      <circle cx="12" cy="12" r="1.6" fill="currentColor" opacity=".44"/>
+      <circle cx="31" cy="11" r="1.4" fill="currentColor" opacity=".5"/>
+      <circle cx="33" cy="30" r="1.2" fill="currentColor" opacity=".42"/>
+    </svg>`
+  },
+  {
+    name: "Nanoflowers",
+    icon: `<svg viewBox="0 0 42 42" aria-hidden="true" focusable="false">
+      <path d="M21 35V25" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+      <path d="M21 25c-5 1-8 4-9 9 5 1 8-2 9-7 1 5 5 8 10 6-1-5-5-8-10-8Z" fill="currentColor" opacity=".58"/>
+      <circle cx="21" cy="17" r="4.5" fill="currentColor"/>
+      <ellipse cx="21" cy="8.5" rx="4" ry="6" fill="currentColor" opacity=".78"/>
+      <ellipse cx="21" cy="25.5" rx="4" ry="6" fill="currentColor" opacity=".7"/>
+      <ellipse cx="12.5" cy="17" rx="6" ry="4" fill="currentColor" opacity=".72"/>
+      <ellipse cx="29.5" cy="17" rx="6" ry="4" fill="currentColor" opacity=".82"/>
+      <circle cx="21" cy="17" r="2" fill="#06110f" opacity=".78"/>
+    </svg>`
+  },
+  {
+    name: "Nanomushrooms",
+    icon: `<svg viewBox="0 0 42 42" aria-hidden="true" focusable="false">
+      <path d="M17 22h10l2 13H15Z" fill="currentColor" opacity=".72"/>
+      <path d="M8 22c1-9 7-15 13-15s12 6 13 15c-5 3-21 3-26 0Z" fill="currentColor"/>
+      <path d="M13 21c2-4 5-6 8-6s6 2 8 6" fill="none" stroke="#06110f" stroke-width="1.5" opacity=".45"/>
+      <circle cx="15" cy="15" r="2" fill="#06110f" opacity=".5"/>
+      <circle cx="24" cy="12" r="1.7" fill="#06110f" opacity=".45"/>
+      <circle cx="29" cy="18" r="1.4" fill="#06110f" opacity=".4"/>
+      <circle cx="20" cy="28" r="1.2" fill="#06110f" opacity=".35"/>
+    </svg>`
+  }
+];
+
+const LAB_MATERIALS = FARM_STRAINS.reduce((materials, strain) => {
+  const material = strain?.labMaterial;
+  if (material?.id && !materials.some((item) => item.id === material.id)) {
+    materials.push({ ...material, strainId: strain.id, color: strain.color || "#7effde" });
+  }
+  return materials;
+}, []);
 
 const $ = (selector) => document.querySelector(selector);
 const setText = (selector, value) => {
@@ -227,7 +205,8 @@ const rooms = {
   farm: $("#farmRoom"),
   lab: $("#labRoom"),
   zen: $("#zenRoom"),
-  missions: $("#missionsRoom")
+  missions: $("#missionsRoom"),
+  shop: $("#shopRoom")
 };
 
 let audioContext;
@@ -445,46 +424,13 @@ function stopZenAmbient(fadeSeconds = 1.2) {
 function loadState() {
   const saved = localStorage.getItem("green-farm-mvp");
   const user = tg?.initDataUnsafe?.user;
-  const base = { ...defaultState };
-  if (user?.first_name) base.playerName = user.first_name;
-  if (!saved) {
-    base.inventory = normalizeInventory(base.inventory);
-    base.unlockedSlots = normalizeUnlockedSlots(base.unlockedSlots);
-    base.farmSlots = normalizeFarmSlots(base.farmSlots, base);
-    return base;
-  }
+  const playerName = user?.first_name;
+  if (!saved) return createInitialState({ playerName });
 
   try {
-    const restored = { ...base, ...JSON.parse(saved) };
-    restored.growthDuration ||= GROW_DURATION_MS;
-    restored.missions = normalizeMissionState(restored.missions);
-    restored.biomass = Math.max(0, Math.floor(Number(restored.biomass) || 0));
-    restored.soundVolume = settingPercent(restored.soundVolume, 70);
-    restored.vibrationOn = restored.vibrationOn !== false;
-    restored.vibrationLevel = settingPercent(restored.vibrationLevel, 60);
-    restored.zenDuration = ZEN_DURATION_OPTIONS.includes(Number(restored.zenDuration))
-      ? Number(restored.zenDuration)
-      : ZEN_DEFAULT_DURATION_MS;
-    restored.zenSound = normalizeZenSound(restored.zenSound);
-    restored.zenGene = normalizeZenGene(restored.zenGene);
-    restored.zenEnergy = Math.max(0, Math.floor(Number(restored.zenEnergy) || 0));
-    restored.zenSessionDna = Math.max(0, Math.floor(Number(restored.zenSessionDna) || 0));
-    restored.zenDnaClaims = restored.zenDnaClaims && typeof restored.zenDnaClaims === "object" ? restored.zenDnaClaims : {};
-    restored.labUniqueMutations = Math.max(0, Math.floor(Number(restored.labUniqueMutations) || 0));
-    restored.labRareUntil = Math.max(0, Number(restored.labRareUntil) || 0);
-    restored.droneLevel = safeDroneLevel(restored.droneLevel);
-    restored.droneSkin = normalizeDroneSkin(restored.droneSkin);
-    restored.dataModuleLevel = safeDataModuleLevel(restored.dataModuleLevel);
-    restored.unlockedSlots = normalizeUnlockedSlots(restored.unlockedSlots);
-    restored.inventory = normalizeInventory(restored.inventory);
-    restored.activeSlot = clamp(Math.floor(Number(restored.activeSlot) || 0), 0, FARM_SLOT_COUNT - 1);
-    if (!restored.plantedAt && restored.growth > 0) {
-      restored.plantedAt = Date.now() - (restored.growth / 100) * restored.growthDuration;
-    }
-    restored.farmSlots = normalizeFarmSlots(restored.farmSlots, restored);
-    return restored;
+    return normalizeState(JSON.parse(saved), { playerName });
   } catch {
-    return base;
+    return createInitialState({ playerName });
   }
 }
 
@@ -492,90 +438,18 @@ function saveState() {
   localStorage.setItem("green-farm-mvp", JSON.stringify(state));
 }
 
-function normalizeZenSound(value = state.zenSound) {
-  return ZEN_SOUND_OPTIONS.includes(value) ? value : "deep";
-}
-
-function normalizeZenGene(value = state.zenGene) {
-  return ZEN_GENE_OPTIONS.includes(value) ? value : "sprout";
-}
-
-function safeDroneLevel(value = state.droneLevel) {
-  const level = Math.floor(Number(value) || 1);
-  return clamp(level, 1, 9);
-}
-
-function droneSkinById(value = state.droneSkin) {
-  return DRONE_SKINS.find((skin) => skin.id === value) || DRONE_SKINS[0];
-}
-
-function normalizeDroneSkin(value = state.droneSkin) {
-  return droneSkinById(String(value || "")).id;
-}
-
-function normalizeUnlockedSlots(value = state.unlockedSlots) {
-  const slots = { "0": true, "1": true, "2": true };
-  if (!value || typeof value !== "object") return slots;
-  Object.entries(value).forEach(([key, item]) => {
-    const index = clamp(Math.floor(Number(key) || 0), 0, 8);
-    if (item) slots[String(index)] = true;
-  });
-  return slots;
-}
-
-function farmStrainById(value) {
-  return FARM_STRAINS.find((strain) => strain.id === value) || null;
-}
-
-function defaultFarmStrainForSlot(index) {
-  if (index === 3) return "chroma_mint";
-  return FARM_STRAINS[Math.min(index, 2)]?.id || FARM_STRAINS[0].id;
-}
-
-function normalizeInventory(value = {}) {
-  return {
-    geneStrands: Math.max(0, Math.floor(Number(value.geneStrands) || 0)),
-    quantumNutrients: Math.max(0, Math.floor(Number(value.quantumNutrients) || 0)),
-    harvests: value.harvests && typeof value.harvests === "object" ? { ...value.harvests } : {},
-    strains: value.strains && typeof value.strains === "object" ? { ...value.strains } : {}
-  };
-}
-
-function normalizeFarmSlot(value = {}, index = 0, legacy = {}) {
-  const legacyPlant = index === 0 && !value?.strain && legacy.plantedAt;
-  const strain = farmStrainById(value?.strain)
-    ? value.strain
-    : legacyPlant
-      ? defaultFarmStrainForSlot(index)
-      : null;
-  const plantedAt = Math.max(0, Number(value?.plantedAt ?? (legacyPlant ? legacy.plantedAt : 0)) || 0);
-  const growthDuration = clamp(
-    Number(value?.growthDuration ?? (legacyPlant ? legacy.growthDuration : GROW_DURATION_MS)) || GROW_DURATION_MS,
-    8_000,
-    86_400_000
-  );
-  return {
-    id: index,
-    strain,
-    plantedAt: strain ? plantedAt : 0,
-    growthDuration,
-    plantVariant: Math.max(0, Math.floor(Number(value?.plantVariant ?? legacy.plantVariant ?? index * 13) || 0)) % PLANT_VARIANTS.length,
-    boostUntil: Math.max(0, Number(value?.boostUntil ?? (legacyPlant ? legacy.boostUntil : 0)) || 0),
-    readyNotified: Boolean(value?.readyNotified)
-  };
-}
-
-function normalizeFarmSlots(value = [], legacy = {}) {
-  const source = Array.isArray(value) ? value : [];
-  const shouldUseLegacy = !source.some((slot) => slot?.strain || slot?.plantedAt);
-  const legacySource = shouldUseLegacy ? legacy : {};
-  return Array.from({ length: FARM_SLOT_COUNT }, (_, index) => normalizeFarmSlot(source[index], index, legacySource));
-}
-
 function ensureFarmModel() {
   state.inventory = normalizeInventory(state.inventory);
   state.unlockedSlots = normalizeUnlockedSlots(state.unlockedSlots);
   state.farmSlots = normalizeFarmSlots(state.farmSlots, state);
+  state.farmSlots.forEach((slot) => {
+    if (slot?.strain && !slot.plantedAt) {
+      slot.strain = null;
+      slot.plantedAt = 0;
+      slot.boostUntil = 0;
+      slot.readyNotified = false;
+    }
+  });
   state.activeSlot = clamp(Math.floor(Number(state.activeSlot) || 0), 0, FARM_SLOT_COUNT - 1);
   if (!isSlotUnlocked(state.activeSlot) || state.activeSlot >= 4) state.activeSlot = 0;
 }
@@ -630,6 +504,424 @@ function unlockSlot(index) {
   state.unlockedSlots[String(index)] = true;
 }
 
+function farmStrainChoices() {
+  return FARM_STRAINS;
+}
+
+function selectedPlantingStrain() {
+  return farmStrainById(farmPlantingStrain) || farmStrainChoices()[0] || null;
+}
+
+function donorPlantCostLabel(strain) {
+  if (!strain) return "--";
+  if (strain.plantCostMain) return `${Math.max(0, Math.floor(Number(strain.plantCostMain) || 0))}`;
+  if (strain.plantCostResonance) return `${strain.plantCostResonance} ZEN`;
+  return `${Math.max(0, Math.floor(Number(strain.plantCostScore) || 0))} CRC`;
+}
+
+function strainLabMaterialLabel(strain) {
+  const material = strain?.labMaterial;
+  if (!material?.short) return "No lab input";
+  return `${material.short} +${Math.max(1, Math.floor(Number(material.amount) || 1))}`;
+}
+
+function canAffordPlant(strain) {
+  if (!strain) return false;
+  const enoughMain = strain.plantCostMain ? state.score >= strain.plantCostMain : true;
+  const enoughScore = strain.plantCostScore ? state.energy >= strain.plantCostScore : true;
+  const enoughResonance = strain.plantCostResonance ? state.resonance >= strain.plantCostResonance : true;
+  return enoughMain && enoughScore && enoughResonance;
+}
+
+function donorPlantStatus(slot, strain) {
+  if (!strain) return "Choose plant";
+  if (farmSlotReady(slot)) return "Harvest ready";
+  return "Growing";
+}
+
+function donorIconKey(strainId = "") {
+  return ({
+    neon_basil: "basil",
+    cyber_rukola: "rukola",
+    glitch_sunflower: "sunflower",
+    pixel_wheat: "wheat",
+    prime_spirulina: "spirulina",
+    chroma_mint: "chroma"
+  })[strainId] || "basil";
+}
+
+function donorPlantIcon(strain, size = 44) {
+  if (!strain) return "";
+  const icon = DONOR_ICONS[donorIconKey(strain.id)] || DONOR_ICONS.basil;
+  return icon(strain.color || "var(--green)", size);
+}
+
+function donorProgressLabel(slot) {
+  if (!slot?.strain) return "empty";
+  if (farmSlotReady(slot)) return "ready";
+  return formatTime(Math.max(0, slot.growthDuration - (Date.now() - slot.plantedAt)));
+}
+
+function renderDonorMissionList() {
+  const list = $("#donorMissionsList");
+  if (!list) return;
+
+  const totalHarvests = Object.values(normalizeInventory(state.inventory).harvests || {}).reduce((sum, value) => sum + (Number(value) || 0), 0);
+  const missions = [
+    {
+      txt: "Collect 3 harvests",
+      prog: Math.min(3, totalHarvests),
+      max: 3,
+      rew: "100 CRC"
+    },
+    {
+      txt: "Create 1 mutation",
+      prog: Math.min(1, Math.floor(Number(state.artifact) || 0)),
+      max: 1,
+      rew: "200 CRC"
+    },
+    {
+      txt: "Meditate once",
+      prog: Math.min(1, Math.floor(Number(state.sessions) || 0)),
+      max: 1,
+      rew: "1 ZEN"
+    }
+  ];
+
+  list.innerHTML = missions.map((mission) => {
+    const done = mission.prog >= mission.max;
+    const pct = Math.min(100, (mission.prog / Math.max(1, mission.max)) * 100);
+    return `
+      <div class="miss">
+        <div class="miss-r">
+          <span class="miss-t">${done ? "OK " : ""}${escapeHtml(mission.txt)}</span>
+          <span class="miss-v" style="${done ? "color:var(--green)" : ""}">${done ? "DONE" : escapeHtml(mission.rew)}</span>
+        </div>
+        <div class="miss-b"><div class="miss-f" style="width:${pct}%"></div></div>
+        <div class="miss-s">${mission.prog} / ${mission.max}</div>
+      </div>
+    `;
+  }).join("");
+}
+
+function renderDonorFarm() {
+  const grid = $("#farm-grid");
+  if (!grid) return;
+
+  ensureFarmModel();
+  activeDonorCapsule = clamp(Math.floor(Number(activeDonorCapsule) || 0), 0, DONOR_CAPSULE_COUNT - 1);
+  const capsuleType = DONOR_CAPSULE_TYPES[activeDonorCapsule] || DONOR_CAPSULE_TYPES[0];
+  setText("#donorCapsuleMark", `Capsule ${(activeDonorCapsule + 1).toString().padStart(2, "0")} · ${capsuleType.name}`);
+  const capsuleEmblem = $("#donorCapsuleEmblem");
+  if (capsuleEmblem) {
+    capsuleEmblem.className = `donor-capsule-emblem capsule-type-${activeDonorCapsule + 1}`;
+    capsuleEmblem.innerHTML = capsuleType.icon;
+  }
+  const dots = $("#donorCapsuleDots");
+  if (dots) {
+    dots.innerHTML = Array.from({ length: DONOR_CAPSULE_COUNT }, (_, index) => (
+      `<span class="${index === activeDonorCapsule ? "active" : ""}"></span>`
+    )).join("");
+  }
+
+  if (activeDonorCapsule > 0) {
+    grid.innerHTML = Array.from({ length: FARM_SLOT_COUNT }, (_, index) => `
+      <button class="slot locked donor-future-slot" type="button" data-donor-slot="${index}" data-slot-state="future">
+        <div class="empty-body">
+          <span class="empty-ic">+</span>
+          <span class="empty-lb">CAPSULE ${activeDonorCapsule + 1}<br>SOON</span>
+        </div>
+      </button>
+    `).join("");
+    renderDonorMissionList();
+    return;
+  }
+
+  const slots = Array.from({ length: FARM_SLOT_COUNT }, (_, index) => ({ slot: state.farmSlots[index], index }));
+  grid.innerHTML = slots.map(({ slot, index }) => {
+    const unlocked = isSlotUnlocked(index) && index < 4;
+    const isPaidSlot = index === 3 && !unlocked;
+    if (!unlocked) {
+      const labelTop = isPaidSlot ? "UNLOCK" : "LOCKED";
+      const labelBottom = isPaidSlot ? "10 STARS" : "SOON";
+      return `
+        <button class="slot locked" type="button" data-donor-slot="${index}" data-slot-state="${isPaidSlot ? "paid" : "locked"}">
+          <div class="empty-body">
+            <span class="empty-ic">${isPaidSlot ? "★" : "◌"}</span>
+            <span class="empty-lb">${labelTop}<br>${labelBottom}</span>
+          </div>
+        </button>
+      `;
+    }
+
+    if (!slot?.strain) {
+      return `
+        <button class="slot empty" type="button" data-donor-slot="${index}" data-slot-state="empty">
+          <div class="empty-body">
+            <span class="empty-ic">+</span>
+            <span class="empty-lb">TAP TO<br>PLANT</span>
+          </div>
+        </button>
+      `;
+    }
+
+    const strain = farmStrainById(slot.strain) || FARM_STRAINS[0];
+    const ready = farmSlotReady(slot);
+    const pct = farmSlotProgress(slot);
+    const dashOffset = Math.round(DONOR_RING_CIRCUMFERENCE * (1 - pct / 100));
+    const iconSize = donorIconKey(strain.id) === "sunflower" || donorIconKey(strain.id) === "wheat" || donorIconKey(strain.id) === "spirulina" ? 52 : donorIconKey(strain.id) === "chroma" ? 48 : 44;
+    const ringId = `donor-ring-${index}`;
+    const tierClass = strain.type === "epic" ? "b-ep" : strain.type === "rare" ? "b-rr" : "b-cm";
+
+    return `
+      <button class="slot ${ready ? "ready" : "growing"}" type="button" data-donor-slot="${index}" data-slot-state="${ready ? "ready" : "growing"}" style="--sc:${escapeHtml(strain.color || "#00D870")}">
+        <div class="slot-line"></div>
+        <div class="slot-vis">
+          <div class="ring-wrap">
+            <svg class="ring-svg" viewBox="0 0 96 96" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="${ringId}" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="var(--cyan)"/>
+                  <stop offset="100%" stop-color="${escapeHtml(strain.color || "#00D870")}"/>
+                </linearGradient>
+              </defs>
+              <circle class="ring-track" cx="48" cy="48" r="40"></circle>
+              <circle class="ring-glow-line" cx="48" cy="48" r="40" stroke="${ready ? escapeHtml(strain.color || "#00D870") : `url(#${ringId})`}" style="stroke-dashoffset:${ready ? 0 : dashOffset}"></circle>
+              <circle class="ring-fill" cx="48" cy="48" r="40" stroke="${ready ? escapeHtml(strain.color || "#00D870") : `url(#${ringId})`}" style="stroke-dashoffset:${ready ? 0 : dashOffset}"></circle>
+            </svg>
+            <div class="plant-icon-wrap">${donorPlantIcon(strain, iconSize)}</div>
+          </div>
+        </div>
+        <div class="slot-prog"><div class="slot-prog-f" style="width:${pct}%"></div></div>
+        <div class="slot-meta">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1px">
+            <span class="s-name" style="color:${escapeHtml(strain.color || "#00D870")};text-shadow:0 0 8px ${escapeHtml(`${strain.color || "#00D870"}40`)}">${escapeHtml(strain.name)}</span>
+            <span class="b-slot ${tierClass}">${escapeHtml(strain.type.toUpperCase())}</span>
+          </div>
+          ${ready
+            ? `<span class="s-rdy">HARVEST</span><span class="s-earn" style="color:${escapeHtml(strain.color || "#00D870")};text-shadow:0 0 8px ${escapeHtml(`${strain.color || "#00D870"}60`)}">+${strain.score}</span>`
+            : `<span class="s-timer">${escapeHtml(donorProgressLabel(slot))}</span><span style="font-family:var(--mono);font-size:10px;color:var(--muted)">+${strain.score} · +${strain.geneStrands} GS</span>`}
+        </div>
+      </button>
+    `;
+  }).join("");
+
+  renderDonorMissionList();
+}
+
+function setDonorCapsule(index) {
+  const rawIndex = Math.floor(Number(index) || 0);
+  const nextIndex = ((rawIndex % DONOR_CAPSULE_COUNT) + DONOR_CAPSULE_COUNT) % DONOR_CAPSULE_COUNT;
+  if (nextIndex === activeDonorCapsule) return;
+  activeDonorCapsule = nextIndex;
+  playTone("tap");
+  renderDonorFarm();
+}
+
+function closeDonorPlantModal() {
+  const modal = $("#donorFarmModal");
+  if (!modal) return;
+  modal.hidden = true;
+}
+
+function isPlantDoubleTap(source, strainId) {
+  const now = Date.now();
+  const isDouble = plantDoubleTap.source === source
+    && plantDoubleTap.strain === strainId
+    && now - plantDoubleTap.at <= 420;
+  plantDoubleTap = { source, strain: strainId, at: now };
+  return isDouble;
+}
+
+function renderDonorPlantModal() {
+  const grid = $("#seed-grid");
+  const selected = selectedPlantingStrain();
+  const slotNumber = Math.max(1, (farmPlantingSlot ?? state.activeSlot) + 1);
+  if (!grid || !selected) return;
+
+  setText("#modal-sn", slotNumber);
+  grid.innerHTML = farmStrainChoices().map((strain) => {
+    const active = strain.id === selected.id;
+    const cost = donorPlantCostLabel(strain);
+    const color = strain.color || "#00D870";
+    const iconSize = donorIconKey(strain.id) === "sunflower" || donorIconKey(strain.id) === "wheat" || donorIconKey(strain.id) === "spirulina" ? 46 : donorIconKey(strain.id) === "chroma" ? 44 : 40;
+    return `
+      <button class="sb ${active ? "sel" : ""}" type="button" data-donor-strain="${strain.id}" aria-pressed="${active ? "true" : "false"}" style="--strain-color:${escapeHtml(color)}">
+        <span class="sb-type">${escapeHtml(strain.type)}</span>
+        <div class="sb-em-wrap">${donorPlantIcon(strain, iconSize)}</div>
+        <div class="sb-nm">${escapeHtml(strain.name)}</div>
+        <div class="sb-meta">
+          <span>${Math.round(strain.durationMs / 60_000)}m</span>
+          <span>${escapeHtml(strainLabMaterialLabel(strain))}</span>
+        </div>
+        <div class="sb-bc">${escapeHtml(cost)}</div>
+      </button>
+    `;
+  }).join("");
+
+  const confirm = $("#donorFarmConfirmBtn");
+  if (confirm) {
+    const afford = canAffordPlant(selected);
+    confirm.disabled = !afford;
+    confirm.textContent = afford ? "Plant" : `Need ${donorPlantCostLabel(selected)}`;
+  }
+}
+
+function donorBoostGrid() {
+  ensureFarmModel();
+  const growing = state.farmSlots.filter((slot, index) => isSlotUnlocked(index) && index < 4 && slot?.strain && !farmSlotReady(slot));
+  if (!growing.length) {
+    toast("No active grow");
+    return;
+  }
+  if (state.resonance < 1) {
+    toast("Need 1 ZEN");
+    return;
+  }
+
+  state.resonance -= 1;
+  growing.forEach((slot) => {
+    slot.plantedAt -= 5 * 60_000;
+    slot.boostUntil = Date.now() + 2_800;
+  });
+  syncLegacyFarmFromActiveSlot();
+  playTone("boost");
+  toast("Boost -5m");
+  trackAction("farm_donor_boost_all", {
+    slots: growing.length,
+    spentResonance: 1,
+    boostMs: 5 * 60_000
+  });
+  render();
+}
+
+function donorAutoHarvest() {
+  const ready = readyFarmSlots();
+  if (!ready.length) {
+    toast("No harvest ready");
+    return;
+  }
+  ready.forEach((slot) => collectHarvestV2(true, slot.id, false));
+  playTone("collect");
+  render();
+}
+
+function donorBoostCapsule() {
+  if (EXACT_DONOR_MODE) {
+    donorBoostGrid();
+    return;
+  }
+  ensureFarmModel();
+  const slot = activeFarmSlot();
+  if (!slot?.strain || farmSlotReady(slot)) {
+    toast("No active grow");
+    return;
+  }
+  if (state.resonance < 1) {
+    toast("Need 1 ZEN");
+    trackAction("farm_boost_blocked_no_resonance", {
+      slot: state.activeSlot + 1
+    });
+    return;
+  }
+
+  state.resonance -= 1;
+  slot.plantedAt -= 5 * 60_000;
+  slot.boostUntil = Date.now() + 2_800;
+  syncLegacyFarmFromActiveSlot();
+  playTone("boost");
+  toast("Boost -5m");
+  trackAction("farm_slot_boosted_donor", {
+    slot: state.activeSlot + 1,
+    strain: slot.strain,
+    spentResonance: 1,
+    boostMs: 5 * 60_000
+  });
+  render();
+}
+
+function renderFarmPlantSheet() {
+  if (EXACT_DONOR_MODE) {
+    renderDonorPlantModal();
+    return;
+  }
+  const grid = $("#farmStrainGrid");
+  const slotNumber = Math.max(1, (farmPlantingSlot ?? state.activeSlot) + 1);
+  const selected = selectedPlantingStrain();
+  if (!grid || !selected) return;
+
+  setText("#farmPlantSheetTitle", `Slot ${slotNumber}`);
+  setText("#farmPlantSheetHint", canAffordPlant(selected) ? "Choose strain" : `Need ${donorPlantCostLabel(selected)}`);
+  setText("#farmPlantSelectionName", selected.name);
+  setText("#farmPlantSelectionMeta", `${selected.type} · ${Math.round(selected.durationMs / 60_000)}m grow · ${donorPlantCostLabel(selected)}`);
+  setText("#farmPlantSelectionBonus", `Gives +${selected.score} · ${strainLabMaterialLabel(selected)} · +${selected.geneStrands} GS`);
+
+  grid.innerHTML = farmStrainChoices().map((strain) => {
+    const active = strain.id === selected.id;
+    return `
+      <button class="farm-strain-card ${active ? "active" : ""}" type="button" data-farm-strain="${strain.id}" data-strain-type="${strain.type}" aria-pressed="${active ? "true" : "false"}">
+        <div class="strain-top">
+          <strong>${escapeHtml(strain.shortName)}</strong>
+          <span class="strain-type">${escapeHtml(strain.type)}</span>
+        </div>
+        <span>${escapeHtml(strain.name)}</span>
+        <small>${Math.round(strain.durationMs / 60_000)} min growth</small>
+        <em>Harvest +${strain.score} · ${escapeHtml(strainLabMaterialLabel(strain))} · +${strain.geneStrands} GS</em>
+        <b class="strain-cost">${donorPlantCostLabel(strain)}</b>
+      </button>
+    `;
+  }).join("");
+
+  const confirm = $("#farmPlantConfirmBtn");
+  if (confirm) {
+    const canAfford = canAffordPlant(selected);
+    confirm.disabled = !canAfford;
+    confirm.textContent = canAfford ? `Plant ${selected.shortName}` : `Need ${donorPlantCostLabel(selected)}`;
+  }
+}
+
+function openFarmPlantSheet(index = state.activeSlot) {
+  ensureFarmModel();
+  if (index >= 4 || !isSlotUnlocked(index)) {
+    toast("Slot locked");
+    return;
+  }
+
+  const slot = farmSlotAt(index);
+  if (slot?.strain) return;
+  state.activeSlot = index;
+  farmPlantingSlot = index;
+  farmPlantingStrain = defaultFarmStrainForSlot(index);
+  plantDoubleTap = { source: "", strain: "", at: 0 };
+  if (!farmPlantingStrain) farmPlantingStrain = farmStrainChoices()[0]?.id || null;
+  if (EXACT_DONOR_MODE) {
+    const modal = $("#donorFarmModal");
+    renderDonorPlantModal();
+    if (modal) modal.hidden = false;
+  }
+  renderFarmPlantSheet();
+  if (!EXACT_DONOR_MODE) openSheet("#farmPlantSheet");
+  trackAction("farm_strain_picker_opened", {
+    slot: index + 1
+  });
+  render();
+}
+
+function confirmFarmPlantSelection() {
+  if (farmPlantingSlot === null) return;
+  const planted = plantFarmSlot(farmPlantingSlot, farmPlantingStrain);
+  if (!planted) {
+    renderFarmPlantSheet();
+    return;
+  }
+
+  closeDonorPlantModal();
+  closeSheets();
+  farmPlantingSlot = null;
+  farmPlantingStrain = null;
+  render();
+}
+
 function droneUpgradeCost(level = safeDroneLevel()) {
   return {
     score: 32 + level * 24,
@@ -643,11 +935,6 @@ function droneSpeedBonus(level = safeDroneLevel()) {
 
 function droneHarvestBonus(level = safeDroneLevel()) {
   return level * 2;
-}
-
-function safeDataModuleLevel(value = state.dataModuleLevel) {
-  const level = Math.floor(Number(value) || 1);
-  return clamp(level, 1, 9);
 }
 
 function dataModuleUpgradeCost(level = safeDataModuleLevel()) {
@@ -665,6 +952,46 @@ function safeBiomass(value = state.biomass) {
   return Math.max(0, Math.floor(Number(value) || 0));
 }
 
+function labRecipe() {
+  return Array.isArray(LAB_RECIPES) && LAB_RECIPES.length ? LAB_RECIPES[0] : {
+    id: "starter_bio_fusion",
+    name: "Starter Bio Fusion",
+    result: "Proto Core",
+    materials: [],
+    geneStrands: 2,
+    energy: 5,
+    score: 8,
+    resonance: 1,
+    artifact: 1
+  };
+}
+
+function labMaterialById(id) {
+  return LAB_MATERIALS.find((material) => material.id === id) || null;
+}
+
+function labMaterialCount(id, inventory = normalizeInventory(state.inventory)) {
+  return Math.max(0, Math.floor(Number(inventory.materials?.[id]) || 0));
+}
+
+function labRecipeSummary(recipe = labRecipe()) {
+  return recipe.materials.map((entry) => {
+    const material = labMaterialById(entry.id);
+    return `${material?.short || entry.id} ${entry.amount}`;
+  }).join(" · ");
+}
+
+function labStoredSummary(recipe = labRecipe(), inventory = normalizeInventory(state.inventory)) {
+  return recipe.materials.map((entry) => {
+    const material = labMaterialById(entry.id);
+    return `${material?.short || entry.id} ${labMaterialCount(entry.id, inventory)}/${entry.amount}`;
+  }).join(" · ");
+}
+
+function labRecipeReady(recipe = labRecipe(), inventory = normalizeInventory(state.inventory)) {
+  return recipe.materials.every((entry) => labMaterialCount(entry.id, inventory) >= entry.amount);
+}
+
 function zenEnergyBalance() {
   return Math.max(0, Math.floor(Number(state.zenEnergy) || 0));
 }
@@ -678,24 +1005,19 @@ function labBiomassCost() {
 }
 
 function labEnergyCost() {
-  return zenEnergyBalance() > 0 ? 4 : 5;
+  const recipe = labRecipe();
+  return zenEnergyBalance() > 0 ? Math.max(1, recipe.energy - 1) : recipe.energy;
 }
 
 function labGeneCost() {
-  return zenEnergyBalance() >= 3 ? 1 : 2;
+  const recipe = labRecipe();
+  return zenEnergyBalance() >= 3 ? Math.max(1, recipe.geneStrands - 1) : recipe.geneStrands;
 }
 
 function consumeZenBoost() {
   if (zenEnergyBalance() <= 0) return false;
   state.zenEnergy = zenEnergyBalance() - 1;
   return true;
-}
-
-function normalizeMissionState(value = {}) {
-  return {
-    opened: value.opened && typeof value.opened === "object" ? value.opened : {},
-    claimed: value.claimed && typeof value.claimed === "object" ? value.claimed : {}
-  };
 }
 
 function mergeMissionState(localValue = {}, remoteValue = {}) {
@@ -714,8 +1036,8 @@ function claimedMissionCount() {
 function missionRewardText(mission) {
   const parts = [];
   if (mission.reward.energy) parts.push(`+${mission.reward.energy} energy`);
-  if (mission.reward.resonance) parts.push(`+${mission.reward.resonance} zen`);
-  if (mission.reward.score) parts.push(`+${mission.reward.score} score`);
+  if (mission.reward.resonance) parts.push(`+${mission.reward.resonance} ZEN`);
+  if (mission.reward.score) parts.push(`+${mission.reward.score} CRC`);
   return parts.join(" · ");
 }
 
@@ -920,6 +1242,7 @@ function applyServerPlayerState(player = {}) {
     state.inventory = {
       geneStrands: Math.max(localInventory.geneStrands, remoteInventory.geneStrands),
       quantumNutrients: Math.max(localInventory.quantumNutrients, remoteInventory.quantumNutrients),
+      materials: { ...remoteInventory.materials, ...localInventory.materials },
       harvests: { ...remoteInventory.harvests, ...localInventory.harvests },
       strains: { ...remoteInventory.strains, ...localInventory.strains }
     };
@@ -1106,6 +1429,59 @@ function zenDnaClaimKey(elapsed, index) {
   return `${zenDnaCycle(elapsed)}:${index}`;
 }
 
+function zenSessionMinutes(duration = state.zenDuration || ZEN_DEFAULT_DURATION_MS) {
+  return Math.max(1, Math.ceil((Math.max(0, Number(duration) || ZEN_DEFAULT_DURATION_MS)) / 60_000));
+}
+
+function zenCycleWindowStart(cycle) {
+  return cycle * ZEN_DNA_WINDOW_MS + ZEN_DNA_SHOW_START_MS;
+}
+
+function zenExpectedTargetsByMinute(duration = state.zenDuration || ZEN_DEFAULT_DURATION_MS) {
+  const minutes = zenSessionMinutes(duration);
+  const totals = Array.from({ length: minutes }, () => 0);
+  for (let cycle = 0; ; cycle += 1) {
+    const windowStart = zenCycleWindowStart(cycle);
+    if (windowStart >= duration) break;
+    const minuteIndex = Math.floor(windowStart / 60_000);
+    if (minuteIndex >= 0 && minuteIndex < totals.length) totals[minuteIndex] += 3;
+  }
+  return totals;
+}
+
+function zenClaimedTargetsByMinute(claims = state.zenDnaClaims || {}) {
+  const totals = [];
+  Object.keys(claims || {}).forEach((key) => {
+    const cycle = Math.max(0, Math.floor(Number(String(key).split(":")[0]) || 0));
+    const minuteIndex = Math.floor(zenCycleWindowStart(cycle) / 60_000);
+    totals[minuteIndex] = (totals[minuteIndex] || 0) + 1;
+  });
+  return totals;
+}
+
+function zenCrcRewardBreakdown(duration = state.zenDuration || ZEN_DEFAULT_DURATION_MS, claims = state.zenDnaClaims || {}) {
+  const expected = zenExpectedTargetsByMinute(duration);
+  const claimed = zenClaimedTargetsByMinute(claims);
+  const minutes = zenSessionMinutes(duration);
+  const details = Array.from({ length: minutes }, (_, minuteIndex) => {
+    const claimedCount = Math.max(0, Math.floor(Number(claimed[minuteIndex]) || 0));
+    const expectedCount = Math.max(0, Math.floor(Number(expected[minuteIndex]) || 0));
+    const doubled = expectedCount > 0 && claimedCount >= expectedCount;
+    return {
+      minute: minuteIndex,
+      claimed: claimedCount,
+      expected: expectedCount,
+      doubled,
+      crc: doubled ? 120 : 60
+    };
+  });
+  return {
+    total: details.reduce((sum, item) => sum + item.crc, 0),
+    doubledMinutes: details.filter((item) => item.doubled).length,
+    details
+  };
+}
+
 function growthStage(progress) {
   if (!state.plantedAt) return "Seed";
   if (progress >= 100) return "Ready";
@@ -1246,6 +1622,7 @@ function renderSpecimenPodsV2(progress, motion) {
       pod.classList.remove("ready", "artifact-ready");
       setText(`#podSun${index}`, "");
       setText(`#podArtifact${index}`, "Stars");
+      setText(`#podState${index}`, "Soon");
       setText(`#podId${index}`, "NEXT");
       return;
     }
@@ -1257,6 +1634,7 @@ function renderSpecimenPodsV2(progress, motion) {
       pod.classList.remove("ready", "artifact-ready");
       setText("#podSun3", "");
       setText("#podArtifact3", "10");
+      setText("#podState3", "Buy slot");
       setText("#podId3", "START");
       return;
     }
@@ -1267,8 +1645,9 @@ function renderSpecimenPodsV2(progress, motion) {
       pod.style.setProperty("--motion", "0.25");
       pod.classList.remove("ready", "artifact-ready");
       setText(`#podSun${index}`, "--");
-      setText(`#podArtifact${index}`, "Empty");
-      setText(`#podId${index}`, "TAP");
+      setText(`#podArtifact${index}`, "Seed");
+      setText(`#podState${index}`, slotUnlocked ? "Choose" : "Locked");
+      setText(`#podId${index}`, slotUnlocked ? "OPEN" : "LOCK");
       return;
     }
 
@@ -1284,7 +1663,8 @@ function renderSpecimenPodsV2(progress, motion) {
 
     setText(`#podSun${index}`, sunValue);
     setText(`#podArtifact${index}`, isReady ? "READY" : `${artifactChance}%`);
-    setText(`#podId${index}`, isReady ? strain.shortName : `${slotProgress}%`);
+    setText(`#podState${index}`, isReady ? "Harvest" : `${slotProgress}% grow`);
+    setText(`#podId${index}`, strain.shortName);
   });
   updateChamberNav();
 }
@@ -1355,6 +1735,8 @@ function renderTokenFlow(progress, secondsLeft) {
 
 function renderMutationLab(progress) {
   const variant = currentPlantVariant();
+  const recipe = labRecipe();
+  const inventory = normalizeInventory(state.inventory);
   const labLevel = 4 + Math.min(9, state.artifact);
   const uniqueCount = Math.max(0, Math.floor(Number(state.labUniqueMutations) || 0));
   const fusionProgress = clamp(46 + state.artifact * 7 + uniqueCount * 3 + Math.round(progress / 5), 42, 99);
@@ -1366,17 +1748,32 @@ function renderMutationLab(progress) {
 
   setText("#fusionProgressLabel", `${fusionProgress}%`);
   setStyle("#fusionProgressBar", "--fusion", `${fusionProgress}%`);
-  setText("#fusionDnaA", `DNA A: ${familyA}`);
-  setText("#fusionDnaB", `DNA B: ${familyB} · Bio ${safeBiomass()} · GS ${normalizeInventory(state.inventory).geneStrands}`);
+  setText("#fusionDnaA", `DNA A: ${familyA} · Recipe ${recipe.result}`);
+  setText("#fusionDnaB", `DNA B: ${familyB} · ${labStoredSummary(recipe, inventory)}`);
   setText("#rareChance", `${rareChance}%`);
   setText("#mutationTier", tier);
   setText("#labLevelValue", labLevel);
   setText("#mutationAutoState", state.mutationAuto ? "On" : "Off");
   setText("#uniqueMutationCount", `${uniqueCount} rare cores`);
-  setText("#synthCostLabel", `${labBiomassCost()} bio · ${labGeneCost()} GS · ${labEnergyCost()} energy`);
-  setText("#synthBoostLabel", zenEnergyBalance() > 0 ? "Zen boost ready" : "Needs Zen charge");
+  setText("#synthCostLabel", labRecipeSummary(recipe));
+  setText("#synthBoostLabel", zenEnergyBalance() > 0 ? `GS ${labGeneCost()} · Energy ${labEnergyCost()} · Zen` : `GS ${labGeneCost()} · Energy ${labEnergyCost()}`);
   setClass("#mutationAutoBtn", "active", state.mutationAuto);
   setClass("#labRoom", "rare-active", rareActive);
+
+  const strip = $("#labHarvestStrip");
+  if (strip) {
+    strip.innerHTML = recipe.materials.map((entry) => {
+      const material = labMaterialById(entry.id);
+      const count = labMaterialCount(entry.id, inventory);
+      const ready = count >= entry.amount;
+      return `
+        <div class="lab-mat-chip ${ready ? "ready" : ""}" style="--mat-color:${escapeHtml(material?.color || "#7effde")}">
+          <strong>${escapeHtml(material?.short || entry.id)}</strong>
+          <span>${count}/${entry.amount}</span>
+        </div>
+      `;
+    }).join("");
+  }
 }
 
 function completeZenSession() {
@@ -1385,12 +1782,15 @@ function completeZenSession() {
   const energyBonus = 1 + Math.min(5, Math.floor(dnaHits / 3));
   const artifactBonus = Math.min(3, Math.floor(state.artifact / 2));
   const totalZenEnergy = energyBonus + artifactBonus;
+  const crcReward = zenCrcRewardBreakdown(state.zenDuration || ZEN_DEFAULT_DURATION_MS, state.zenDnaClaims || {});
   state.sessions += 1;
   state.resonance += reward + totalZenEnergy;
-  state.score += 8;
+  state.energy += crcReward.total;
   state.zenEnergy = zenEnergyBalance() + totalZenEnergy;
   trackAction("zen_completed", {
     reward,
+    crcReward: crcReward.total,
+    doubledMinutes: crcReward.doubledMinutes,
     energyBonus: totalZenEnergy,
     artifactBonus,
     dnaHits,
@@ -1403,7 +1803,7 @@ function completeZenSession() {
   state.zenDnaClaims = {};
   stopZenAmbient(2.2);
   playTone("zen");
-  toast(`Zen energy +${totalZenEnergy} · Zen +${reward}`);
+  toast(`CRC +${crcReward.total} · Zen +${reward} · Energy +${totalZenEnergy}`);
 }
 
 function renderZen() {
@@ -1414,6 +1814,7 @@ function renderZen() {
   const progress = clamp((elapsed / duration) * 100, 0, 100);
   const phase = zenPhase(elapsed);
   const remaining = Math.max(0, duration - elapsed);
+  const crcProjection = zenCrcRewardBreakdown(duration, state.zenDnaClaims || {});
 
   if (isActive && !isPaused && elapsed >= duration) {
     completeZenSession();
@@ -1429,7 +1830,7 @@ function renderZen() {
   setText("#zenState", isActive ? (isPaused ? "Paused" : phase.label) : state.sessions > 0 ? `x${state.sessions}` : "Calm");
   setText("#zenDepthValue", Math.round(progress));
   setText("#zenFlowValue", isActive ? phase.label : "Quiet");
-  setText("#zenRewardValue", `+${3 + Math.min(9, state.artifact)}`);
+  setText("#zenRewardValue", `+${crcProjection.total}`);
   setText("#zenPotLevel", `N${clamp(1 + Math.floor((state.sessions || 0) / 3), 1, 9)}`);
   setStyle("#zenOrb", "--zen-progress", `${progress}%`);
   setStyle("#zenOrb", "--zen-scale", phase.scale.toFixed(3));
@@ -1522,7 +1923,7 @@ function renderDrone() {
   setText("#droneSheetLevel", `Level ${level}`);
   setText("#droneSpeedValue", `-${speedSeconds}s`);
   setText("#droneHarvestValue", `+${harvestBonus}`);
-  setText("#droneCostValue", level >= 9 ? "MAX" : `${cost.score} score · ${cost.energy} energy`);
+  setText("#droneCostValue", level >= 9 ? "MAX" : `${cost.score} CRC · ${cost.energy} energy`);
   setText("#droneUpgradeText", level >= 9 ? "Max level" : "Upgrade");
   setText("#droneSignalValue", state.plantedAt ? "Scanning" : "Idle");
   setText("#droneSkinName", skin.name);
@@ -1537,6 +1938,16 @@ function renderDrone() {
     drone.dataset.level = String(level);
     drone.dataset.tier = String(Math.min(5, Math.ceil(level / 2)));
     drone.dataset.skin = skin.id;
+  }
+
+  setText("#donorDroneLevelBadge", `L${level}`);
+  const donorDrone = $("#donorDroneBtn");
+  if (donorDrone) {
+    donorDrone.dataset.level = String(level);
+    donorDrone.dataset.tier = String(Math.min(5, Math.ceil(level / 2)));
+    donorDrone.dataset.skin = skin.id;
+    donorDrone.classList.toggle("active", Boolean(state.plantedAt));
+    donorDrone.classList.toggle("ready", growthProgress() >= 100);
   }
 
   const miniDrone = $(".mini-drone");
@@ -1625,12 +2036,12 @@ function renderDataModule(progress = growthProgress()) {
 
   setText("#dataModuleLevelBadge", `D${level}`);
   setText("#dataModuleSignal", signal);
-  setText("#dataModuleSheetLevel", `Level ${level}`);
+  setText("#dataModuleSheetLevel", `Capsule level ${level}`);
   setText("#dataSyncValue", signal);
   setText("#dataSignalValue", `+${dataModuleSignalBonus(level)}%`);
   setText("#dataMemoryValue", String(8 + level * 4));
-  setText("#dataModuleCostValue", level >= 9 ? "MAX" : `${cost.score} score · ${cost.resonance} zen`);
-  setText("#dataModuleUpgradeText", level >= 9 ? "Max core" : "Upgrade core");
+  setText("#dataModuleCostValue", level >= 9 ? "MAX" : `${cost.score} CRC · ${cost.resonance} ZEN`);
+  setText("#dataModuleUpgradeText", level >= 9 ? "Max capsule" : "Upgrade capsule");
   setClass("#plantCapsule", "data-syncing", syncActive);
   setClass("#plantCapsule", "data-ready", ready);
 
@@ -1745,6 +2156,7 @@ function setFarmStageClass(stage) {
 }
 
 function render() {
+  if (SINGLE_CAPSULE_MODE) state.activeSlot = 0;
   syncLegacyFarmFromActiveSlot();
   const progress = Math.round(growthProgress());
   state.growth = progress;
@@ -1754,8 +2166,8 @@ function render() {
   const activeSlot = activeFarmSlot();
   const activeStrain = farmStrainById(activeSlot?.strain);
   const isGrowing = activeSlot?.strain && progress < 100;
-  const actionState = progress >= 100 && activeSlot?.strain ? "collect" : activeSlot?.strain ? "boost" : "grow";
-  const action = progress >= 100 && activeSlot?.strain ? ["", "Collect"] : activeSlot?.strain ? ["", "Boost"] : ["", "Plant"];
+  const actionState = progress >= 100 && activeSlot?.strain ? "collect" : activeSlot?.strain ? "selected" : "choose";
+  const action = progress >= 100 && activeSlot?.strain ? ["", "Harvest"] : activeSlot?.strain ? ["", "Selected"] : ["", "Plant"];
   const processState = progress >= 100 ? "Ready" : isGrowing ? "Run" : "Idle";
   const plantScale = state.plantedAt ? 0.92 + (progress / 100) * 0.34 : 0.76;
   const motion = state.plantedAt ? 0.7 + progress / 180 : 0.42;
@@ -1788,7 +2200,7 @@ function render() {
   renderSpecimenPodsV2(progress, motion);
   renderCapsuleBaseCubes(progress);
   renderTokenFlow(progress, secondsLeft);
-  setText("#plantStage", stage);
+  setText("#plantStage", EXACT_DONOR_MODE ? "LEVEL II" : stage);
   setText("#mainActionIcon", action[0]);
   setText("#mainActionText", action[1]);
   const mainActionButton = $("#mainActionBtn");
@@ -1801,20 +2213,33 @@ function render() {
   setText("#leagueBadge", leagueName());
   setText("#leagueTitle", leagueName());
   setText("#artifactLabel", state.artifact > 0 ? `x${state.artifact}` : "Empty");
+  setText("#farmSelectedTier", activeStrain ? `${activeStrain.type} strain` : "Choose donor plant");
+  setText("#farmSelectedPlant", activeStrain ? activeStrain.name : selectedPlantingStrain()?.name || "NEON BASIL");
+  setText("#farmSelectedStatus", donorPlantStatus(activeSlot, activeStrain));
+  setText("#farmSelectedReward", `+${activeStrain?.score || selectedPlantingStrain()?.score || 22}`);
+  setText("#farmSelectedGene", `+${activeStrain?.geneStrands || selectedPlantingStrain()?.geneStrands || 0} GS`);
+  setText("#farmSelectedCost", donorPlantCostLabel(activeStrain || selectedPlantingStrain()));
+  setText("#farmSelectedTimer", activeStrain ? (remainingSeconds(progress) ? formatTime(remainingSeconds(progress) * 1000) : "00:00") : `${Math.round((selectedPlantingStrain()?.durationMs || 300000) / 60_000).toString().padStart(2, "0")}:00`);
+  if (!EXACT_DONOR_MODE) {
+    setText("#plantStage", activeStrain ? activeStrain.shortName : "Choose");
+  }
   renderMutationLab(progress);
   renderZen();
   renderMissions();
+  if (EXACT_DONOR_MODE) renderDonorFarm();
   renderDrone();
   renderDataModule(progress);
+  if (EXACT_DONOR_MODE && $("#donorFarmModal") && !$("#donorFarmModal").hidden) renderDonorPlantModal();
+  if ($("#farmPlantSheet") && !$("#farmPlantSheet").hidden) renderFarmPlantSheet();
   setText("#waterModule", waterLevel);
   setText("#lightModule", lightLevel);
   setText("#timeModule", progress >= 100 ? "OK" : state.plantedAt ? `${secondsLeft}s` : "--");
   setText("#growthBubbleA", `+${growthStep}%`);
   setText("#growthBubbleB", `+${growthStep + 1}%`);
   setText("#growthBubbleC", progress >= 100 ? "MAX" : `+${growthStep + 2}%`);
-  setText("#autoCollectState", state.autoCollect ? "On" : "Off");
-  setClass("#autoCollectBtn", "active", state.autoCollect);
-  setClass("#autoCollectBtn", "armed", state.autoCollect && state.plantedAt && progress < 100);
+  setText("#autoCollectState", SINGLE_CAPSULE_MODE ? "-5m" : state.autoCollect ? "On" : "Off");
+  setClass("#autoCollectBtn", "active", SINGLE_CAPSULE_MODE ? Boolean(activeStrain && !farmSlotReady(activeSlot)) : state.autoCollect);
+  setClass("#autoCollectBtn", "armed", SINGLE_CAPSULE_MODE ? Boolean(activeStrain && !farmSlotReady(activeSlot) && state.resonance >= 1) : state.autoCollect && state.plantedAt && progress < 100);
   setText("#soundIcon", state.soundOn ? "\u266a" : "\u2022");
   setText("#soundState", state.soundOn ? "On" : "Off");
   setText("#soundVolumeValue", `${Math.round(settingPercent(state.soundVolume, 70))}%`);
@@ -1919,7 +2344,7 @@ function farmRewardTier() {
   return { multiplier: 0.6, label: "Light", color: "#9aa8b8" };
 }
 
-function plantFarmSlot(index = state.activeSlot) {
+function plantFarmSlot(index = state.activeSlot, strainId = null) {
   ensureFarmModel();
   if (!isSlotUnlocked(index) || index >= 4) {
     toast(index === 3 ? "Unlock slot first" : "Slot locked");
@@ -1928,15 +2353,28 @@ function plantFarmSlot(index = state.activeSlot) {
 
   const slot = farmSlotAt(index);
   if (slot.strain) return false;
-  if (state.energy <= 0) {
-    toast("Need energy");
-    trackAction("farm_blocked_no_energy", { slot: index + 1, action: "plant" });
+  const strain = farmStrainById(strainId) || farmStrainById(defaultFarmStrainForSlot(index));
+  if (!strain) return false;
+  if (strain.plantCostMain && state.score < strain.plantCostMain) {
+    toast(`Need ${strain.plantCostMain}`);
+    trackAction("farm_blocked_no_cost", { slot: index + 1, action: "plant", cost: "main", need: strain.plantCostMain });
+    return false;
+  }
+  if (strain.plantCostScore && state.energy < strain.plantCostScore) {
+    toast(`Need ${strain.plantCostScore} CRC`);
+    trackAction("farm_blocked_no_cost", { slot: index + 1, action: "plant", cost: "score", need: strain.plantCostScore });
+    return false;
+  }
+  if (strain.plantCostResonance && state.resonance < strain.plantCostResonance) {
+    toast(`Need ${strain.plantCostResonance} ZEN`);
+    trackAction("farm_blocked_no_cost", { slot: index + 1, action: "plant", cost: "resonance", need: strain.plantCostResonance });
     return false;
   }
 
-  const strain = farmStrainById(defaultFarmStrainForSlot(index));
   const zenBoosted = consumeZenBoost();
-  state.energy -= 1;
+  if (strain.plantCostMain) state.score -= strain.plantCostMain;
+  if (strain.plantCostScore) state.energy -= strain.plantCostScore;
+  if (strain.plantCostResonance) state.resonance -= strain.plantCostResonance;
   slot.strain = strain.id;
   slot.plantedAt = Date.now();
   slot.growthDuration = Math.max(
@@ -1954,6 +2392,9 @@ function plantFarmSlot(index = state.activeSlot) {
     slot: index + 1,
     strain: strain.id,
     growthDuration: slot.growthDuration,
+    costMain: strain.plantCostMain || 0,
+    costScore: strain.plantCostScore || 0,
+    costResonance: strain.plantCostResonance || 0,
     zenBoosted,
     zenEnergyLeft: zenEnergyBalance()
   });
@@ -1996,6 +2437,7 @@ function collectHarvestV2(auto = false, index = state.activeSlot, shouldRender =
   if (!farmSlotReady(slot)) return false;
 
   const strain = farmStrainById(slot.strain) || FARM_STRAINS[0];
+  const material = strain.labMaterial || null;
   const tier = farmRewardTier();
   const harvest = Math.round((strain.score + state.artifact * 4 + droneHarvestBonus()) * tier.multiplier);
   const biomassGain = strain.biomass + farmBiomassGain(harvest);
@@ -2006,6 +2448,9 @@ function collectHarvestV2(auto = false, index = state.activeSlot, shouldRender =
   state.inventory = normalizeInventory(state.inventory);
   state.inventory.geneStrands += geneGain;
   state.inventory.harvests[strain.id] = Math.max(0, Math.floor(Number(state.inventory.harvests[strain.id]) || 0)) + 1;
+  if (material?.id) {
+    state.inventory.materials[material.id] = labMaterialCount(material.id, state.inventory) + Math.max(1, Math.floor(Number(material.amount) || 1));
+  }
   slot.strain = null;
   slot.plantedAt = 0;
   slot.growthDuration = GROW_DURATION_MS;
@@ -2015,13 +2460,16 @@ function collectHarvestV2(auto = false, index = state.activeSlot, shouldRender =
   state.plantVariant = (state.plantVariant + 1 + state.artifact + index) % PLANT_VARIANTS.length;
   syncLegacyFarmFromActiveSlot();
   playTone("collect");
-  toast(auto ? `Auto ${strain.shortName} +${harvest}` : `${tier.label} +${harvest} Bio +${biomassGain}`);
+  const materialToast = material?.short ? ` · ${material.short} +${Math.max(1, Math.floor(Number(material.amount) || 1))}` : "";
+  toast(auto ? `Auto ${strain.shortName} +${harvest}${materialToast}` : `${tier.label} +${harvest} Bio +${biomassGain}${materialToast}`);
   trackAction(auto ? "farm_auto_collected" : "farm_collected", {
     slot: index + 1,
     strain: strain.id,
     harvest,
     biomassGain,
     geneGain,
+    labMaterial: material?.id || "",
+    labMaterialGain: Math.max(0, Math.floor(Number(material?.amount) || 0)),
     rewardTier: tier.label,
     biomass: state.biomass,
     artifact: state.artifact
@@ -2051,13 +2499,11 @@ function farmActionV2() {
   }
 
   if (!slot?.strain) {
-    plantFarmSlot(state.activeSlot);
-    render();
+    openFarmPlantSheet(state.activeSlot);
     return;
   }
 
-  boostFarmSlot(state.activeSlot);
-  render();
+  toast(`${farmStrainById(slot.strain)?.name || "Plant"} · ${formatTime(remainingSeconds(progress) * 1000)}`);
 }
 
 function applyStarsReward(product = {}) {
@@ -2244,15 +2690,18 @@ function telegramPlatform() {
 }
 
 function synthArtifact() {
-  const bioCost = labBiomassCost();
+  const recipe = labRecipe();
   const energyCost = labEnergyCost();
   const geneCost = labGeneCost();
   const inventory = normalizeInventory(state.inventory);
-  if (safeBiomass() < bioCost) {
-    toast(`Need ${bioCost} bio`);
-    trackAction("lab_blocked_no_biomass", {
-      biomass: safeBiomass(),
-      cost: bioCost
+  const missingMaterial = recipe.materials.find((entry) => labMaterialCount(entry.id, inventory) < entry.amount);
+  if (missingMaterial) {
+    const material = labMaterialById(missingMaterial.id);
+    toast(`Need ${missingMaterial.amount} ${material?.name || missingMaterial.id}`);
+    trackAction("lab_blocked_no_material", {
+      material: missingMaterial.id,
+      have: labMaterialCount(missingMaterial.id, inventory),
+      cost: missingMaterial.amount
     });
     return;
   }
@@ -2274,19 +2723,22 @@ function synthArtifact() {
   }
   const zenBoosted = consumeZenBoost();
   state.energy -= energyCost;
-  state.biomass = safeBiomass() - bioCost;
   state.inventory = inventory;
+  recipe.materials.forEach((entry) => {
+    state.inventory.materials[entry.id] = Math.max(0, labMaterialCount(entry.id, state.inventory) - entry.amount);
+  });
   state.inventory.geneStrands -= geneCost;
-  state.artifact += 1;
+  state.artifact += Math.max(1, Number(recipe.artifact || 1));
   state.plantVariant = (state.plantVariant + 7) % PLANT_VARIANTS.length;
-  state.score += zenBoosted ? 14 : 8;
-  state.resonance += zenBoosted ? 2 : 1;
+  state.score += zenBoosted ? Math.max(14, Number(recipe.score || 8) + 6) : Math.max(8, Number(recipe.score || 8));
+  state.resonance += zenBoosted ? Math.max(2, Number(recipe.resonance || 1) + 1) : Math.max(1, Number(recipe.resonance || 1));
   state.zenGene = state.artifact % 3 === 0 ? "aura" : state.artifact % 2 === 0 ? "crystal" : "sprout";
   playTone("lab");
-  toast(zenBoosted ? "Artifact +1 · Zen linked" : "Artifact +1");
+  toast(zenBoosted ? `${recipe.result} +1 · Zen linked` : `${recipe.result} +1`);
   trackAction("lab_mutation_clicked", {
     artifact: state.artifact,
-    biomassCost: bioCost,
+    recipeId: recipe.id,
+    materials: recipe.materials,
     geneCost,
     energyCost,
     zenBoosted,
@@ -2360,7 +2812,7 @@ function switchRoom(name) {
   playTone("nav");
   const app = $(".app");
   if (app) {
-    app.classList.remove("room-farm", "room-lab", "room-zen", "room-missions");
+    app.classList.remove("room-farm", "room-lab", "room-zen", "room-missions", "room-shop");
     app.classList.add(`room-${name}`);
   }
   Object.entries(rooms).forEach(([key, room]) => {
@@ -2396,6 +2848,10 @@ function closeSheets(exceptSelector = "") {
 $("#mainActionBtn")?.addEventListener("click", farmActionV2);
 $("#starsBtn")?.addEventListener("click", buyStarsEnergy);
 $("#autoCollectBtn")?.addEventListener("click", () => {
+  if (SINGLE_CAPSULE_MODE) {
+    donorBoostCapsule();
+    return;
+  }
   state.autoCollect = !state.autoCollect;
   playTone("tap");
   toast(state.autoCollect ? "Auto collect on" : "Auto collect off");
@@ -2403,6 +2859,10 @@ $("#autoCollectBtn")?.addEventListener("click", () => {
     enabled: state.autoCollect
   });
   render();
+});
+$("#plantCapsule")?.addEventListener("click", () => {
+  if (!SINGLE_CAPSULE_MODE) return;
+  farmActionV2();
 });
 $("#mutationAutoBtn")?.addEventListener("click", () => {
   state.mutationAuto = !state.mutationAuto;
@@ -2424,10 +2884,27 @@ $("#capsuleDrone")?.addEventListener("click", () => {
   });
   render();
 });
+$("#donorDroneBtn")?.addEventListener("click", () => {
+  openSheet("#droneSheet");
+  playTone("tap");
+  trackAction("drone_menu_opened", {
+    level: safeDroneLevel(),
+    source: "donor_left"
+  });
+  render();
+});
 $("#dataModuleBtn")?.addEventListener("click", () => {
   openSheet("#dataModuleSheet");
   playTone("tap");
   trackAction("data_module_opened", {
+    level: safeDataModuleLevel()
+  });
+  render();
+});
+$("#donorCapsuleUpgradeBtn")?.addEventListener("click", () => {
+  openSheet("#dataModuleSheet");
+  playTone("tap");
+  trackAction("capsule_upgrade_opened", {
     level: safeDataModuleLevel()
   });
   render();
@@ -2439,7 +2916,109 @@ $("#droneSkinGrid")?.addEventListener("click", (event) => {
   if (!skinButton) return;
   selectDroneSkin(skinButton.dataset.droneSkin);
 });
+$("#farmStrainGrid")?.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-farm-strain]");
+  if (!button) return;
+  const strainId = button.dataset.farmStrain || farmPlantingStrain;
+  const doubleTap = isPlantDoubleTap("farm-sheet", strainId);
+  farmPlantingStrain = strainId;
+  playTone("tap");
+  if (doubleTap) {
+    confirmFarmPlantSelection();
+    return;
+  }
+  renderFarmPlantSheet();
+});
+$("#farmPlantConfirmBtn")?.addEventListener("click", () => {
+  confirmFarmPlantSelection();
+});
+$("#donorCapsulePrevBtn")?.addEventListener("click", () => {
+  setDonorCapsule(activeDonorCapsule - 1);
+});
+$("#donorCapsuleNextBtn")?.addEventListener("click", () => {
+  setDonorCapsule(activeDonorCapsule + 1);
+});
+$("#farmRoom .donor-capsule-shell")?.addEventListener("pointerdown", (event) => {
+  donorCapsuleSwipe = { x: event.clientX, y: event.clientY };
+  donorCapsuleSwipeHandled = false;
+});
+$("#farmRoom .donor-capsule-shell")?.addEventListener("pointerup", (event) => {
+  if (!donorCapsuleSwipe) return;
+  const dx = event.clientX - donorCapsuleSwipe.x;
+  const dy = event.clientY - donorCapsuleSwipe.y;
+  donorCapsuleSwipe = null;
+  if (Math.abs(dx) < 42 || Math.abs(dx) < Math.abs(dy) * 1.35) return;
+  donorCapsuleSwipeHandled = true;
+  setDonorCapsule(activeDonorCapsule + (dx < 0 ? 1 : -1));
+  window.setTimeout(() => {
+    donorCapsuleSwipeHandled = false;
+  }, 80);
+});
+$("#farm-grid")?.addEventListener("click", (event) => {
+  if (!EXACT_DONOR_MODE) return;
+  if (donorCapsuleSwipeHandled) return;
+  const button = event.target.closest("[data-donor-slot]");
+  if (!button) return;
+  const index = Number(button.dataset.donorSlot);
+  const stateName = button.dataset.slotState || "";
+  if (!Number.isFinite(index)) return;
+  if (activeDonorCapsule > 0 || stateName === "future") {
+    toast(`Capsule ${activeDonorCapsule + 1} soon`);
+    return;
+  }
+  state.activeSlot = clamp(index, 0, FARM_SLOT_COUNT - 1);
+  if (stateName === "empty") {
+    openFarmPlantSheet(index);
+    return;
+  }
+  if (stateName === "ready") {
+    collectHarvestV2(false, index);
+    return;
+  }
+  if (stateName === "growing") {
+    const slot = farmSlotAt(index);
+    toast(`${farmStrainById(slot?.strain)?.name || "Plant"} · ${donorProgressLabel(slot)}`);
+    render();
+    return;
+  }
+  if (stateName === "paid") {
+    buyFarmSlot4();
+    return;
+  }
+  toast("Locked");
+});
+$("#seed-grid")?.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-donor-strain]");
+  if (!button) return;
+  const strainId = button.dataset.donorStrain || farmPlantingStrain;
+  const doubleTap = isPlantDoubleTap("donor-modal", strainId);
+  farmPlantingStrain = strainId;
+  playTone("tap");
+  if (doubleTap) {
+    confirmFarmPlantSelection();
+    return;
+  }
+  renderDonorPlantModal();
+});
+$("#donorFarmConfirmBtn")?.addEventListener("click", confirmFarmPlantSelection);
+$("#donorFarmCancelBtn")?.addEventListener("click", () => {
+  closeDonorPlantModal();
+  farmPlantingSlot = null;
+  farmPlantingStrain = null;
+});
+$("#donorFarmModal")?.addEventListener("click", (event) => {
+  if (event.target === event.currentTarget) {
+    closeDonorPlantModal();
+    farmPlantingSlot = null;
+    farmPlantingStrain = null;
+  }
+});
+$("#donorAutoHarvestBtn")?.addEventListener("click", donorAutoHarvest);
+$("#donorBoostBtn")?.addEventListener("click", donorBoostGrid);
+$("#shopFarmSlotBtn")?.addEventListener("click", buyFarmSlot4);
+$("#shopMutationBtn")?.addEventListener("click", buyUniqueMutation);
 $("#specimenGrid")?.addEventListener("click", (event) => {
+  if (SINGLE_CAPSULE_MODE) return;
   const pod = event.target.closest(".specimen-pod");
   if (!pod) return;
   const index = clamp(Math.floor(Number(pod.dataset.pod) || 0), 0, FARM_SLOT_COUNT - 1);
@@ -2468,8 +3047,7 @@ $("#specimenGrid")?.addEventListener("click", (event) => {
     return;
   }
   if (!slot.strain) {
-    plantFarmSlot(index);
-    render();
+    openFarmPlantSheet(index);
     return;
   }
   syncLegacyFarmFromActiveSlot();
@@ -2586,8 +3164,9 @@ $("#vibrationLevel")?.addEventListener("input", (event) => {
 });
 $("#vibrationLevel")?.addEventListener("change", () => triggerHaptic("tap"));
 $("#resetBtn")?.addEventListener("click", () => {
+  const resetState = createInitialState({ playerName: state.playerName });
   state = {
-    ...defaultState,
+    ...resetState,
     soundOn: state.soundOn,
     soundVolume: state.soundVolume,
     vibrationOn: state.vibrationOn,
@@ -2602,7 +3181,9 @@ $("#resetBtn")?.addEventListener("click", () => {
 });
 
 document.querySelectorAll(".nav-item").forEach((button) => {
-  button.addEventListener("click", () => switchRoom(button.dataset.room));
+  button.addEventListener("click", () => {
+    if (button.dataset.room) switchRoom(button.dataset.room);
+  });
 });
 
 updateLoadingSplash(18, "Initializing capsule");
