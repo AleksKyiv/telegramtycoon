@@ -8,11 +8,11 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Exo+2:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=121">
+    <link rel="stylesheet" href="styles.css?v=145">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="game-core/config.js?v=7" defer></script>
     <script src="game-core/state.js?v=6" defer></script>
-    <script src="app.js?v=81" defer></script>
+    <script src="app.js?v=88" defer></script>
   </head>
   <body>
     <main class="app room-farm" aria-label="Green Farm Tycoon MVP">
@@ -34,14 +34,15 @@
       </section>
 
       <section class="telegram-status profile-strip" id="telegramStatus" aria-label="Telegram connection status">
-        <span id="telegramStatusDot"></span>
-        <div class="profile-copy">
-          <strong id="telegramStatusText">Browser preview</strong>
-          <b id="telegramUserText">No Telegram user</b>
-          <small id="leagueBadge">Seed League</small>
+        <div class="profile-user-card">
+          <span id="telegramStatusDot"></span>
+          <div class="profile-copy">
+            <strong id="telegramStatusText">Guest User</strong>
+            <b id="telegramUserText">No Telegram user</b>
+          </div>
         </div>
+        <div class="profile-center-slot" aria-hidden="true"></div>
         <div class="profile-actions">
-          <button class="profile-chip" id="leagueBtn" type="button">League</button>
           <button class="profile-chip settings-chip" id="settingsBtn" type="button" aria-label="Open settings" title="Settings">
             <span class="settings-gear" aria-hidden="true">
               <i></i><i></i><i></i><i></i><i></i><i></i>
@@ -76,6 +77,22 @@
         </div>
       </section>
 
+      <section class="hud-side-stack" aria-label="Quick modules">
+        <div class="hud-side-module league-module">
+          <button class="resource-league-card" id="leagueHudBtn" type="button" aria-label="Open league">
+            <span class="league-hud-icon" aria-hidden="true"><i></i><i></i></span>
+            <small id="leagueBadge">Seed League</small>
+          </button>
+        </div>
+        <div class="hud-side-module daily-module">
+          <button class="resource-daily-card" id="dailyMissionHudBtn" type="button" aria-label="Open daily missions">
+            <span class="daily-hud-icon" aria-hidden="true"><i></i><i></i><i></i></span>
+            <small>Daily</small>
+            <b id="dailyMissionHudCount">0/4</b>
+          </button>
+        </div>
+      </section>
+
       <aside class="process-rail" aria-label="Process status">
         <div class="process-meter" id="processMeter"><strong id="processPercent">0%</strong></div>
         <span id="processState">Idle</span>
@@ -89,7 +106,7 @@
         </div>
 
         <div class="farm-donor-screen" aria-label="Donor-style farm interface">
-          <div class="donor-capsule-stage" aria-label="Capsule stage">
+          <div class="donor-robot-layer" aria-label="Capsule robot rail">
             <button class="capsule-drone donor-side-drone" id="donorDroneBtn" type="button" aria-label="Open drone upgrades">
               <span class="drone-orbit" aria-hidden="true"></span>
               <span class="drone-scan" aria-hidden="true"></span>
@@ -107,6 +124,8 @@
               <span class="drone-node node-b" aria-hidden="true"></span>
               <span class="drone-tail" aria-hidden="true"></span>
             </button>
+          </div>
+          <div class="donor-capsule-stage" aria-label="Capsule stage">
             <section class="donor-capsule-shell" aria-label="Farm capsule">
               <div class="donor-capsule-lid">
                 <span class="donor-capsule-id">
@@ -505,32 +524,56 @@
         </section>
       </section>
 
-      <section class="room" id="missionsRoom" aria-label="Missions room">
-        <div class="room-title"><span>Missions</span><strong>Starter</strong></div>
-        <section class="missions-space" aria-label="Starter missions">
+      <section class="room" id="dailyRoom" aria-label="Daily missions room">
+        <div class="room-title">
+          <span>Daily</span>
+          <strong>Missions</strong>
+        </div>
+        <section class="daily-space" aria-label="Daily missions center">
+          <button class="daily-floating-close" id="dailyCloseBtn" type="button" aria-label="Close daily missions">×</button>
           <div class="missions-orbit" aria-hidden="true">
             <i></i><i></i><i></i>
           </div>
-          <header class="missions-header">
-            <div>
-              <span>Mission Hub</span>
-              <strong>Start energy</strong>
-              <small>Open social signals, wait a moment, claim first energy.</small>
-            </div>
-            <div class="missions-core">
-              <b id="missionsEnergy">+0</b>
-              <small>energy</small>
-            </div>
-          </header>
-          <section class="tasks-daily-block" aria-label="Daily missions">
-            <div class="tasks-daily-title">Daily Missions</div>
+
+          <section class="daily-missions-cube" id="dailyMissionsCube" aria-label="Daily missions">
+            <header class="daily-cube-header">
+              <span class="daily-cube-icon" aria-hidden="true"><i></i><i></i><i></i></span>
+              <div>
+                <span>Daily Missions</span>
+                <strong>Daily cube</strong>
+                <small>Independent daily progress. Resets separately from tasks.</small>
+              </div>
+              <b id="dailyCubeCount">0/3</b>
+            </header>
             <div id="donorMissionsList"></div>
           </section>
-          <div class="missions-progress">
-            <span id="missionsProgress"></span>
-            <b id="missionsClaimed">0/4</b>
+        </section>
+      </section>
+
+      <section class="room" id="missionsRoom" aria-label="Tasks room">
+        <div class="room-title"><span>Tasks</span><strong>Social</strong></div>
+        <section class="missions-space tasks-missions-space" aria-label="Telegram and sponsored tasks center">
+          <div class="missions-orbit" aria-hidden="true">
+            <i></i><i></i><i></i>
           </div>
-          <div class="missions-grid" id="missionsGrid"></div>
+          <section class="sponsored-tasks-cube" aria-label="Telegram and sponsored tasks">
+            <header class="missions-header">
+              <div>
+                <span>Task Hub</span>
+                <strong>Telegram + Sponsors</strong>
+                <small>Social signals, sponsored quests and partner actions stay here.</small>
+              </div>
+              <div class="missions-core">
+                <b id="missionsEnergy">+0</b>
+                <small>energy</small>
+              </div>
+            </header>
+            <div class="missions-progress">
+              <span id="missionsProgress"></span>
+              <b id="missionsClaimed">0/4</b>
+            </div>
+            <div class="missions-grid" id="missionsGrid"></div>
+          </section>
         </section>
       </section>
 
@@ -552,6 +595,22 @@
             </div>
           </header>
           <div class="shop-grid">
+            <section class="shop-card shop-pass-card featured" id="shopPassCard" aria-label="30 day farm pass">
+              <span>30 day pass</span>
+              <strong>Daily Nano Pass</strong>
+              <small>Every day: +300 CRC, +3 SE. Includes 1 unique flower on activation.</small>
+              <div class="shop-pass-rewards" aria-label="Pass rewards">
+                <i class="pass-reward crc"><b>+300</b><small>CRC/day</small></i>
+                <i class="pass-reward se"><b>+3</b><small>SE/day</small></i>
+                <i class="pass-reward flower"><b id="shopPassFlowerCount">x0</b><small>Unique flower</small></i>
+              </div>
+              <em class="shop-pass-status" id="shopPassStatus">Inactive</em>
+              <small class="shop-pass-claim-state" id="shopPassClaimState">Buy to unlock daily claim</small>
+              <div class="shop-pass-actions">
+                <button class="shop-pass-buy" id="shopPassBuyBtn" type="button"><b id="shopPassBuyPrice">★ 300</b></button>
+                <button class="shop-pass-claim" id="shopPassClaimBtn" type="button" disabled>Inactive</button>
+              </div>
+            </section>
             <button class="shop-card featured" id="shopFarmSlotBtn" type="button">
               <span>Farm slot</span>
               <strong>Open chamber 04</strong>
@@ -599,6 +658,25 @@
             <em id="leaderName">You</em>
             <b id="leaderScore">0</b>
           </div>
+          <section class="league-progress-card" id="leagueProgressCard" aria-label="League progress">
+            <div class="league-progress-head">
+              <span class="league-emblem big green" id="leagueCurrentIcon" aria-hidden="true"></span>
+              <div>
+                <span>Current league</span>
+                <strong id="leagueCurrentName">Seed League</strong>
+                <small id="leagueCurrentRange">1K-40K main</small>
+              </div>
+              <em id="leagueProgressValue">0%</em>
+            </div>
+            <div class="league-progress-track" aria-hidden="true">
+              <i id="leagueProgressFill"></i>
+            </div>
+            <div class="league-progress-meta">
+              <span>Next: <b id="leagueNextName">Sprout League</b></span>
+              <strong id="leagueRemaining">40K left</strong>
+            </div>
+            <div class="league-visual-rail" id="leagueVisualRail" aria-label="League badges"></div>
+          </section>
           <div class="leaderboard-rows league-rows" id="leaderboardRows">
             <div class="leader-row"><span>01</span><b>Nova</b><strong>920</strong></div>
             <div class="leader-row you"><span>12</span><b>You</b><strong>0</strong></div>

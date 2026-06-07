@@ -97,6 +97,14 @@ const farmStrains = [
 ];
 const farmStrainIds = new Set(farmStrains.map((strain) => strain.id));
 const farmStrainsById = new Map(farmStrains.map((strain) => [strain.id, strain]));
+const farmPassConfig = {
+  productId: "farm_pass_30",
+  days: 30,
+  stars: 300,
+  dailyCrc: 300,
+  dailySe: 3,
+  uniqueFlower: "pass_quantum_flower"
+};
 const starsProducts = {
   energy_pack_10: {
     id: "energy_pack_10",
@@ -121,6 +129,19 @@ const starsProducts = {
     label: "Elite Chamber",
     stars: 100,
     reward: { slot: 5 }
+  },
+  farm_pass_30: {
+    id: "farm_pass_30",
+    title: "Daily Nano Pass",
+    description: "30 days of daily +300 CRC, +3 SE, and one unique flower on activation.",
+    label: "30 Day Pass",
+    stars: farmPassConfig.stars,
+    reward: {
+      farmPassDays: farmPassConfig.days,
+      dailyCrc: farmPassConfig.dailyCrc,
+      dailySe: farmPassConfig.dailySe,
+      uniqueFlower: farmPassConfig.uniqueFlower
+    }
   },
   unique_mutation_10: {
     id: "unique_mutation_10",
@@ -483,6 +504,7 @@ function createDefaultPlayerRecord({ id, user, verified }) {
     farm: safeFarmState({ activeSlot: 0, autoCollect: false, slots: [] }),
     lab: safeLabState(),
     zen: safeZenState({ energy: 0, duration: 60_000, sound: "deep", gene: "sprout", attentionHits: 0 }),
+    farmPass: safeFarmPassState(),
     starsSpent: 0,
     purchases: 0,
     verified: Boolean(verified),
@@ -519,6 +541,7 @@ function ensurePlayerRecord({ clientId, user, verified }) {
   existing.farm = safeFarmState(existing.farm);
   existing.lab = safeLabState(existing.lab);
   existing.zen = safeZenState(existing.zen);
+  existing.farmPass = safeFarmPassState(existing.farmPass);
   existing.starsSpent = safeNumber(existing.starsSpent);
   existing.purchases = safeNumber(existing.purchases);
   existing.verified = Boolean(verified || existing.verified);
@@ -615,6 +638,7 @@ function upsertPlayer({ clientId, user, state, verified, eventType = "player_syn
     sound: state?.zenSound,
     gene: state?.zenGene
   });
+  const farmPass = mergeFarmPassState(existing.farmPass, state?.farmPass);
   const name = displayName(user, existing.name || "Guest");
 
   const player = {
@@ -638,6 +662,7 @@ function upsertPlayer({ clientId, user, state, verified, eventType = "player_syn
     farm,
     lab,
     zen,
+    farmPass,
     starsSpent: safeNumber(existing.starsSpent),
     purchases: safeNumber(existing.purchases),
     verified,
@@ -943,6 +968,7 @@ function handleSuccessfulPayment(message) {
   if (player) {
     player.energy = safeNumber(player.energy) + safeNumber(product.reward.energy);
     player.score = safeNumber(player.score) + safeNumber(product.reward.score);
+    player.seed = safeNumber(player.seed) + safeNumber(product.reward.se ?? product.reward.seed);
     player.resonance = safeNumber(player.resonance) + safeNumber(product.reward.resonance);
     player.artifact = safeNumber(player.artifact) + safeNumber(product.reward.artifact);
     if (product.reward.slot !== undefined) {
@@ -953,6 +979,12 @@ function handleSuccessfulPayment(message) {
         uniqueMutations: safeNumber(player.lab?.uniqueMutations) + safeNumber(product.reward.uniqueMutation),
         rareUntil: Date.now() + 7_000
       });
+    }
+    if (product.reward.farmPassDays !== undefined) {
+      player.farmPass = activateFarmPassState(player.farmPass, product.reward.farmPassDays);
+      player.inventory = safeInventory(player.inventory);
+      const uniqueFlower = String(product.reward.uniqueFlower || farmPassConfig.uniqueFlower);
+      player.inventory.strains[uniqueFlower] = safeNumber(player.inventory.strains?.[uniqueFlower]) + 1;
     }
     player.starsSpent = safeNumber(player.starsSpent) + product.stars;
     player.purchases = safeNumber(player.purchases) + 1;
@@ -989,6 +1021,7 @@ function handleSuccessfulPayment(message) {
     platform: order.platform || "unknown",
     rewardEnergy: product.reward.energy,
     rewardSlot: product.reward.slot,
+    rewardFarmPassDays: product.reward.farmPassDays,
     telegramPaymentChargeId: safeEventValue(payment.telegram_payment_charge_id)
   });
 }
@@ -1671,6 +1704,41 @@ function mergeZenState(existing, incoming) {
   };
 }
 
+function safeFarmPassState(value) {
+  const pass = value && typeof value === "object" ? value : {};
+  const claimedDays = Array.isArray(pass.claimedDays)
+    ? pass.claimedDays.map((day) => String(day)).filter(Boolean)
+    : [];
+  return {
+    activeUntil: safeTimestamp(pass.activeUntil),
+    purchasedAt: safeTimestamp(pass.purchasedAt),
+    claimedDays: [...new Set(claimedDays)].slice(-farmPassConfig.days),
+    uniqueFlowerClaimed: Boolean(pass.uniqueFlowerClaimed)
+  };
+}
+
+function mergeFarmPassState(existing, incoming) {
+  const current = safeFarmPassState(existing);
+  const next = safeFarmPassState(incoming);
+  return safeFarmPassState({
+    activeUntil: Math.max(current.activeUntil, next.activeUntil),
+    purchasedAt: Math.max(current.purchasedAt, next.purchasedAt),
+    claimedDays: [...current.claimedDays, ...next.claimedDays],
+    uniqueFlowerClaimed: current.uniqueFlowerClaimed || next.uniqueFlowerClaimed
+  });
+}
+
+function activateFarmPassState(existing, days = farmPassConfig.days, now = Date.now()) {
+  const current = safeFarmPassState(existing);
+  const baseUntil = Math.max(now, current.activeUntil);
+  return safeFarmPassState({
+    ...current,
+    activeUntil: baseUntil + Math.max(1, safeNumber(days)) * 86_400_000,
+    purchasedAt: current.purchasedAt || now,
+    uniqueFlowerClaimed: true
+  });
+}
+
 function mergeUnlockedSlots(existing, incoming) {
   return {
     ...safeUnlockedSlots(existing),
@@ -1710,6 +1778,7 @@ function safeStateSummary(state) {
       sound: state?.zenSound,
       gene: state?.zenGene
     }),
+    farmPass: safeFarmPassState(state?.farmPass),
     missionsClaimed: Object.keys(missions.claimed).length
   };
 }
@@ -1942,6 +2011,7 @@ function playerToRow(player) {
       farm: safeFarmState(player.farm),
       lab: safeLabState(player.lab),
       zen: safeZenState(player.zen),
+      farmPass: safeFarmPassState(player.farmPass),
       missions: safeMissions(player.missions)
     },
     created_at: player.createdAt || new Date().toISOString(),
@@ -1970,6 +2040,7 @@ function playerFromRow(row) {
     farm: safeFarmState(row.state?.farm),
     lab: safeLabState(row.state?.lab),
     zen: safeZenState(row.state?.zen),
+    farmPass: safeFarmPassState(row.state?.farmPass),
     missions: safeMissions(row.state?.missions),
     starsSpent: safeNumber(row.stars_spent),
     purchases: safeNumber(row.purchases),

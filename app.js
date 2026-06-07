@@ -40,6 +40,24 @@ const EXACT_DONOR_MODE = true;
 const SINGLE_CAPSULE_MODE = false;
 const DONOR_RING_CIRCUMFERENCE = 251;
 const DONOR_CAPSULE_COUNT = 3;
+const FARM_PASS_PRODUCT_ID = "farm_pass_30";
+const FARM_PASS_DAYS = 30;
+const FARM_PASS_PRICE_STARS = 300;
+const FARM_PASS_DAILY_CRC = 300;
+const FARM_PASS_DAILY_SE = 3;
+const FARM_PASS_UNIQUE_FLOWER_ID = "pass_quantum_flower";
+const LEAGUE_TIERS = [
+  { id: "seed", name: "Seed League", min: 1_000, max: 40_000, tone: "green" },
+  { id: "sprout", name: "Sprout League", min: 40_000, max: 105_000, tone: "cyan" },
+  { id: "bloom", name: "Bloom League", min: 105_000, max: 250_000, tone: "pink" },
+  { id: "crystal", name: "Crystal League", min: 250_000, max: 600_000, tone: "blue" },
+  { id: "quantum", name: "Quantum League", min: 600_000, max: 1_500_000, tone: "violet" },
+  { id: "zenith", name: "Zenith League", min: 1_500_000, max: Infinity, tone: "gold" }
+];
+const LEAGUE_VISUALS = [
+  ...LEAGUE_TIERS,
+  { id: "apex", name: "Apex", min: Infinity, max: Infinity, tone: "apex" }
+];
 const FIRST_CAPSULE_SLOT_UNLOCKS = {
   3: {
     state: "paid",
@@ -149,6 +167,25 @@ const FLOWER_STRAINS = [
     color: "#B48EFF",
     iconKey: "flowerRose",
     labMaterial: { id: "quantum_petal", short: "Q-PETAL", amount: 2 }
+  },
+  {
+    id: FARM_PASS_UNIQUE_FLOWER_ID,
+    name: "PASS AURORA BLOOM",
+    shortName: "AURORA",
+    type: "unique flower",
+    durationMs: 40 * 60_000,
+    score: 420,
+    biomass: 16,
+    geneStrands: 5,
+    plantCostScore: 0,
+    plantCostResonance: 0,
+    plantCostMain: 0,
+    variantShift: 21,
+    color: "#FFD66B",
+    iconKey: "flowerRose",
+    requiresInventory: true,
+    inventoryKey: FARM_PASS_UNIQUE_FLOWER_ID,
+    labMaterial: { id: "aurora_petal", short: "AURORA", amount: 3 }
   }
 ];
 
@@ -387,9 +424,15 @@ const rooms = {
   farm: $("#farmRoom"),
   lab: $("#labRoom"),
   zen: $("#zenRoom"),
+  daily: $("#dailyRoom"),
   missions: $("#missionsRoom"),
   shop: $("#shopRoom")
 };
+let roomBeforeDaily = "farm";
+
+function activeRoomName() {
+  return Object.entries(rooms).find(([, room]) => room?.classList.contains("active"))?.[0] || "farm";
+}
 
 function formatFullNumber(value) {
   const number = Math.max(0, Math.floor(Number(value) || 0));
@@ -773,11 +816,17 @@ function unlockSlot(index) {
 }
 
 function farmStrainChoices() {
-  return activeDonorCapsule === 1 ? FLOWER_STRAINS : FARM_STRAINS;
+  return capsuleStrainChoices(activeDonorCapsule);
 }
 
 function capsuleStrainChoices(capsuleIndex = activeDonorCapsule) {
-  return capsuleIndex === 1 ? FLOWER_STRAINS : FARM_STRAINS;
+  if (capsuleIndex !== 1) return FARM_STRAINS;
+  const inventory = normalizeInventory(state.inventory);
+  return FLOWER_STRAINS.filter((strain) => {
+    if (!strain.requiresInventory) return true;
+    const key = strain.inventoryKey || strain.id;
+    return Math.max(0, Math.floor(Number(inventory.strains[key]) || 0)) > 0;
+  });
 }
 
 function capsuleStrainById(strainId, capsuleIndex = activeDonorCapsule) {
@@ -802,6 +851,7 @@ function selectedPlantingStrain() {
 
 function donorPlantCostLabel(strain) {
   if (!strain) return "--";
+  if (strain.requiresInventory) return "1 unique flower";
   if (strain.plantCostMain) return `${Math.max(0, Math.floor(Number(strain.plantCostMain) || 0))}`;
   if (strain.plantCostResonance) return `${strain.plantCostResonance} ZEN`;
   return `${Math.max(0, Math.floor(Number(strain.plantCostScore) || 0))} CRC`;
@@ -809,6 +859,7 @@ function donorPlantCostLabel(strain) {
 
 function donorPlantCostHtml(strain) {
   if (!strain) return "--";
+  if (strain.requiresInventory) return `<span class="resource-amount"><span class="inline-resource-icon icon-seed">✿</span><b>1</b></span>`;
   if (strain.plantCostMain) return resourceAmountHtml("main", Number(strain.plantCostMain) || 0);
   if (strain.plantCostResonance) return resourceAmountHtml("zen", Number(strain.plantCostResonance) || 0);
   return resourceAmountHtml("crc", Number(strain.plantCostScore) || 0);
@@ -822,10 +873,15 @@ function strainLabMaterialLabel(strain) {
 
 function canAffordPlant(strain) {
   if (!strain) return false;
+  const inventory = normalizeInventory(state.inventory);
+  const inventoryKey = strain.inventoryKey || strain.id;
+  const enoughInventory = strain.requiresInventory
+    ? Math.max(0, Math.floor(Number(inventory.strains[inventoryKey]) || 0)) > 0
+    : true;
   const enoughMain = strain.plantCostMain ? state.score >= strain.plantCostMain : true;
   const enoughScore = strain.plantCostScore ? state.energy >= strain.plantCostScore : true;
   const enoughResonance = strain.plantCostResonance ? state.resonance >= strain.plantCostResonance : true;
-  return enoughMain && enoughScore && enoughResonance;
+  return enoughInventory && enoughMain && enoughScore && enoughResonance;
 }
 
 function donorPlantStatus(slot, strain) {
@@ -1056,12 +1112,125 @@ function claimFarmEventReward(index = farmEventSnapshot().nextClaimIndex) {
   render();
 }
 
-function renderDonorMissionList() {
-  const list = $("#donorMissionsList");
-  if (!list) return;
+function farmPassDayKey(time = Date.now()) {
+  const date = new Date(time);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
 
+function normalizeFarmPass(value = state.farmPass) {
+  const pass = value && typeof value === "object" ? value : {};
+  const claimedDays = Array.isArray(pass.claimedDays)
+    ? pass.claimedDays.map((day) => String(day)).filter(Boolean)
+    : [];
+  return {
+    activeUntil: Math.max(0, Number(pass.activeUntil) || 0),
+    purchasedAt: Math.max(0, Number(pass.purchasedAt) || 0),
+    claimedDays: [...new Set(claimedDays)].slice(-FARM_PASS_DAYS),
+    uniqueFlowerClaimed: Boolean(pass.uniqueFlowerClaimed)
+  };
+}
+
+function farmPassSnapshot() {
+  state.farmPass = normalizeFarmPass(state.farmPass);
+  const now = Date.now();
+  const active = state.farmPass.activeUntil > now;
+  const today = farmPassDayKey(now);
+  const claimedToday = state.farmPass.claimedDays.includes(today);
+  const remainingMs = Math.max(0, state.farmPass.activeUntil - now);
+  return {
+    active,
+    today,
+    claimedToday,
+    remainingDays: active ? Math.max(1, Math.ceil(remainingMs / 86_400_000)) : 0,
+    claimedCount: state.farmPass.claimedDays.length
+  };
+}
+
+function grantFarmPassUniqueFlower() {
+  state.inventory = normalizeInventory(state.inventory);
+  state.inventory.strains[FARM_PASS_UNIQUE_FLOWER_ID] = Math.max(
+    0,
+    Math.floor(Number(state.inventory.strains[FARM_PASS_UNIQUE_FLOWER_ID]) || 0)
+  ) + 1;
+  state.farmPass = normalizeFarmPass(state.farmPass);
+  state.farmPass.uniqueFlowerClaimed = true;
+}
+
+function activateFarmPass(product = {}) {
+  const reward = product.reward || {};
+  const days = Math.max(1, Math.floor(Number(reward.farmPassDays) || FARM_PASS_DAYS));
+  const now = Date.now();
+  state.farmPass = normalizeFarmPass(state.farmPass);
+  const baseUntil = Math.max(now, state.farmPass.activeUntil);
+  state.farmPass.activeUntil = baseUntil + days * 86_400_000;
+  state.farmPass.purchasedAt = state.farmPass.purchasedAt || now;
+  grantFarmPassUniqueFlower();
+  playTone("stars");
+  toast(`30-day pass active / unique flower +1`);
+  trackAction("farm_pass_activated", {
+    days,
+    dailyCrc: FARM_PASS_DAILY_CRC,
+    dailySe: FARM_PASS_DAILY_SE,
+    uniqueFlower: FARM_PASS_UNIQUE_FLOWER_ID
+  });
+  render();
+  scheduleBackendSync(true);
+}
+
+function claimFarmPassDaily() {
+  const snapshot = farmPassSnapshot();
+  if (!snapshot.active) {
+    toast("Pass inactive");
+    return false;
+  }
+  if (snapshot.claimedToday) {
+    toast("Pass already claimed today");
+    return false;
+  }
+  state.energy += FARM_PASS_DAILY_CRC;
+  state.seed += FARM_PASS_DAILY_SE;
+  state.farmPass.claimedDays = [...state.farmPass.claimedDays, snapshot.today].slice(-FARM_PASS_DAYS);
+  playTone("collect");
+  toast(`Pass +${FARM_PASS_DAILY_CRC} CRC / +${FARM_PASS_DAILY_SE} SE`);
+  trackAction("farm_pass_daily_claimed", {
+    day: snapshot.today,
+    crc: FARM_PASS_DAILY_CRC,
+    se: FARM_PASS_DAILY_SE,
+    remainingDays: snapshot.remainingDays
+  });
+  render();
+  scheduleBackendSync(true);
+  return true;
+}
+
+function renderShopPass() {
+  const snapshot = farmPassSnapshot();
+  const status = snapshot.active
+    ? `Active / ${snapshot.remainingDays}d left`
+    : "Inactive";
+  setText("#shopPassStatus", status);
+  setText("#shopPassClaimState", snapshot.active ? `${snapshot.claimedCount}/${FARM_PASS_DAYS} claimed` : "Buy to unlock daily claim");
+  setText("#shopPassBuyPrice", `★ ${FARM_PASS_PRICE_STARS}`);
+  setText("#shopPassFlowerCount", `x${Math.max(0, Math.floor(Number(normalizeInventory(state.inventory).strains[FARM_PASS_UNIQUE_FLOWER_ID]) || 0))}`);
+  const claim = $("#shopPassClaimBtn");
+  if (claim) {
+    claim.disabled = !snapshot.active || snapshot.claimedToday;
+    claim.textContent = !snapshot.active
+      ? "Inactive"
+      : snapshot.claimedToday
+        ? "Claimed"
+        : `Claim +${FARM_PASS_DAILY_CRC} CRC +${FARM_PASS_DAILY_SE} SE`;
+  }
+  const card = $("#shopPassCard");
+  if (card) {
+    card.classList.toggle("active", snapshot.active);
+    card.classList.toggle("claim-ready", snapshot.active && !snapshot.claimedToday);
+  }
+}
+
+function dailyMissionItems() {
   const totalHarvests = Object.values(normalizeInventory(state.inventory).harvests || {}).reduce((sum, value) => sum + (Number(value) || 0), 0);
-  const missions = [
+  return [
     {
       txt: "Collect 3 harvests",
       prog: Math.min(3, totalHarvests),
@@ -1081,6 +1250,24 @@ function renderDonorMissionList() {
       rew: "1 ZEN"
     }
   ];
+}
+
+function dailyMissionProgressSnapshot() {
+  const missions = dailyMissionItems();
+  return {
+    missions,
+    done: missions.filter((mission) => mission.prog >= mission.max).length,
+    total: missions.length
+  };
+}
+
+function renderDonorMissionList() {
+  const list = $("#donorMissionsList");
+  if (!list) return;
+
+  const { missions, done, total } = dailyMissionProgressSnapshot();
+  setText("#dailyMissionHudCount", `${done}/${total}`);
+  setText("#dailyCubeCount", `${done}/${total}`);
 
   list.innerHTML = missions.map((mission) => {
     const done = mission.prog >= mission.max;
@@ -1610,7 +1797,7 @@ function getClientId() {
 }
 
 function telegramUserLabel(user) {
-  if (!user) return "No Telegram user";
+  if (!user) return "Guest session";
   const name = [user.first_name, user.last_name].filter(Boolean).join(" ") || user.username || "Telegram user";
   const handle = user.username ? `@${user.username}` : `id ${user.id}`;
   return `${name} · ${handle}`;
@@ -1619,7 +1806,7 @@ function telegramUserLabel(user) {
 function renderTelegramStatus() {
   const user = tg?.initDataUnsafe?.user;
   const isTelegram = Boolean(tg?.initData || user);
-  const statusText = isTelegram ? "Telegram connected" : "Browser preview";
+  const statusText = isTelegram ? "Telegram User" : "Guest User";
   const userText = telegramUserLabel(user);
   setText("#telegramStatusText", statusText);
   setText("#telegramUserText", userText);
@@ -1643,6 +1830,7 @@ function serverStatePayload() {
     sessions: state.sessions,
     artifact: state.artifact,
     labUniqueMutations: state.labUniqueMutations,
+    farmPass: normalizeFarmPass(state.farmPass),
     droneLevel: safeDroneLevel(),
     droneSkin: normalizeDroneSkin(),
     dataModuleLevel: safeDataModuleLevel(),
@@ -1684,9 +1872,83 @@ function playerSnapshot() {
   return JSON.stringify(serverStatePayload());
 }
 
+function leagueForScore(score = state.score) {
+  const value = Math.max(0, Math.floor(Number(score) || 0));
+  return LEAGUE_TIERS.find((tier) => value >= tier.min && value < tier.max) || LEAGUE_TIERS[0];
+}
+
+function leagueSnapshot(score = state.score) {
+  const value = Math.max(0, Math.floor(Number(score) || 0));
+  const current = leagueForScore(value);
+  const index = LEAGUE_TIERS.findIndex((tier) => tier.id === current.id);
+  const next = LEAGUE_TIERS[index + 1] || null;
+  const floor = current.min;
+  const ceiling = Number.isFinite(current.max) ? current.max : current.min;
+  const range = Math.max(1, ceiling - floor);
+  const progress = next
+    ? clamp(Math.round(((value - floor) / range) * 100), 0, 100)
+    : 100;
+  const remaining = next ? Math.max(0, next.min - value) : 0;
+
+  return {
+    value,
+    current,
+    next,
+    progress,
+    remaining,
+    floor,
+    ceiling,
+    index
+  };
+}
+
+function formatLeagueAmount(value) {
+  const amount = Math.max(0, Math.floor(Number(value) || 0));
+  if (amount >= 1_000_000) return `${(amount / 1_000_000).toFixed(amount % 1_000_000 === 0 ? 0 : 1)}M`;
+  if (amount >= 1_000) return `${Math.floor(amount / 1_000)}K`;
+  return String(amount);
+}
+
+function renderLeagueProgress() {
+  const snapshot = leagueSnapshot();
+  setText("#leagueTitle", snapshot.current.name);
+  setText("#leagueBadge", snapshot.current.name);
+  setText("#leagueCurrentName", snapshot.current.name);
+  setText("#leagueCurrentRange", snapshot.next
+    ? `${formatLeagueAmount(snapshot.floor)}-${formatLeagueAmount(snapshot.ceiling)} main`
+    : `${formatLeagueAmount(snapshot.floor)}+ main`);
+  setText("#leagueNextName", snapshot.next ? snapshot.next.name : "MAX League");
+  setText("#leagueRemaining", snapshot.next
+    ? `${formatLeagueAmount(snapshot.remaining)} left`
+    : "Top league reached");
+  setText("#leagueProgressValue", `${snapshot.progress}%`);
+  setStyle("#leagueProgressFill", "--league-progress", `${snapshot.progress}%`);
+  setClass("#leagueProgressCard", "maxed", !snapshot.next);
+
+  const currentIcon = $("#leagueCurrentIcon");
+  if (currentIcon) {
+    currentIcon.className = `league-emblem big ${snapshot.current.tone}`;
+    currentIcon.setAttribute("aria-label", snapshot.current.name);
+  }
+
+  const rail = $("#leagueVisualRail");
+  if (rail) {
+    rail.innerHTML = LEAGUE_VISUALS.map((tier, index) => {
+      const isActive = tier.id === snapshot.current.id;
+      const isUnlocked = index <= snapshot.index;
+      return `
+        <span class="league-mini ${tier.tone} ${isActive ? "active" : ""} ${isUnlocked ? "unlocked" : "locked"}" title="${escapeHtml(tier.name)}">
+          <i></i>
+          <b>${String(index + 1).padStart(2, "0")}</b>
+        </span>
+      `;
+    }).join("");
+  }
+}
+
 function renderLeaderboard() {
+  renderLeagueProgress();
   setText("#backendState", backendState.status);
-  setText("#leagueTitle", leagueName());
   const rows = $("#leaderboardRows");
   if (!rows) return;
 
@@ -1713,11 +1975,7 @@ function renderLeaderboard() {
 }
 
 function leagueName(score = state.score) {
-  if (score >= 1200) return "Zen League";
-  if (score >= 700) return "Crystal League";
-  if (score >= 300) return "Sprout League";
-  if (score >= 100) return "Green League";
-  return "Seed League";
+  return leagueSnapshot(score).current.name;
 }
 
 function escapeHtml(value) {
@@ -1817,6 +2075,20 @@ function applyServerPlayerState(player = {}) {
   state.dataModuleLevel = Math.max(safeDataModuleLevel(), safeDataModuleLevel(player.dataModuleLevel));
   state.missions = mergeMissionState(state.missions, player.missions);
   state.unlockedSlots = { ...normalizeUnlockedSlots(state.unlockedSlots), ...normalizeUnlockedSlots(player.unlockedSlots) };
+  state.farmPass = normalizeFarmPass(
+    player.farmPass && typeof player.farmPass === "object"
+      ? {
+        ...state.farmPass,
+        activeUntil: Math.max(Number(state.farmPass?.activeUntil) || 0, Number(player.farmPass.activeUntil) || 0),
+        purchasedAt: Math.max(Number(state.farmPass?.purchasedAt) || 0, Number(player.farmPass.purchasedAt) || 0),
+        claimedDays: [
+          ...(Array.isArray(state.farmPass?.claimedDays) ? state.farmPass.claimedDays : []),
+          ...(Array.isArray(player.farmPass.claimedDays) ? player.farmPass.claimedDays : [])
+        ],
+        uniqueFlowerClaimed: Boolean(state.farmPass?.uniqueFlowerClaimed || player.farmPass.uniqueFlowerClaimed)
+      }
+      : state.farmPass
+  );
 
   if (player.lab) {
     state.labUniqueMutations = Math.max(
@@ -1874,6 +2146,7 @@ function applyAuthoritativePlayerState(player = {}) {
   state.dataModuleLevel = safeDataModuleLevel(player.dataModuleLevel);
   state.missions = mergeMissionState(state.missions, player.missions);
   state.unlockedSlots = normalizeUnlockedSlots(player.unlockedSlots);
+  state.farmPass = normalizeFarmPass(player.farmPass || state.farmPass);
 
   if (player.lab) {
     state.labUniqueMutations = Math.max(0, Math.floor(Number(player.lab.uniqueMutations) || 0));
@@ -2907,8 +3180,10 @@ function render() {
   setText("#playerName", state.playerName);
   setText("#leaderName", state.playerName);
   setText("#avatar", state.playerName.slice(0, 1).toUpperCase());
-  setText("#leagueBadge", leagueName());
-  setText("#leagueTitle", leagueName());
+  renderLeagueProgress();
+  const dailyProgress = dailyMissionProgressSnapshot();
+  setText("#dailyMissionHudCount", `${dailyProgress.done}/${dailyProgress.total}`);
+  setText("#dailyCubeCount", `${dailyProgress.done}/${dailyProgress.total}`);
   setText("#artifactLabel", state.artifact > 0 ? `x${state.artifact}` : "Empty");
   setText("#farmSelectedTier", activeStrain ? `${activeStrain.type} strain` : "Choose donor plant");
   setText("#farmSelectedPlant", activeStrain ? activeStrain.name : selectedPlantingStrain()?.name || "NEON BASIL");
@@ -2923,6 +3198,7 @@ function render() {
   renderMutationLab(progress);
   renderZen();
   renderMissions();
+  renderShopPass();
   if (EXACT_DONOR_MODE) renderDonorFarm();
   if (EXACT_DONOR_MODE) renderFarmEventDockV2();
   renderDrone();
@@ -3076,6 +3352,11 @@ function plantFarmSlot(index = state.activeSlot, strainId = null) {
   }
 
   const zenBoosted = consumeZenBoost();
+  if (strain.requiresInventory) {
+    state.inventory = normalizeInventory(state.inventory);
+    const inventoryKey = strain.inventoryKey || strain.id;
+    state.inventory.strains[inventoryKey] = Math.max(0, Math.floor(Number(state.inventory.strains[inventoryKey]) || 0) - 1);
+  }
   if (strain.plantCostMain) state.score -= strain.plantCostMain;
   if (strain.plantCostScore) state.energy -= strain.plantCostScore;
   if (strain.plantCostResonance) state.resonance -= strain.plantCostResonance;
@@ -3128,6 +3409,11 @@ function plantCapsuleSlot(index, strainId = null, capsuleIndex = activeDonorCaps
   }
 
   const zenBoosted = consumeZenBoost();
+  if (strain.requiresInventory) {
+    state.inventory = normalizeInventory(state.inventory);
+    const inventoryKey = strain.inventoryKey || strain.id;
+    state.inventory.strains[inventoryKey] = Math.max(0, Math.floor(Number(state.inventory.strains[inventoryKey]) || 0) - 1);
+  }
   if (strain.plantCostMain) state.score -= strain.plantCostMain;
   if (strain.plantCostScore) state.energy -= strain.plantCostScore;
   if (strain.plantCostResonance) state.resonance -= strain.plantCostResonance;
@@ -3329,6 +3615,11 @@ async function farmActionV2() {
 }
 
 function applyStarsReward(product = {}) {
+  if (product.id === FARM_PASS_PRODUCT_ID || product.reward?.farmPassDays) {
+    activateFarmPass(product);
+    return;
+  }
+
   if (product.id === "farm_slot_4" || product.id === "farm_slot_6" || product.reward?.slot !== undefined) {
     const slot = Number(product.reward?.slot ?? 3);
     unlockSlot(slot);
@@ -3357,6 +3648,25 @@ function applyStarsReward(product = {}) {
 }
 
 function mockStarsBuy(productId = "energy_pack_10") {
+  if (productId === FARM_PASS_PRODUCT_ID) {
+    applyStarsReward({
+      id: FARM_PASS_PRODUCT_ID,
+      reward: {
+        farmPassDays: FARM_PASS_DAYS,
+        dailyCrc: FARM_PASS_DAILY_CRC,
+        dailySe: FARM_PASS_DAILY_SE,
+        uniqueFlower: FARM_PASS_UNIQUE_FLOWER_ID
+      }
+    });
+    trackAction("stars_preview_mock", {
+      stars: FARM_PASS_PRICE_STARS,
+      productId,
+      farmPassDays: FARM_PASS_DAYS,
+      mode: "preview"
+    });
+    return;
+  }
+
   if (productId === "farm_slot_4" || productId === "farm_slot_6") {
     const slot = productId === "farm_slot_6" ? 5 : 3;
     const stars = productId === "farm_slot_6" ? 100 : 10;
@@ -3401,7 +3711,11 @@ function mockStarsBuy(productId = "energy_pack_10") {
 
 async function buyStarsProduct(productId = "energy_pack_10") {
   const platform = telegramPlatform();
-  const stars = productId === "farm_slot_6" ? 100 : 10;
+  const stars = productId === FARM_PASS_PRODUCT_ID
+    ? FARM_PASS_PRICE_STARS
+    : productId === "farm_slot_6"
+      ? 100
+      : 10;
   trackAction("stars_button_clicked", {
     stars,
     productId,
@@ -3514,6 +3828,14 @@ function buyFarmSlot6() {
     return null;
   }
   return buyStarsProduct("farm_slot_6");
+}
+
+function buyFarmPass30() {
+  const snapshot = farmPassSnapshot();
+  if (snapshot.active) {
+    toast(`Pass active / ${snapshot.remainingDays}d left`);
+  }
+  return buyStarsProduct(FARM_PASS_PRODUCT_ID);
 }
 
 function applyUniqueMutationReward(product = {}) {
@@ -3690,7 +4012,7 @@ function switchRoom(name) {
   playTone("nav");
   const app = $(".app");
   if (app) {
-    app.classList.remove("room-farm", "room-lab", "room-zen", "room-missions", "room-shop");
+    app.classList.remove("room-farm", "room-lab", "room-zen", "room-daily", "room-missions", "room-shop");
     app.classList.add(`room-${name}`);
   }
   Object.entries(rooms).forEach(([key, room]) => {
@@ -3924,6 +4246,8 @@ $("#farmEventDock")?.addEventListener("click", (event) => {
 });
 $("#shopFarmSlotBtn")?.addEventListener("click", buyFarmSlot4);
 $("#shopMutationBtn")?.addEventListener("click", buyUniqueMutation);
+$("#shopPassBuyBtn")?.addEventListener("click", buyFarmPass30);
+$("#shopPassClaimBtn")?.addEventListener("click", claimFarmPassDaily);
 $("#specimenGrid")?.addEventListener("click", (event) => {
   if (SINGLE_CAPSULE_MODE) return;
   const pod = event.target.closest(".specimen-pod");
@@ -3996,6 +4320,41 @@ $("#leagueBtn")?.addEventListener("click", () => {
     league: leagueName()
   });
 });
+$("#leagueHudBtn")?.addEventListener("click", () => {
+  renderLeaderboard();
+  openSheet("#leagueSheet");
+  playTone("tap");
+  trackAction("league_opened", {
+    rank: backendState.rank,
+    league: leagueName(),
+    source: "resource_hud"
+  });
+});
+$("#dailyMissionHudBtn")?.addEventListener("click", () => {
+  roomBeforeDaily = activeRoomName();
+  switchRoom("daily");
+  playTone("tap");
+  const dailyProgress = dailyMissionProgressSnapshot();
+  trackAction("daily_missions_opened", {
+    source: "resource_hud",
+    claimed: dailyProgress.done,
+    total: dailyProgress.total
+  });
+});
+function closeDailyRoom(source = "close") {
+  const targetRoom = roomBeforeDaily && roomBeforeDaily !== "daily" && rooms[roomBeforeDaily]
+    ? roomBeforeDaily
+    : "farm";
+  switchRoom(targetRoom);
+  playTone("tap");
+  trackAction("daily_missions_closed", { source, targetRoom });
+}
+
+$("#dailyCloseBtn")?.addEventListener("click", () => closeDailyRoom("button"));
+$("#dailyRoom .daily-space")?.addEventListener("click", (event) => {
+  if (event.target.closest(".daily-missions-cube")) return;
+  closeDailyRoom("backdrop");
+});
 $("#settingsBtn")?.addEventListener("click", () => {
   openSheet("#settingsSheet");
   playTone("tap");
@@ -4008,7 +4367,10 @@ document.querySelectorAll("[data-close-sheet]").forEach((button) => {
   });
 });
 window.addEventListener("keydown", (event) => {
-  if (event.key === "Escape") closeSheets();
+  if (event.key === "Escape") {
+    if (activeRoomName() === "daily") closeDailyRoom("escape");
+    else closeSheets();
+  }
 });
 document.querySelectorAll(".zen-mode").forEach((button) => {
   button.addEventListener("click", () => {
@@ -4112,7 +4474,7 @@ document.querySelectorAll(".nav-item").forEach((button) => {
 
 updateLoadingSplash(18, "Initializing capsule");
 window.setTimeout(() => updateLoadingSplash(42, "Growing microculture"), 220);
-window.setTimeout(() => updateLoadingSplash(64, tg?.initData ? "Telegram signal found" : "Browser preview"), 520);
+window.setTimeout(() => updateLoadingSplash(64, tg?.initData ? "Telegram signal found" : "Guest profile ready"), 520);
 trackAction("app_opened", {
   room: "farm",
   telegram: Boolean(tg?.initData || tg?.initDataUnsafe?.user)
