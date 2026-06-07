@@ -181,7 +181,7 @@
           short: "Spira",
           amount: 2
         },
-        color: "#58F7C8"
+        color: "#B48EFF"
       }
     ],
     LAB_RECIPES: [
@@ -196,6 +196,7 @@
         ],
         geneStrands: 2,
         energy: 5,
+        se: 1,
         score: 8,
         resonance: 1,
         artifact: 1
@@ -225,6 +226,14 @@
         route: "Stars",
         note: "Premium prism shell for rare drops and future paid skins.",
         effect: "Prism aura"
+      },
+      {
+        id: "tech",
+        name: "Tech Sentinel",
+        tag: "Lab tech",
+        route: "Lab",
+        note: "A plated service shell with sensor rails and a slower precision patrol.",
+        effect: "Slow scan"
       }
     ]
   };

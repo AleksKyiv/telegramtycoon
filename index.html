@@ -8,11 +8,11 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Exo+2:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=104">
+    <link rel="stylesheet" href="styles.css?v=121">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="game-core/config.js?v=4" defer></script>
-    <script src="game-core/state.js?v=4" defer></script>
-    <script src="app.js?v=71" defer></script>
+    <script src="game-core/config.js?v=7" defer></script>
+    <script src="game-core/state.js?v=6" defer></script>
+    <script src="app.js?v=81" defer></script>
   </head>
   <body>
     <main class="app room-farm" aria-label="Green Farm Tycoon MVP">
@@ -58,13 +58,22 @@
           <strong id="scoreValue">0</strong>
         </div>
         <div class="resource crc-resource" aria-label="CRC balance">
-          <span class="crc-coin-icon" aria-hidden="true">
+          <span class="crc-coin-icon" id="crcResourceTarget" aria-hidden="true">
             <i></i>
           </span>
           <strong id="energyValue">10</strong>
           <b>CRC</b>
         </div>
-        <div class="resource power"><span>⚡</span><strong id="resonanceValue">0</strong><b>ZEN</b></div>
+        <div class="resource zen-resource" aria-label="Zen energy balance">
+          <span class="zen-energy-icon" id="zenResourceTarget" aria-hidden="true"><i></i><i></i><i></i></span>
+          <strong id="resonanceValue">0</strong>
+          <b>ZEN</b>
+        </div>
+        <div class="resource seed-resource" aria-label="SE balance">
+          <span class="seed-coin-icon" id="seResourceTarget" aria-hidden="true"><i></i><i></i><i></i></span>
+          <strong id="seedValue">0</strong>
+          <b>SE</b>
+        </div>
       </section>
 
       <aside class="process-rail" aria-label="Process status">
@@ -104,7 +113,16 @@
                   <span class="donor-capsule-emblem" id="donorCapsuleEmblem" aria-hidden="true"></span>
                   <span class="donor-capsule-mark" id="donorCapsuleMark">Capsule 01</span>
                 </span>
-                <button class="donor-capsule-upgrade" id="donorCapsuleUpgradeBtn" type="button">Upgrade</button>
+                <button class="donor-capsule-upgrade" id="donorCapsuleUpgradeBtn" type="button" aria-label="Upgrade capsule">
+                  <span class="upgrade-glyph" aria-hidden="true">
+                    <svg viewBox="0 0 44 44" focusable="false">
+                      <path class="upgrade-ring" d="M22 4 38 13v18L22 40 6 31V13L22 4Z"></path>
+                      <path class="upgrade-core" d="M22 11 31 17v10l-9 6-9-6V17l9-6Z"></path>
+                      <path class="upgrade-arrow" d="M22 29V16m0 0-6 6m6-6 6 6"></path>
+                    </svg>
+                    <b>UP</b>
+                  </span>
+                </button>
               </div>
               <div class="donor-capsule-body">
                 <div class="farm-grid" id="farm-grid"></div>
@@ -328,6 +346,8 @@
             </div>
           </div>
         </section>
+
+        <section class="farm-event-dock" id="farmEventDock" aria-label="Farm event"></section>
 
         <section class="action-dock" aria-label="Farm actions">
           <button class="primary-action grow-card" id="mainActionBtn">

@@ -125,6 +125,7 @@
     const state = {
       score: 0,
       energy: 10,
+      seed: 0,
       biomass: 0,
       inventory: {
         geneStrands: 0,
@@ -147,6 +148,12 @@
       plantVariant: 0,
       autoCollect: false,
       mutationAuto: false,
+      farmEvent: {
+        startedAt: Date.now(),
+        durationMs: 7 * 60 * 60 * 1000,
+        stepMs: 60 * 60 * 1000,
+        claimedSteps: []
+      },
       zenDuration: ZEN_DEFAULT_DURATION_MS,
       zenStartedAt: 0,
       zenPausedAt: 0,
@@ -181,6 +188,18 @@
     const restored = { ...base, ...(value && typeof value === "object" ? value : {}) };
     restored.growthDuration ||= GROW_DURATION_MS;
     restored.missions = normalizeMissionState(restored.missions);
+    const farmEvent = restored.farmEvent && typeof restored.farmEvent === "object" ? restored.farmEvent : {};
+    restored.farmEvent = {
+      startedAt: Math.max(0, Number(farmEvent.startedAt) || Date.now()),
+      durationMs: 7 * 60 * 60 * 1000,
+      stepMs: 60 * 60 * 1000,
+      claimedSteps: Array.isArray(farmEvent.claimedSteps)
+        ? farmEvent.claimedSteps
+          .map((step) => clamp(Math.floor(Number(step) || 0), 0, 6))
+          .filter((step, index, list) => list.indexOf(step) === index)
+        : []
+    };
+    restored.seed = Math.max(0, Math.floor(Number(restored.seed) || 0));
     restored.biomass = Math.max(0, Math.floor(Number(restored.biomass) || 0));
     restored.soundVolume = settingPercent(restored.soundVolume, 70);
     restored.vibrationOn = restored.vibrationOn !== false;

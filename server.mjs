@@ -27,7 +27,76 @@ const dataStoreRuntime = {
   fallbackActive: false
 };
 const farmSlotCount = 6;
-const farmStrainIds = new Set(["neon_basil", "cyber_rukola", "glitch_sunflower", "chroma_mint"]);
+const farmStrains = [
+  {
+    id: "neon_basil",
+    shortName: "BASIL",
+    durationMs: 5 * 60_000,
+    score: 22,
+    biomass: 3,
+    geneStrands: 0,
+    variantShift: 0,
+    plantCostScore: 10,
+    labMaterial: { id: "bio_leaf", short: "Leaf", amount: 1 }
+  },
+  {
+    id: "cyber_rukola",
+    shortName: "RUKOLA",
+    durationMs: 10 * 60_000,
+    score: 45,
+    biomass: 4,
+    geneStrands: 1,
+    variantShift: 13,
+    plantCostScore: 25,
+    labMaterial: { id: "green_fiber", short: "Fiber", amount: 1 }
+  },
+  {
+    id: "glitch_sunflower",
+    shortName: "SUNFLR",
+    durationMs: 20 * 60_000,
+    score: 80,
+    biomass: 6,
+    geneStrands: 2,
+    variantShift: 29,
+    plantCostScore: 50,
+    labMaterial: { id: "solar_pollen", short: "Pollen", amount: 1 }
+  },
+  {
+    id: "pixel_wheat",
+    shortName: "WHEAT",
+    durationMs: 30 * 60_000,
+    score: 90,
+    biomass: 7,
+    geneStrands: 1,
+    variantShift: 37,
+    plantCostScore: 60,
+    labMaterial: { id: "grain_mesh", short: "Mesh", amount: 1 }
+  },
+  {
+    id: "chroma_mint",
+    shortName: "CHROMA",
+    durationMs: 40 * 60_000,
+    score: 160,
+    biomass: 9,
+    geneStrands: 0,
+    variantShift: 47,
+    plantCostResonance: 1,
+    labMaterial: { id: "mint_flux", short: "Flux", amount: 1 }
+  },
+  {
+    id: "prime_spirulina",
+    shortName: "SPIRUL",
+    durationMs: 90 * 60_000,
+    score: 620,
+    biomass: 18,
+    geneStrands: 6,
+    variantShift: 71,
+    plantCostMain: 5000,
+    labMaterial: { id: "spiru_cell", short: "Spira", amount: 2 }
+  }
+];
+const farmStrainIds = new Set(farmStrains.map((strain) => strain.id));
+const farmStrainsById = new Map(farmStrains.map((strain) => [strain.id, strain]));
 const starsProducts = {
   energy_pack_10: {
     id: "energy_pack_10",
@@ -45,13 +114,21 @@ const starsProducts = {
     stars: 10,
     reward: { slot: 3 }
   },
+  farm_slot_6: {
+    id: "farm_slot_6",
+    title: "Elite Farm Chamber",
+    description: "Unlocks the sixth chamber with x5 harvest and guaranteed +5 SE on harvest.",
+    label: "Elite Chamber",
+    stars: 100,
+    reward: { slot: 5 }
+  },
   unique_mutation_10: {
     id: "unique_mutation_10",
     title: "Unique Mutation",
     description: "Creates a rare lab mutation and boosts your artifact core.",
     label: "Unique Mutation",
     stars: 10,
-    reward: { uniqueMutation: 1, artifact: 2, resonance: 3, score: 24 }
+    reward: { uniqueMutation: 1, artifact: 2, resonance: 3, score: 24, se: 1 }
   }
 };
 const STARS_WITHDRAWAL_HOLD_DAYS = 21;
@@ -245,6 +322,18 @@ async function handleApi(request, response, url) {
     });
   }
 
+  if (request.method === "GET" && url.pathname === "/api/farm/state") {
+    return handleFarmState(request, response);
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/farm/plant") {
+    return handleFarmPlant(request, response);
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/farm/harvest") {
+    return handleFarmHarvest(request, response);
+  }
+
   return sendJson(response, 404, { error: "API route not found" });
 }
 
@@ -352,13 +441,155 @@ async function handleTelegramWebhook(request, response) {
   return sendJson(response, 200, { ok: true });
 }
 
+function resolvePlayerId(clientId, user) {
+  return user?.id ? `tg:${user.id}` : `guest:${safeId(clientId)}`;
+}
+
+function resolveFarmAuth(request, body = {}) {
+  const headerClientId = request.headers["x-client-id"];
+  const headerInitData = request.headers["x-telegram-init-data"];
+  const clientId = String(body.clientId || headerClientId || "browser");
+  const initData = String(body.initData || headerInitData || "");
+  const auth = validateTelegramInitData(initData);
+  if (!auth.ok) return auth;
+  return {
+    ok: true,
+    clientId,
+    user: auth.user,
+    verified: auth.verified
+  };
+}
+
+function createDefaultPlayerRecord({ id, user, verified }) {
+  const now = new Date().toISOString();
+  return {
+    id,
+    telegramId: user?.id || null,
+    username: user?.username || null,
+    name: displayName(user, "Guest"),
+    score: 0,
+    energy: 10,
+    seed: 0,
+    biomass: 0,
+    inventory: safeInventory(),
+    resonance: 0,
+    sessions: 0,
+    artifact: 0,
+    droneLevel: 1,
+    droneSkin: "bubbles",
+    dataModuleLevel: 1,
+    missions: safeMissions(),
+    unlockedSlots: safeUnlockedSlots({ 0: true, 1: true, 2: true }),
+    farm: safeFarmState({ activeSlot: 0, autoCollect: false, slots: [] }),
+    lab: safeLabState(),
+    zen: safeZenState({ energy: 0, duration: 60_000, sound: "deep", gene: "sprout", attentionHits: 0 }),
+    starsSpent: 0,
+    purchases: 0,
+    verified: Boolean(verified),
+    createdAt: now,
+    updatedAt: now
+  };
+}
+
+function ensurePlayerRecord({ clientId, user, verified }) {
+  const id = resolvePlayerId(clientId, user);
+  const existing = db.players[id];
+  if (!existing) {
+    const created = createDefaultPlayerRecord({ id, user, verified });
+    db.players[id] = created;
+    return created;
+  }
+
+  existing.telegramId = user?.id || existing.telegramId || null;
+  existing.username = user?.username || existing.username || null;
+  existing.name = displayName(user, existing.name || "Guest");
+  existing.score = safeNumber(existing.score);
+  existing.energy = safeNumber(existing.energy);
+  existing.seed = safeNumber(existing.seed);
+  existing.biomass = safeNumber(existing.biomass);
+  existing.resonance = safeNumber(existing.resonance);
+  existing.sessions = safeNumber(existing.sessions);
+  existing.artifact = safeNumber(existing.artifact);
+  existing.droneLevel = safeDroneLevel(existing.droneLevel);
+  existing.droneSkin = safeDroneSkin(existing.droneSkin);
+  existing.dataModuleLevel = safeDataModuleLevel(existing.dataModuleLevel);
+  existing.inventory = safeInventory(existing.inventory);
+  existing.missions = safeMissions(existing.missions);
+  existing.unlockedSlots = mergeUnlockedSlots({ 0: true, 1: true, 2: true }, existing.unlockedSlots);
+  existing.farm = safeFarmState(existing.farm);
+  existing.lab = safeLabState(existing.lab);
+  existing.zen = safeZenState(existing.zen);
+  existing.starsSpent = safeNumber(existing.starsSpent);
+  existing.purchases = safeNumber(existing.purchases);
+  existing.verified = Boolean(verified || existing.verified);
+  existing.updatedAt = new Date().toISOString();
+  db.players[id] = existing;
+  return existing;
+}
+
+function safeFarmSlotIndex(value) {
+  const index = Number(value);
+  if (!Number.isFinite(index)) return null;
+  const normalized = Math.floor(index);
+  if (normalized < 0 || normalized >= farmSlotCount) return null;
+  return normalized;
+}
+
+function farmDroneSpeedBonus(level = 1) {
+  return safeDroneLevel(level) * 1_150;
+}
+
+function farmDroneHarvestBonus(level = 1) {
+  return safeDroneLevel(level) * 2;
+}
+
+function farmBiomassGainServer(harvest, artifact = 0) {
+  return 2 + Math.floor(Math.max(0, Number(harvest) || 0) / 16) + Math.min(4, Math.floor(safeNumber(artifact) / 2));
+}
+
+function farmSlotReadyAtServer(slot, now = Date.now()) {
+  if (!slot?.strain || !slot?.plantedAt || !slot?.growthDuration) return false;
+  return now >= slot.plantedAt + slot.growthDuration;
+}
+
+function farmRewardTierServer() {
+  const roll = Math.random();
+  if (roll > 0.94) return { multiplier: 4, label: "Quantum" };
+  if (roll > 0.77) return { multiplier: 1.8, label: "Enhanced" };
+  if (roll > 0.45) return { multiplier: 1, label: "Stable" };
+  return { multiplier: 0.6, label: "Light" };
+}
+
+function farmSlotHarvestBonusServer(index) {
+  if (index === 4) return { multiplier: 3, seGain: 0, label: "x3" };
+  if (index === 5) return { multiplier: 5, seGain: 5, label: "x5 +5 SE" };
+  return { multiplier: 1, seGain: 0, label: "" };
+}
+
+function syncLegacyFarmState(farmValue) {
+  const farm = safeFarmState(farmValue);
+  const slot = farm.slots[farm.activeSlot] || farm.slots[0];
+  if (slot?.strain) {
+    farm.plantedAt = slot.plantedAt;
+    farm.growthDuration = slot.growthDuration;
+    farm.plantVariant = slot.plantVariant;
+    farm.boostUntil = slot.boostUntil;
+    return farm;
+  }
+
+  farm.plantedAt = 0;
+  farm.boostUntil = 0;
+  return farm;
+}
+
 function upsertPlayer({ clientId, user, state, verified, eventType = "player_sync" }) {
   const now = new Date().toISOString();
-  const id = user?.id ? `tg:${user.id}` : `guest:${safeId(clientId)}`;
+  const id = resolvePlayerId(clientId, user);
   const existing = db.players[id] || {};
   const isNew = !db.players[id];
   const score = safeNumber(state?.score);
   const energy = safeNumber(state?.energy);
+  const seed = safeNumber(state?.seed);
   const biomass = safeNumber(state?.biomass);
   const inventory = mergeInventory(existing.inventory, state?.inventory);
   const resonance = safeNumber(state?.resonance);
@@ -393,6 +624,7 @@ function upsertPlayer({ clientId, user, state, verified, eventType = "player_syn
     name,
     score: Math.max(safeNumber(existing.score), score),
     energy,
+    seed: Math.max(safeNumber(existing.seed), seed),
     biomass,
     inventory,
     resonance,
@@ -472,6 +704,195 @@ async function handlePreCheckoutQuery(query) {
     payload: safeEventValue(query.invoice_payload),
     currency: safeEventValue(query.currency),
     totalAmount: safeNumber(query.total_amount)
+  });
+}
+
+async function handleFarmState(request, response) {
+  const auth = resolveFarmAuth(request);
+  if (!auth.ok) {
+    return sendJson(response, 401, { error: auth.error });
+  }
+
+  const player = ensurePlayerRecord(auth);
+  await saveDatabase();
+  return sendJson(response, 200, {
+    ok: true,
+    serverTime: Date.now(),
+    player
+  });
+}
+
+async function handleFarmPlant(request, response) {
+  const body = await readBody(request);
+  const auth = resolveFarmAuth(request, body);
+  if (!auth.ok) {
+    return sendJson(response, 401, { error: auth.error });
+  }
+
+  const slotIndex = safeFarmSlotIndex(body.slotIndex);
+  const strain = farmStrainsById.get(String(body.strainId || ""));
+  if (slotIndex === null) {
+    return sendJson(response, 400, { error: "Invalid slot." });
+  }
+  if (!strain) {
+    return sendJson(response, 400, { error: "Unknown strain." });
+  }
+
+  const player = ensurePlayerRecord(auth);
+  const farm = safeFarmState(player.farm);
+  const slot = farm.slots[slotIndex];
+  if (!slot) {
+    return sendJson(response, 404, { error: "Slot not found." });
+  }
+  if (!safeUnlockedSlots(player.unlockedSlots)[String(slotIndex)]) {
+    return sendJson(response, 403, { error: "Slot locked." });
+  }
+  if (slot.strain) {
+    return sendJson(response, 409, { error: "Slot already growing." });
+  }
+
+  if (strain.plantCostMain && safeNumber(player.score) < strain.plantCostMain) {
+    return sendJson(response, 409, { error: `Need ${strain.plantCostMain}` });
+  }
+  if (strain.plantCostScore && safeNumber(player.energy) < strain.plantCostScore) {
+    return sendJson(response, 409, { error: `Need ${strain.plantCostScore} CRC` });
+  }
+  if (strain.plantCostResonance && safeNumber(player.resonance) < strain.plantCostResonance) {
+    return sendJson(response, 409, { error: `Need ${strain.plantCostResonance} ZEN` });
+  }
+
+  const zenBoosted = safeNumber(player.zen?.energy) > 0;
+  const growthDuration = Math.max(
+    9_000,
+    Math.round(
+      (strain.durationMs - safeNumber(player.artifact) * 1_200 - farmDroneSpeedBonus(player.droneLevel)) *
+      (zenBoosted ? 0.78 : 1)
+    )
+  );
+  const now = Date.now();
+  if (strain.plantCostMain) player.score = Math.max(0, safeNumber(player.score) - strain.plantCostMain);
+  if (strain.plantCostScore) player.energy = Math.max(0, safeNumber(player.energy) - strain.plantCostScore);
+  if (strain.plantCostResonance) player.resonance = Math.max(0, safeNumber(player.resonance) - strain.plantCostResonance);
+  if (zenBoosted) player.zen.energy = Math.max(0, safeNumber(player.zen?.energy) - 1);
+
+  slot.strain = strain.id;
+  slot.plantedAt = now;
+  slot.growthDuration = growthDuration;
+  slot.plantVariant = (safePlantVariant(player.farm?.plantVariant) + strain.variantShift + slotIndex * 11 + safeNumber(player.artifact)) % 100;
+  slot.boostUntil = 0;
+  slot.readyNotified = false;
+
+  farm.activeSlot = slotIndex;
+  player.farm = syncLegacyFarmState({ ...farm, slots: farm.slots });
+  player.updatedAt = new Date().toISOString();
+  db.players[player.id] = player;
+
+  logEvent("farm_slot_planted_server", {
+    kind: "farm_action",
+    playerId: player.id,
+    slot: slotIndex + 1,
+    strain: strain.id,
+    zenBoosted,
+    growthDuration
+  });
+  await saveDatabase();
+
+  return sendJson(response, 200, {
+    ok: true,
+    serverTime: now,
+    player,
+    message: zenBoosted ? `${strain.shortName} + Zen` : `${strain.shortName} planted`
+  });
+}
+
+async function handleFarmHarvest(request, response) {
+  const body = await readBody(request);
+  const auth = resolveFarmAuth(request, body);
+  if (!auth.ok) {
+    return sendJson(response, 401, { error: auth.error });
+  }
+
+  const slotIndex = safeFarmSlotIndex(body.slotIndex);
+  if (slotIndex === null) {
+    return sendJson(response, 400, { error: "Invalid slot." });
+  }
+
+  const player = ensurePlayerRecord(auth);
+  const farm = safeFarmState(player.farm);
+  const slot = farm.slots[slotIndex];
+  if (!slot?.strain) {
+    return sendJson(response, 409, { error: "Slot is empty." });
+  }
+  if (!farmSlotReadyAtServer(slot)) {
+    return sendJson(response, 409, { error: "Plant is still growing." });
+  }
+
+  const strain = farmStrainsById.get(slot.strain) || farmStrains[0];
+  const material = strain.labMaterial || null;
+  const tier = farmRewardTierServer();
+  const slotBonus = farmSlotHarvestBonusServer(slotIndex);
+  const harvest = Math.round((strain.score + safeNumber(player.artifact) * 4 + farmDroneHarvestBonus(player.droneLevel)) * tier.multiplier * slotBonus.multiplier);
+  const biomassGain = strain.biomass + farmBiomassGainServer(harvest, player.artifact);
+  const geneGain = strain.geneStrands;
+
+  player.score = safeNumber(player.score) + harvest;
+  player.biomass = safeNumber(player.biomass) + biomassGain;
+  player.seed = safeNumber(player.seed) + slotBonus.seGain;
+  player.resonance = safeNumber(player.resonance) + (safeNumber(player.artifact) > 0 ? 1 : 0);
+  player.inventory = safeInventory(player.inventory);
+  player.inventory.geneStrands = safeNumber(player.inventory.geneStrands) + geneGain;
+  player.inventory.harvests[strain.id] = safeNumber(player.inventory.harvests?.[strain.id]) + 1;
+  if (material?.id) {
+    player.inventory.materials[material.id] = safeNumber(player.inventory.materials?.[material.id]) + Math.max(1, safeNumber(material.amount) || 1);
+  }
+
+  slot.strain = null;
+  slot.plantedAt = 0;
+  slot.growthDuration = 32_000;
+  slot.boostUntil = 0;
+  slot.readyNotified = false;
+
+  farm.activeSlot = slotIndex;
+  farm.plantVariant = (safePlantVariant(player.farm?.plantVariant) + 1 + safeNumber(player.artifact) + slotIndex) % 100;
+  player.farm = syncLegacyFarmState({ ...farm, slots: farm.slots });
+  player.updatedAt = new Date().toISOString();
+  db.players[player.id] = player;
+
+  logEvent(body.auto ? "farm_auto_collected_server" : "farm_collected_server", {
+    kind: "farm_action",
+    playerId: player.id,
+    slot: slotIndex + 1,
+    strain: strain.id,
+    harvest,
+    biomassGain,
+    geneGain,
+    slotMultiplier: slotBonus.multiplier,
+    seGain: slotBonus.seGain,
+    rewardTier: tier.label,
+    labMaterial: material?.id || "",
+    labMaterialGain: Math.max(0, safeNumber(material?.amount))
+  });
+  await saveDatabase();
+
+  const materialToast = material?.short ? ` · ${material.short} +${Math.max(1, safeNumber(material.amount) || 1)}` : "";
+  const slotBonusToast = slotBonus.seGain ? ` / SE +${slotBonus.seGain}` : slotBonus.label ? ` / ${slotBonus.label}` : "";
+  return sendJson(response, 200, {
+    ok: true,
+    serverTime: Date.now(),
+    player,
+    reward: {
+      harvest,
+      biomassGain,
+      geneGain,
+      slotMultiplier: slotBonus.multiplier,
+      seGain: slotBonus.seGain,
+      rewardTier: tier.label,
+      materialId: material?.id || null,
+      materialGain: Math.max(0, safeNumber(material?.amount))
+    },
+    message: body.auto
+      ? `Auto ${strain.shortName} +${harvest}${materialToast}${slotBonusToast}`
+      : `${tier.label} +${harvest} Bio +${biomassGain}${materialToast}${slotBonusToast}`
   });
 }
 
@@ -1081,7 +1502,7 @@ function safeDroneSkin(value) {
 }
 
 function safeUnlockedSlots(value) {
-  const slots = { "0": true };
+  const slots = { "0": true, "1": true, "2": true };
   if (!value || typeof value !== "object") return slots;
   Object.entries(value).slice(0, 12).forEach(([key, item]) => {
     const slot = String(Math.min(8, Math.max(0, safeNumber(key))));
@@ -1113,6 +1534,7 @@ function safeInventory(value) {
   return {
     geneStrands: safeNumber(value?.geneStrands),
     quantumNutrients: safeNumber(value?.quantumNutrients),
+    materials: value?.materials && typeof value.materials === "object" ? { ...value.materials } : {},
     harvests: value?.harvests && typeof value.harvests === "object" ? { ...value.harvests } : {},
     strains: value?.strains && typeof value.strains === "object" ? { ...value.strains } : {}
   };
@@ -1121,9 +1543,14 @@ function safeInventory(value) {
 function mergeInventory(existing, incoming) {
   const current = safeInventory(existing);
   const next = safeInventory(incoming);
+  const materials = { ...current.materials };
+  Object.entries(next.materials).forEach(([key, value]) => {
+    materials[key] = Math.max(safeNumber(materials[key]), safeNumber(value));
+  });
   return {
     geneStrands: Math.max(current.geneStrands, next.geneStrands),
     quantumNutrients: Math.max(current.quantumNutrients, next.quantumNutrients),
+    materials,
     harvests: { ...current.harvests, ...next.harvests },
     strains: { ...current.strains, ...next.strains }
   };
@@ -1165,6 +1592,7 @@ function mergeFarmState(existing, incoming, context = {}) {
   const next = safeFarmState(incoming);
   const collected = context.eventType === "farm_collected" || context.eventType === "farm_auto_collected";
   const startedOrBoosted = ["farm_grow_clicked", "farm_boost_clicked", "farm_slot_planted", "farm_slot_boosted"].includes(context.eventType);
+  const currentHasServerActivity = current.plantedAt || current.slots.some((slot) => slot?.strain || slot?.plantedAt);
 
   if (collected) {
     return {
@@ -1176,10 +1604,19 @@ function mergeFarmState(existing, incoming, context = {}) {
 
   if (next.plantedAt || startedOrBoosted) return next;
 
+  if (context.eventType === "player_sync" && currentHasServerActivity) {
+    return {
+      ...current,
+      autoCollect: next.autoCollect,
+      activeSlot: next.activeSlot
+    };
+  }
+
   if (current.plantedAt) {
     return {
       ...current,
-      autoCollect: next.autoCollect
+      autoCollect: next.autoCollect,
+      activeSlot: next.activeSlot
     };
   }
 
@@ -1255,6 +1692,7 @@ function safeStateSummary(state) {
   return {
     score: safeNumber(state?.score),
     energy: safeNumber(state?.energy),
+    seed: safeNumber(state?.seed),
     biomass: safeNumber(state?.biomass),
     inventory: safeInventory(state?.inventory),
     resonance: safeNumber(state?.resonance),
@@ -1482,6 +1920,7 @@ function playerToRow(player) {
     verified: Boolean(player.verified),
     score: safeNumber(player.score),
     energy: safeNumber(player.energy),
+    seed: safeNumber(player.seed),
     resonance: safeNumber(player.resonance),
     sessions: safeNumber(player.sessions),
     artifact: safeNumber(player.artifact),
@@ -1490,6 +1929,7 @@ function playerToRow(player) {
     state: {
       score: safeNumber(player.score),
       energy: safeNumber(player.energy),
+      seed: safeNumber(player.seed),
       biomass: safeNumber(player.biomass),
       inventory: safeInventory(player.inventory),
       resonance: safeNumber(player.resonance),
@@ -1517,6 +1957,7 @@ function playerFromRow(row) {
     name: row.name || "Guest",
     score: safeNumber(row.score),
     energy: safeNumber(row.energy),
+    seed: safeNumber(row.seed ?? row.state?.seed),
     biomass: safeNumber(row.state?.biomass),
     inventory: safeInventory(row.state?.inventory),
     resonance: safeNumber(row.resonance),
