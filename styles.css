@@ -15222,8 +15222,8 @@ button {
 .app.room-lab #labRoom::before {
   z-index: 0;
   display: block;
-  background: url("assets/lab-reference-backdrop.jpg") center center / cover no-repeat;
-  opacity: 0.58;
+  background: url("assets/lab-beam-backdrop.png") center top / cover no-repeat;
+  opacity: 0.82;
 }
 
 .app.room-lab #labRoom::after {
@@ -15682,7 +15682,7 @@ button {
 }
 
 .app.room-lab #labRoom::before {
-  opacity: 0.58;
+  opacity: 0.82;
   filter: none !important;
 }
 
@@ -15826,4 +15826,963 @@ button {
   font-size: 10px;
   font-weight: 800;
   line-height: 1.35;
+}
+
+/* Hybrid Lab reactor: keep readable UI in DOM and move volatile light work to canvas. */
+.app.room-lab .mutation-capsule {
+  isolation: isolate;
+  overflow: visible;
+}
+
+.app.room-lab .lab-reactor-canvas {
+  position: absolute;
+  inset: 18px 18px 16px;
+  z-index: 4;
+  width: calc(100% - 36px);
+  height: calc(100% - 34px);
+  display: block;
+  pointer-events: auto;
+  touch-action: manipulation;
+}
+
+.app.room-lab .capsule-shell {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(4, 22, 26, 0.06)) !important,
+    linear-gradient(90deg, rgba(255, 255, 255, 0.1), transparent 20% 80%, rgba(255, 255, 255, 0.08)) !important,
+    rgba(4, 18, 22, 0.08) !important;
+  border-color: rgba(157, 255, 230, 0.18) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04),
+    inset 18px 0 24px rgba(255, 255, 255, 0.04),
+    inset -18px 0 26px rgba(88, 220, 255, 0.05),
+    0 14px 34px rgba(0, 0, 0, 0.2) !important;
+}
+
+.app.room-lab .lab-reactor-field {
+  display: block !important;
+  inset: 22px 26px !important;
+  z-index: 2;
+  opacity: 0.18 !important;
+}
+
+.app.room-lab .lab-reactor-field span {
+  animation: none !important;
+  opacity: 0.24 !important;
+}
+
+.app.room-lab .dna-helix {
+  z-index: 6;
+  pointer-events: none;
+}
+
+.app.room-lab .helix-glow {
+  display: block !important;
+  z-index: 3;
+  opacity: 0.16 !important;
+  filter: blur(12px) !important;
+  animation: none !important;
+}
+
+.app.room-lab .mutation-capsule::after {
+  content: "";
+  position: absolute;
+  inset: 22px 30px 28px;
+  z-index: 1;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 50% 44%, rgba(126, 255, 222, 0.08), transparent 46%),
+    radial-gradient(circle at 50% 66%, rgba(88, 220, 255, 0.08), transparent 52%);
+  pointer-events: none;
+}
+
+@media (max-height: 760px) {
+  .app.room-lab .lab-reactor-canvas {
+    inset: 16px 16px 14px;
+    width: calc(100% - 32px);
+    height: calc(100% - 30px);
+  }
+}
+
+/* Lab UX pass: explicit formula, result, and launch flow. */
+.app.room-lab .lab-recipe-grid {
+  left: 16px;
+  right: 92px;
+  top: 428px;
+  z-index: 9;
+}
+
+.app.room-lab .lab-active-recipe {
+  position: absolute;
+  left: 16px;
+  right: 92px;
+  bottom: 18px;
+  z-index: 9;
+  display: grid;
+  gap: 8px;
+  padding: 11px 12px 12px;
+  border: 1px solid rgba(126, 255, 222, 0.36);
+  border-radius: 18px;
+  background:
+    linear-gradient(150deg, rgba(126, 255, 222, 0.14), rgba(2, 18, 18, 0.8)),
+    rgba(2, 13, 16, 0.82);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    0 14px 28px rgba(0, 0, 0, 0.26),
+    0 0 24px rgba(126, 255, 222, 0.12);
+  backdrop-filter: blur(5px) saturate(1.08);
+  -webkit-backdrop-filter: blur(5px) saturate(1.08);
+}
+
+.app.room-lab .lab-active-head,
+.app.room-lab .lab-active-summary,
+.app.room-lab .lab-output-card,
+.app.room-lab .lab-last-result,
+.app.room-lab .lab-active-recipe .mutation-confirm {
+  min-width: 0;
+}
+
+.app.room-lab .lab-active-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.app.room-lab .lab-active-head span,
+.app.room-lab .lab-active-head b,
+.app.room-lab .lab-active-summary strong,
+.app.room-lab .lab-active-summary em,
+.app.room-lab .lab-output-copy span,
+.app.room-lab .lab-output-copy strong,
+.app.room-lab .lab-output-copy em,
+.app.room-lab .lab-output-zen b,
+.app.room-lab .lab-output-zen span,
+.app.room-lab .lab-last-result {
+  display: block;
+  min-width: 0;
+}
+
+.app.room-lab .lab-active-head span,
+.app.room-lab .lab-active-head b,
+.app.room-lab .lab-output-copy span,
+.app.room-lab .lab-output-zen b {
+  font-family: "Orbitron", monospace;
+  text-transform: uppercase;
+}
+
+.app.room-lab .lab-active-head span {
+  color: rgba(237, 255, 250, 0.82);
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+}
+
+.app.room-lab .lab-active-head b {
+  padding: 4px 7px;
+  border: 1px solid rgba(126, 255, 222, 0.32);
+  border-radius: 999px;
+  color: rgba(126, 255, 222, 0.96);
+  font-size: 7px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  background: rgba(5, 30, 25, 0.68);
+}
+
+.app.room-lab .lab-active-summary {
+  display: grid;
+  gap: 3px;
+}
+
+.app.room-lab .lab-active-summary strong {
+  color: #f4fff9;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+}
+
+.app.room-lab .lab-active-summary em,
+.app.room-lab .lab-output-copy em,
+.app.room-lab .lab-output-zen span,
+.app.room-lab .lab-last-result {
+  color: rgba(198, 224, 216, 0.82);
+  font-size: 9px;
+  font-style: normal;
+  line-height: 1.28;
+}
+
+.app.room-lab .lab-requirement-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.app.room-lab .lab-req-item {
+  min-height: 46px;
+  display: grid;
+  align-content: start;
+  gap: 2px;
+  padding: 6px;
+  border: 1px solid color-mix(in srgb, var(--req-color, #7effde) 34%, transparent);
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at 22% 18%, color-mix(in srgb, var(--req-color, #7effde) 20%, transparent), transparent 40%),
+    rgba(4, 18, 20, 0.82);
+}
+
+.app.room-lab .lab-req-item.ready {
+  box-shadow: 0 0 14px color-mix(in srgb, var(--req-color, #7effde) 18%, transparent);
+}
+
+.app.room-lab .lab-req-item.blocked {
+  opacity: 0.72;
+}
+
+.app.room-lab .lab-req-item span,
+.app.room-lab .lab-req-item strong,
+.app.room-lab .lab-req-item em {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app.room-lab .lab-req-item span {
+  color: var(--req-color, #7effde);
+  font-family: "Orbitron", monospace;
+  font-size: 7px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.app.room-lab .lab-req-item strong {
+  color: #f4fff8;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.app.room-lab .lab-req-item em {
+  color: rgba(188, 214, 207, 0.78);
+  font-size: 7px;
+  font-style: normal;
+}
+
+.app.room-lab .lab-output-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(108px, 126px);
+  gap: 10px;
+  padding: 8px 9px;
+  border: 1px solid rgba(126, 255, 222, 0.24);
+  border-radius: 14px;
+  background:
+    linear-gradient(135deg, rgba(126, 255, 222, 0.1), rgba(1, 13, 18, 0.82)),
+    rgba(1, 13, 18, 0.82);
+}
+
+.app.room-lab .lab-output-copy span {
+  color: rgba(126, 255, 222, 0.88);
+  font-size: 7px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+
+.app.room-lab .lab-output-copy strong {
+  color: #f7fffb;
+  font-size: 14px;
+  font-weight: 900;
+  line-height: 1.08;
+}
+
+.app.room-lab .lab-output-zen {
+  display: grid;
+  align-content: center;
+  gap: 4px;
+  padding-left: 10px;
+  border-left: 1px solid rgba(126, 255, 222, 0.16);
+}
+
+.app.room-lab .lab-output-zen b {
+  color: rgba(255, 214, 112, 0.94);
+  font-size: 7px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+
+.app.room-lab .lab-last-result {
+  color: rgba(213, 231, 223, 0.84);
+}
+
+.app.room-lab .mutation-actions {
+  left: auto;
+  right: 16px;
+  bottom: 16px;
+  width: 66px;
+  display: block;
+}
+
+.app.room-lab .mutation-confirm {
+  display: block !important;
+  min-height: 74px;
+  padding: 11px 14px;
+  text-align: left;
+  background:
+    linear-gradient(140deg, rgba(126, 255, 222, 0.18), rgba(4, 18, 18, 0.96)),
+    rgba(4, 18, 18, 0.96);
+}
+
+.app.room-lab .mutation-confirm.ready {
+  border-color: rgba(126, 255, 222, 0.58);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    0 0 20px rgba(126, 255, 222, 0.2),
+    0 14px 30px rgba(0, 0, 0, 0.28);
+}
+
+.app.room-lab .mutation-confirm.blocked {
+  border-color: rgba(123, 154, 149, 0.36);
+  opacity: 0.86;
+}
+
+.app.room-lab .mutation-confirm:disabled {
+  cursor: not-allowed;
+}
+
+.app.room-lab .mutation-confirm span {
+  color: rgba(242, 255, 250, 0.9);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+}
+
+.app.room-lab .mutation-confirm strong {
+  margin-top: 5px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.app.room-lab .mutation-confirm b {
+  margin-top: 6px;
+  color: rgba(185, 214, 206, 0.86);
+  font-size: 9px;
+}
+
+.app.room-lab .lab-active-recipe .mutation-confirm {
+  margin-top: 2px;
+}
+
+.app.room-lab .mutation-stars {
+  width: 66px;
+  align-self: end;
+}
+
+@media (max-height: 760px) {
+  .app.room-lab .lab-recipe-grid {
+    top: 396px;
+  }
+
+  .app.room-lab .lab-active-recipe {
+    left: 14px;
+    right: 88px;
+    bottom: 14px;
+    gap: 7px;
+    padding: 9px 10px 10px;
+  }
+
+  .app.room-lab .lab-requirement-list {
+    gap: 5px;
+  }
+
+  .app.room-lab .lab-req-item {
+    min-height: 42px;
+    padding: 5px;
+  }
+
+  .app.room-lab .lab-output-card {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .app.room-lab .lab-output-zen {
+    padding-left: 0;
+    border-left: 0;
+    border-top: 1px solid rgba(126, 255, 222, 0.12);
+    padding-top: 6px;
+  }
+
+  .app.room-lab .mutation-actions {
+    right: 14px;
+  }
+
+  .app.room-lab .mutation-confirm {
+    min-height: 68px;
+    padding: 9px 12px;
+  }
+}
+
+/* Lab clean rebuild: keep logic, replace the front with a readable production loop. */
+.app.room-lab .lab-rebuild {
+  position: relative;
+  min-height: auto;
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+  border: 1px solid rgba(126, 255, 222, 0.16);
+  border-radius: 28px;
+  background:
+    linear-gradient(180deg, rgba(3, 18, 18, 0.86), rgba(1, 10, 13, 0.92)),
+    rgba(1, 10, 13, 0.92);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 22px 54px rgba(0, 0, 0, 0.28);
+  overflow: visible;
+}
+
+.app.room-lab .lab-rebuild .lab-shell-head,
+.app.room-lab .lab-rebuild .lab-workspace,
+.app.room-lab .lab-rebuild .lab-recipes-block,
+.app.room-lab .lab-rebuild .lab-process-card,
+.app.room-lab .lab-rebuild .lab-active-recipe,
+.app.room-lab .lab-rebuild .lab-inventory-panel,
+.app.room-lab .lab-rebuild .mutation-actions {
+  position: static !important;
+  left: auto !important;
+  right: auto !important;
+  top: auto !important;
+  bottom: auto !important;
+  width: auto !important;
+  min-height: 0;
+  transform: none !important;
+}
+
+.app.room-lab .lab-rebuild .lab-shell-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.app.room-lab .lab-rebuild .lab-shell-copy,
+.app.room-lab .lab-rebuild .lab-shell-controls,
+.app.room-lab .lab-rebuild .lab-head-copy,
+.app.room-lab .lab-rebuild .lab-head-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.app.room-lab .lab-rebuild .lab-shell-copy {
+  min-width: 0;
+  flex-direction: column;
+}
+
+.app.room-lab .lab-rebuild .lab-shell-copy span,
+.app.room-lab .lab-rebuild .lab-shell-copy strong,
+.app.room-lab .lab-rebuild .lab-shell-copy em,
+.app.room-lab .lab-rebuild .lab-rare-core-card span,
+.app.room-lab .lab-rebuild .lab-rare-core-card strong,
+.app.room-lab .lab-rebuild .lab-block-head span,
+.app.room-lab .lab-rebuild .lab-block-head strong,
+.app.room-lab .lab-rebuild .lab-process-copy em,
+.app.room-lab .lab-rebuild .lab-formula-state-row span,
+.app.room-lab .lab-rebuild .lab-formula-state-row b,
+.app.room-lab .lab-rebuild .lab-active-head span,
+.app.room-lab .lab-rebuild .lab-active-head b,
+.app.room-lab .lab-rebuild .lab-active-summary strong,
+.app.room-lab .lab-rebuild .lab-active-summary em,
+.app.room-lab .lab-rebuild .lab-last-result {
+  display: block;
+  min-width: 0;
+}
+
+.app.room-lab .lab-rebuild .lab-shell-copy span,
+.app.room-lab .lab-rebuild .lab-rare-core-card span,
+.app.room-lab .lab-rebuild .lab-block-head span,
+.app.room-lab .lab-rebuild .lab-active-head span {
+  color: rgba(172, 206, 197, 0.78);
+  font-family: "Orbitron", monospace;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.app.room-lab .lab-rebuild .lab-shell-copy strong {
+  color: #f4fff9;
+  font-family: "Orbitron", monospace;
+  font-size: 22px;
+  font-weight: 900;
+  line-height: 1.05;
+  text-transform: uppercase;
+}
+
+.app.room-lab .lab-rebuild .lab-shell-copy strong b {
+  color: var(--lab-accent, #7effde);
+}
+
+.app.room-lab .lab-rebuild .lab-shell-copy em,
+.app.room-lab .lab-rebuild .lab-active-summary em,
+.app.room-lab .lab-rebuild .lab-last-result,
+.app.room-lab .lab-rebuild .lab-process-copy em,
+.app.room-lab .lab-rebuild .lab-formula-state-row span {
+  color: rgba(205, 228, 221, 0.84);
+  font-size: 12px;
+  font-style: normal;
+  line-height: 1.35;
+}
+
+.app.room-lab .lab-rebuild .lab-shell-controls {
+  align-items: stretch;
+}
+
+.app.room-lab .lab-rebuild .lab-rare-core-card {
+  min-width: 116px;
+  display: grid;
+  gap: 3px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 214, 112, 0.24);
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 20% 18%, rgba(255, 214, 112, 0.14), transparent 38%),
+    rgba(8, 18, 17, 0.72);
+}
+
+.app.room-lab .lab-rebuild .lab-rare-core-card strong {
+  color: #fff0b5;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.app.room-lab .lab-rebuild .lab-upgrade-btn {
+  position: static !important;
+  align-self: stretch;
+  min-width: 64px;
+}
+
+.app.room-lab .lab-rebuild .lab-inventory-panel,
+.app.room-lab .lab-rebuild .lab-recipes-block,
+.app.room-lab .lab-rebuild .lab-process-card,
+.app.room-lab .lab-rebuild .lab-active-recipe,
+.app.room-lab .lab-rebuild .mutation-actions {
+  padding: 14px;
+  border: 1px solid rgba(126, 255, 222, 0.16);
+  border-radius: 22px;
+  background:
+    linear-gradient(160deg, rgba(9, 27, 24, 0.9), rgba(3, 14, 15, 0.92)),
+    rgba(3, 14, 15, 0.92);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 14px 30px rgba(0, 0, 0, 0.16);
+}
+
+.app.room-lab .lab-rebuild .lab-block-head,
+.app.room-lab .lab-rebuild .lab-active-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.app.room-lab .lab-rebuild .lab-block-head strong,
+.app.room-lab .lab-rebuild .lab-formula-state-row b,
+.app.room-lab .lab-rebuild .lab-active-head b {
+  color: rgba(126, 255, 222, 0.96);
+  font-family: "Orbitron", monospace;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.app.room-lab .lab-rebuild .lab-inventory-panel {
+  padding: 12px;
+}
+
+.app.room-lab .lab-rebuild .lab-inventory-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.app.room-lab .lab-rebuild .lab-workspace {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.app.room-lab .lab-rebuild .lab-active-recipe {
+  order: 1;
+}
+
+.app.room-lab .lab-rebuild .lab-process-card {
+  order: 2;
+  display: grid;
+  gap: 10px;
+}
+
+.app.room-lab .lab-rebuild .mutation-capsule {
+  position: relative !important;
+  inset: auto !important;
+  width: 100%;
+  min-height: 284px;
+  margin: 12px 0 10px;
+  border: 1px solid rgba(126, 255, 222, 0.18);
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 50% 22%, rgba(126, 255, 222, 0.12), transparent 36%),
+    linear-gradient(180deg, rgba(4, 22, 22, 0.58), rgba(3, 12, 14, 0.82));
+  box-shadow:
+    inset 0 0 34px rgba(126, 255, 222, 0.08),
+    0 16px 30px rgba(0, 0, 0, 0.18);
+}
+
+.app.room-lab .lab-rebuild .lab-reactor-canvas {
+  inset: 18px !important;
+  width: calc(100% - 36px) !important;
+  height: calc(100% - 36px) !important;
+}
+
+.app.room-lab .lab-rebuild .lab-progress-track {
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.app.room-lab .lab-rebuild .lab-progress-track b {
+  display: block;
+  width: var(--fusion, 0%);
+  height: 100%;
+  border-radius: inherit;
+  background:
+    linear-gradient(90deg, rgba(126, 255, 222, 0.96), rgba(88, 220, 255, 0.88)),
+    rgba(126, 255, 222, 0.96);
+  box-shadow: 0 0 18px rgba(126, 255, 222, 0.28);
+}
+
+.app.room-lab .lab-rebuild .lab-process-copy {
+  display: grid;
+  gap: 4px;
+  margin-top: 10px;
+}
+
+.app.room-lab .lab-rebuild .lab-harvest-strip {
+  position: static !important;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.app.room-lab .lab-rebuild .lab-active-recipe {
+  display: grid;
+  gap: 12px;
+}
+
+.app.room-lab .lab-rebuild .lab-subsection-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 2px;
+}
+
+.app.room-lab .lab-rebuild .lab-subsection-head span,
+.app.room-lab .lab-rebuild .lab-subsection-head strong {
+  display: block;
+  min-width: 0;
+}
+
+.app.room-lab .lab-rebuild .lab-subsection-head span {
+  color: rgba(172, 206, 197, 0.72);
+  font-family: "Orbitron", monospace;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.app.room-lab .lab-rebuild .lab-subsection-head strong {
+  color: rgba(126, 255, 222, 0.96);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.app.room-lab .lab-rebuild .lab-active-summary strong {
+  color: #f4fff9;
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1.08;
+}
+
+.app.room-lab .lab-rebuild .lab-formula-state-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(126, 255, 222, 0.14);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.app.room-lab .lab-rebuild .lab-formula-factors {
+  position: static !important;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.app.room-lab .lab-rebuild .formula-factor {
+  min-height: 42px;
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  gap: 7px;
+  align-items: center;
+  padding: 7px 8px;
+  border: 1px solid rgba(126, 255, 222, 0.14);
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(2, 12, 13, 0.46)),
+    rgba(2, 12, 13, 0.46);
+}
+
+.app.room-lab .lab-rebuild .formula-factor.ready {
+  border-color: rgba(126, 255, 222, 0.36);
+  box-shadow: 0 0 16px rgba(126, 255, 222, 0.14);
+}
+
+.app.room-lab .lab-rebuild .formula-factor b,
+.app.room-lab .lab-rebuild .formula-factor em {
+  display: block;
+  min-width: 0;
+}
+
+.app.room-lab .lab-rebuild .formula-factor b {
+  color: rgba(242, 255, 250, 0.92);
+  font-size: 9px;
+  font-weight: 900;
+}
+
+.app.room-lab .lab-rebuild .formula-factor em {
+  color: rgba(182, 212, 203, 0.84);
+  font-size: 10px;
+  font-style: normal;
+}
+
+.app.room-lab .lab-rebuild .lab-requirement-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.app.room-lab .lab-rebuild .lab-req-item {
+  min-height: 66px;
+  gap: 4px;
+  padding: 10px;
+  border-radius: 16px;
+}
+
+.app.room-lab .lab-rebuild .lab-req-item span {
+  font-size: 8px;
+}
+
+.app.room-lab .lab-rebuild .lab-req-item strong {
+  font-size: 13px;
+}
+
+.app.room-lab .lab-rebuild .lab-req-item em {
+  font-size: 9px;
+}
+
+.app.room-lab .lab-rebuild .lab-output-card {
+  position: static !important;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  padding: 12px;
+}
+
+.app.room-lab .lab-rebuild .lab-output-copy strong {
+  color: #f7fffb;
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.app.room-lab .lab-rebuild .lab-output-zen {
+  position: static !important;
+  display: grid;
+  gap: 4px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(126, 255, 222, 0.12);
+}
+
+.app.room-lab .lab-rebuild .lab-holo-map {
+  position: static !important;
+  width: auto !important;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  transform: none !important;
+}
+
+.app.room-lab .lab-rebuild .lab-path-card {
+  min-height: 70px;
+  padding: 10px;
+}
+
+.app.room-lab .lab-rebuild .lab-path-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.app.room-lab .lab-rebuild .lab-path-head b {
+  color: #f4fff8;
+  font-size: 10px;
+}
+
+.app.room-lab .lab-rebuild .lab-path-head span,
+.app.room-lab .lab-rebuild .lab-path-card small {
+  font-size: 9px;
+}
+
+.app.room-lab .lab-rebuild .lab-recipe-grid {
+  position: static !important;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.app.room-lab .lab-rebuild .lab-recipe-card {
+  min-height: 88px;
+  padding: 10px;
+  border-radius: 16px;
+}
+
+.app.room-lab .lab-rebuild .lab-recipe-card span {
+  font-size: 9px;
+}
+
+.app.room-lab .lab-rebuild .lab-recipe-card strong {
+  font-size: 13px;
+}
+
+.app.room-lab .lab-rebuild .lab-recipe-card small,
+.app.room-lab .lab-rebuild .lab-recipe-card em {
+  font-size: 9px;
+}
+
+.app.room-lab .lab-rebuild .mutation-confirm {
+  position: static !important;
+  width: 100%;
+  min-height: 94px;
+  margin-top: 2px;
+  padding: 14px 16px;
+  border-radius: 20px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 18px 30px rgba(0, 0, 0, 0.24),
+    0 0 28px rgba(126, 255, 222, 0.12);
+}
+
+.app.room-lab .lab-rebuild .lab-launch-panel {
+  padding: 4px;
+  border: 1px solid rgba(126, 255, 222, 0.14);
+  border-radius: 24px;
+  background:
+    linear-gradient(180deg, rgba(10, 30, 28, 0.74), rgba(3, 15, 16, 0.92)),
+    rgba(3, 15, 16, 0.92);
+}
+
+.app.room-lab .lab-rebuild .mutation-confirm span {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+}
+
+.app.room-lab .lab-rebuild .mutation-confirm strong {
+  margin-top: 8px;
+  font-size: 17px;
+}
+
+.app.room-lab .lab-rebuild .mutation-confirm b {
+  margin-top: 6px;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.app.room-lab .lab-rebuild .mutation-actions {
+  display: flex !important;
+  justify-content: flex-end;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.app.room-lab .lab-rebuild .mutation-stars {
+  width: auto;
+  min-width: 118px;
+  min-height: 72px;
+  padding: 10px 14px;
+  border-radius: 18px;
+}
+
+@media (min-width: 900px) {
+  .app.room-lab .lab-rebuild .lab-workspace {
+    grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
+    align-items: start;
+  }
+}
+
+@media (max-width: 480px), (max-height: 760px) {
+  .app.room-lab .lab-rebuild {
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .app.room-lab .lab-rebuild .lab-shell-head {
+    flex-direction: column;
+  }
+
+  .app.room-lab .lab-rebuild .lab-shell-controls {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .app.room-lab .lab-rebuild .mutation-capsule {
+    min-height: 248px;
+  }
+
+  .app.room-lab .lab-rebuild .lab-inventory-grid,
+  .app.room-lab .lab-rebuild .lab-formula-factors,
+  .app.room-lab .lab-rebuild .lab-requirement-list,
+  .app.room-lab .lab-rebuild .lab-holo-map,
+  .app.room-lab .lab-rebuild .lab-recipe-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Lab hard reset: leave only the room and backdrop so the next build starts from a clean sheet. */
+.app.room-lab #labRoom {
+  position: relative;
+  overflow: hidden;
+}
+
+.app.room-lab .lab-blank-stage {
+  position: relative;
+  min-height: clamp(540px, 72vh, 920px);
+  border-radius: 28px;
+  background: transparent;
+}
+
+@media (max-width: 480px), (max-height: 760px) {
+  .app.room-lab .lab-blank-stage {
+    min-height: clamp(460px, 66vh, 720px);
+  }
 }

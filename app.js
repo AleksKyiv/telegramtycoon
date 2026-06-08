@@ -429,6 +429,622 @@ const rooms = {
   shop: $("#shopRoom")
 };
 let roomBeforeDaily = "farm";
+let labSceneEngine = null;
+let lastLabSynthesis = null;
+
+const LAB_SCENE_PRESETS = {
+  artifact: {
+    accent: "#7effde",
+    secondary: "#58dcff",
+    tertiary: "#ffd670",
+    blocked: "#ff6b7d"
+  },
+  serum: {
+    accent: "#58dcff",
+    secondary: "#7effde",
+    tertiary: "#8fdcff",
+    blocked: "#5f7a86"
+  },
+  catalyst: {
+    accent: "#ffd670",
+    secondary: "#ff72d2",
+    tertiary: "#7effde",
+    blocked: "#ff866f"
+  }
+};
+
+class LabSlot {
+  constructor(config = {}) {
+    this.id = config.id || "lab-slot";
+    this.update(config);
+  }
+
+  update(config = {}) {
+    this.role = config.role || this.role || "source";
+    this.occupied = Boolean(config.occupied);
+    this.ready = Boolean(config.ready);
+    this.locked = Boolean(config.locked);
+    this.energy = clamp(Number(config.energy) || 0, 0, 1);
+    this.color = config.color || this.color || "#7effde";
+    this.secondaryColor = config.secondaryColor || this.secondaryColor || "#58dcff";
+    this.label = config.label || this.label || "";
+    this.glyph = config.glyph || this.glyph || "";
+  }
+
+  getVisualState(time = 0) {
+    const pulse = 0.5 + Math.sin(time * 2.6 + (this.role === "core" ? 0.8 : this.role === "source-b" ? 1.6 : 0.1)) * 0.5;
+    const energy = this.locked ? 0.12 : clamp(this.energy * 0.88 + pulse * 0.12, 0.08, 1);
+    return {
+      alpha: this.locked ? 0.24 : this.ready ? 0.96 : 0.58 + energy * 0.22,
+      energy,
+      pulse,
+      radius: this.role === "core" ? 26 + energy * 11 : 10 + energy * 7,
+      color: this.color,
+      secondaryColor: this.secondaryColor
+    };
+  }
+}
+
+class ResourceManager {
+  constructor(maxParticles = 84) {
+    this.particles = Array.from({ length: maxParticles }, () => ({
+      active: false,
+      x: 0,
+      y: 0,
+      vx: 0,
+      vy: 0,
+      size: 0,
+      growth: 0,
+      age: 0,
+      life: 0,
+      alpha: 0,
+      drag: 0.96,
+      glow: 0.6,
+      color: "#7effde"
+    }));
+  }
+
+  spawn(config = {}) {
+    const particle = this.particles.find((entry) => !entry.active);
+    if (!particle) return null;
+    particle.active = true;
+    particle.x = Number(config.x) || 0;
+    particle.y = Number(config.y) || 0;
+    particle.vx = Number(config.vx) || 0;
+    particle.vy = Number(config.vy) || 0;
+    particle.size = Number(config.size) || 2;
+    particle.growth = Number(config.growth) || 0;
+    particle.age = 0;
+    particle.life = Math.max(0.1, Number(config.life) || 0.6);
+    particle.alpha = config.alpha === undefined ? 1 : Number(config.alpha) || 0;
+    particle.drag = Number(config.drag) || 0.96;
+    particle.glow = Number(config.glow) || 0.6;
+    particle.color = config.color || "#7effde";
+    return particle;
+  }
+
+  update(dt) {
+    this.particles.forEach((particle) => {
+      if (!particle.active) return;
+      particle.age += dt;
+      if (particle.age >= particle.life) {
+        particle.active = false;
+        return;
+      }
+      const drag = Math.pow(particle.drag, dt * 60);
+      particle.x += particle.vx * dt;
+      particle.y += particle.vy * dt;
+      particle.vx *= drag;
+      particle.vy *= drag;
+      particle.size += particle.growth * dt;
+      particle.alpha = 1 - particle.age / particle.life;
+    });
+  }
+
+  eachActive(callback) {
+    this.particles.forEach((particle) => {
+      if (particle.active) callback(particle);
+    });
+  }
+}
+
+class MutationAnimator {
+  constructor(resourceManager) {
+    this.resourceManager = resourceManager;
+    this.slotMap = new Map();
+    this.slots = [];
+    this.scene = null;
+    this.streamAccumulator = 0;
+    this.sparkAccumulator = 0;
+    this.shakePower = 0;
+    this.flash = 0;
+    this.pendingCue = null;
+  }
+
+  setScene(scene = {}) {
+    this.scene = scene;
+    this.syncSlots(scene.slots || []);
+    this.flash = Math.max(this.flash * 0.82, scene.status === "ready" ? 0.34 : scene.status === "processing" ? 0.2 : 0.1);
+  }
+
+  syncSlots(slotConfigs = []) {
+    this.slots = slotConfigs.map((slotConfig) => {
+      let slot = this.slotMap.get(slotConfig.id);
+      if (!slot) {
+        slot = new LabSlot(slotConfig);
+        this.slotMap.set(slotConfig.id, slot);
+      } else {
+        slot.update(slotConfig);
+      }
+      return slot;
+    });
+  }
+
+  triggerCue(type, options = {}) {
+    const accent = options.accent || this.scene?.accent || "#7effde";
+    this.shakePower = Math.max(this.shakePower, type === "rare" ? 0.22 : type === "synth" ? 0.14 : type === "reject" ? 0.08 : 0.06);
+    this.flash = Math.max(this.flash, type === "rare" ? 0.92 : type === "synth" ? 0.56 : type === "reject" ? 0.26 : 0.32);
+    if (options.metrics?.core) {
+      this.emitBurst(options.metrics.core, accent, type === "rare" ? 28 : type === "synth" ? 18 : 8, type === "reject");
+    } else {
+      this.pendingCue = { type, accent };
+    }
+  }
+
+  emitBurst(core, color, amount = 12, reject = false) {
+    for (let index = 0; index < amount; index += 1) {
+      const angle = (Math.PI * 2 * index) / amount + Math.random() * 0.28;
+      const speed = reject ? 38 + Math.random() * 22 : 74 + Math.random() * 48;
+      this.resourceManager.spawn({
+        x: core.x,
+        y: core.y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        size: reject ? 2.2 : 2.8,
+        growth: reject ? -1.6 : 7 + Math.random() * 10,
+        life: reject ? 0.34 : 0.62 + Math.random() * 0.36,
+        drag: reject ? 0.88 : 0.94,
+        glow: reject ? 0.42 : 0.82,
+        color
+      });
+    }
+  }
+
+  emitBeam(source, target, color, spread = 1) {
+    const dx = target.x - source.x;
+    const dy = target.y - source.y;
+    const sync = this.scene?.sync || 0;
+    this.resourceManager.spawn({
+      x: source.x,
+      y: source.y,
+      vx: dx * (0.96 + sync * 0.48) + (Math.random() - 0.5) * 18 * spread,
+      vy: dy * (0.96 + sync * 0.48) + (Math.random() - 0.5) * 14 * spread,
+      size: 1.8 + Math.random() * 1.5,
+      growth: 6 + Math.random() * 9,
+      life: 0.44 + Math.random() * 0.24,
+      drag: 0.95,
+      glow: 0.78,
+      color
+    });
+  }
+
+  emitOrbit(metrics, color) {
+    const angle = Math.random() * Math.PI * 2;
+    const radius = metrics.coreRadius * (1.4 + Math.random() * 0.5);
+    this.resourceManager.spawn({
+      x: metrics.core.x + Math.cos(angle) * radius,
+      y: metrics.core.y + Math.sin(angle) * radius * 0.62,
+      vx: -Math.sin(angle) * (16 + Math.random() * 10),
+      vy: Math.cos(angle) * (12 + Math.random() * 8),
+      size: 1.8 + Math.random() * 1.2,
+      growth: 3,
+      life: 0.56 + Math.random() * 0.32,
+      drag: 0.97,
+      glow: 0.6,
+      color
+    });
+  }
+
+  update(dt, metrics, now) {
+    if (!this.scene) {
+      this.resourceManager.update(dt);
+      return;
+    }
+
+    if (this.pendingCue) {
+      const { type, accent } = this.pendingCue;
+      this.pendingCue = null;
+      this.triggerCue(type, { accent, metrics });
+    }
+
+    const stateFactor = this.scene.status === "locked" ? 0.42 : this.scene.status === "ready" ? 1.3 : 0.92;
+    this.streamAccumulator += dt * (10 + this.scene.intensity * 14) * stateFactor;
+    while (this.streamAccumulator >= 1) {
+      this.streamAccumulator -= 1;
+      this.emitBeam(metrics.sources[0], metrics.core, this.slots[0]?.color || this.scene.accent, 1);
+      this.emitBeam(metrics.sources[1], metrics.core, this.slots[1]?.color || this.scene.secondary, 1);
+    }
+
+    this.sparkAccumulator += dt * (1 + this.scene.sync * 2.4);
+    if (this.sparkAccumulator >= 1 && this.scene.status !== "locked") {
+      this.sparkAccumulator = 0;
+      this.emitOrbit(metrics, this.scene.tertiary || this.scene.accent);
+    }
+
+    this.flash = Math.max(0, this.flash - dt * 0.72);
+    this.shakePower = Math.max(0, this.shakePower - dt * 1.8);
+    this.resourceManager.update(dt);
+  }
+
+  getShakeOffset(now = 0) {
+    if (!this.shakePower) return { x: 0, y: 0 };
+    const shakeX = Math.sin(now * 62) * 5 * this.shakePower;
+    const shakeY = Math.cos(now * 48) * 3 * this.shakePower;
+    return { x: shakeX, y: shakeY };
+  }
+
+  draw(ctx, metrics, now) {
+    if (!this.scene) return;
+
+    const coreSlot = this.slots.find((slot) => slot.role === "core");
+    const coreState = coreSlot?.getVisualState(now) || { radius: metrics.coreRadius, alpha: 0.8, color: this.scene.accent, secondaryColor: this.scene.secondary };
+
+    ctx.save();
+    ctx.globalCompositeOperation = "screen";
+
+    const haloGradient = ctx.createRadialGradient(metrics.core.x, metrics.core.y, 0, metrics.core.x, metrics.core.y, metrics.coreRadius * 2.1);
+    haloGradient.addColorStop(0, colorWithAlpha(coreState.color, 0.34 + this.flash * 0.22));
+    haloGradient.addColorStop(0.4, colorWithAlpha(coreState.secondaryColor, 0.14 + this.flash * 0.12));
+    haloGradient.addColorStop(1, "rgba(0, 0, 0, 0)");
+    ctx.fillStyle = haloGradient;
+    ctx.beginPath();
+    ctx.arc(metrics.core.x, metrics.core.y, metrics.coreRadius * 2.1, 0, Math.PI * 2);
+    ctx.fill();
+
+    metrics.sources.forEach((source, index) => {
+      const slot = this.slots[index];
+      const slotState = slot?.getVisualState(now) || { alpha: 0.4, color: this.scene.secondary, secondaryColor: this.scene.accent, radius: 12 };
+      const beamGradient = ctx.createLinearGradient(source.x, source.y, metrics.core.x, metrics.core.y);
+      beamGradient.addColorStop(0, colorWithAlpha(slotState.color, slotState.alpha * 0.5));
+      beamGradient.addColorStop(0.5, colorWithAlpha(slotState.secondaryColor, slotState.alpha * 0.22));
+      beamGradient.addColorStop(1, colorWithAlpha(coreState.color, 0));
+      ctx.strokeStyle = beamGradient;
+      ctx.lineWidth = 1.8 + slotState.energy * 1.6;
+      ctx.beginPath();
+      ctx.moveTo(source.x, source.y);
+      ctx.quadraticCurveTo((source.x + metrics.core.x) / 2, source.y - 18 + index * 10, metrics.core.x, metrics.core.y);
+      ctx.stroke();
+
+      const nodeGradient = ctx.createRadialGradient(source.x, source.y, 0, source.x, source.y, slotState.radius * 2);
+      nodeGradient.addColorStop(0, colorWithAlpha(slotState.color, slotState.alpha));
+      nodeGradient.addColorStop(0.45, colorWithAlpha(slotState.secondaryColor, slotState.alpha * 0.5));
+      nodeGradient.addColorStop(1, "rgba(0, 0, 0, 0)");
+      ctx.fillStyle = nodeGradient;
+      ctx.beginPath();
+      ctx.arc(source.x, source.y, slotState.radius * 2, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = colorWithAlpha("#f4fff9", 0.82);
+      ctx.beginPath();
+      ctx.arc(source.x, source.y, slotState.radius * 0.42, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    ctx.strokeStyle = colorWithAlpha(coreState.color, 0.42 + this.flash * 0.18);
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.ellipse(metrics.core.x, metrics.core.y, metrics.coreRadius * 1.12, metrics.coreRadius * 0.8, 0, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.fillStyle = colorWithAlpha("#f4fff9", 0.88);
+    ctx.beginPath();
+    ctx.arc(metrics.core.x, metrics.core.y, coreState.radius * 0.32, 0, Math.PI * 2);
+    ctx.fill();
+
+    this.resourceManager.eachActive((particle) => {
+      const glowGradient = ctx.createRadialGradient(particle.x, particle.y, 0, particle.x, particle.y, particle.size * 3.6);
+      glowGradient.addColorStop(0, colorWithAlpha(particle.color, particle.alpha));
+      glowGradient.addColorStop(0.35, colorWithAlpha(particle.color, particle.alpha * particle.glow));
+      glowGradient.addColorStop(1, "rgba(0, 0, 0, 0)");
+      ctx.fillStyle = glowGradient;
+      ctx.beginPath();
+      ctx.arc(particle.x, particle.y, particle.size * 3.6, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = colorWithAlpha("#f4fff9", particle.alpha * 0.9);
+      ctx.beginPath();
+      ctx.arc(particle.x, particle.y, Math.max(0.8, particle.size * 0.48), 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    ctx.restore();
+  }
+}
+
+class LabEngine {
+  constructor({ canvas, capsule, animator }) {
+    this.canvas = canvas;
+    this.capsule = capsule;
+    this.animator = animator;
+    this.ctx = canvas?.getContext("2d", { alpha: true, desynchronized: true });
+    this.scene = null;
+    this.active = false;
+    this.frameId = 0;
+    this.lastTs = 0;
+    this.dpr = 1;
+    this.bounds = { width: 0, height: 0 };
+    this.metrics = null;
+    this.frame = this.frame.bind(this);
+    this.resize = this.resize.bind(this);
+    this.onPointerDown = this.onPointerDown.bind(this);
+    window.addEventListener("resize", this.resize, { passive: true });
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) {
+        this.stop();
+        return;
+      }
+      if (this.active) {
+        this.resize();
+        this.start();
+      }
+    });
+    this.canvas?.addEventListener("pointerdown", this.onPointerDown, { passive: true });
+  }
+
+  setScene(scene = {}) {
+    this.scene = scene;
+    this.animator.setScene(scene);
+    this.canvas?.style.setProperty("--lab-canvas-accent", scene.accent || "#7effde");
+  }
+
+  triggerCue(type, options = {}) {
+    const metrics = this.metrics || this.computeMetrics(performance.now() * 0.001);
+    this.animator.triggerCue(type, {
+      ...options,
+      metrics
+    });
+    if (this.active) this.start();
+  }
+
+  setActive(active) {
+    this.active = Boolean(active);
+    if (!this.active) {
+      this.stop();
+      return;
+    }
+    this.resize();
+    this.start();
+  }
+
+  start() {
+    if (!this.ctx || !this.active || this.frameId) return;
+    this.lastTs = performance.now();
+    this.frameId = window.requestAnimationFrame(this.frame);
+  }
+
+  stop() {
+    if (!this.frameId) return;
+    window.cancelAnimationFrame(this.frameId);
+    this.frameId = 0;
+  }
+
+  resize() {
+    if (!this.canvas || !this.ctx) return;
+    const rect = this.canvas.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const nextWidth = Math.round(rect.width * dpr);
+    const nextHeight = Math.round(rect.height * dpr);
+    if (this.canvas.width !== nextWidth || this.canvas.height !== nextHeight) {
+      this.canvas.width = nextWidth;
+      this.canvas.height = nextHeight;
+    }
+    this.bounds = {
+      width: rect.width,
+      height: rect.height
+    };
+    this.dpr = dpr;
+    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  computeMetrics(now = 0) {
+    const width = this.bounds.width || this.canvas?.clientWidth || 0;
+    const height = this.bounds.height || this.canvas?.clientHeight || 0;
+    const sway = Math.sin(now * 1.8) * 5;
+    return {
+      width,
+      height,
+      core: {
+        x: width * 0.5,
+        y: height * 0.48 + Math.sin(now * 1.35) * 3
+      },
+      coreRadius: Math.min(width, height) * 0.16,
+      ringRadius: Math.min(width, height) * 0.28,
+      sources: [
+        { x: width * 0.21, y: height * 0.72 + sway },
+        { x: width * 0.79, y: height * 0.3 - sway }
+      ]
+    };
+  }
+
+  frame(timestamp) {
+    this.frameId = 0;
+    if (!this.active || !this.ctx) return;
+    if (!this.bounds.width || !this.bounds.height) this.resize();
+    const now = timestamp * 0.001;
+    const dt = Math.min((timestamp - (this.lastTs || timestamp)) / 1000, 0.05);
+    this.lastTs = timestamp;
+    this.metrics = this.computeMetrics(now);
+    this.animator.update(dt, this.metrics, now);
+    this.draw(now);
+    this.frameId = window.requestAnimationFrame(this.frame);
+  }
+
+  draw(now = 0) {
+    if (!this.ctx) return;
+    const ctx = this.ctx;
+    const { width, height } = this.bounds;
+    ctx.clearRect(0, 0, width, height);
+
+    const shake = this.animator.getShakeOffset(now);
+    ctx.save();
+    ctx.translate(shake.x, shake.y);
+    this.drawFrame(ctx, this.metrics, now);
+    this.animator.draw(ctx, this.metrics, now);
+    ctx.restore();
+  }
+
+  drawFrame(ctx, metrics, now) {
+    if (!metrics || !this.scene) return;
+    const accent = this.scene.accent || "#7effde";
+    const statusColor = this.scene.status === "locked"
+      ? this.scene.blocked || "#ff6b7d"
+      : this.scene.status === "processing"
+        ? this.scene.secondary || "#58dcff"
+        : accent;
+
+    ctx.save();
+    ctx.strokeStyle = colorWithAlpha(statusColor, 0.22);
+    ctx.lineWidth = 1.2;
+    for (let ring = 0; ring < 3; ring += 1) {
+      const radius = metrics.ringRadius + ring * 18 + Math.sin(now * (1.3 + ring * 0.2)) * 2;
+      ctx.beginPath();
+      ctx.ellipse(metrics.core.x, metrics.core.y, radius, radius * 0.62, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    const frameGradient = ctx.createLinearGradient(metrics.core.x, 0, metrics.core.x, metrics.height);
+    frameGradient.addColorStop(0, colorWithAlpha(accent, 0.04));
+    frameGradient.addColorStop(0.5, colorWithAlpha(this.scene.secondary || accent, 0.08));
+    frameGradient.addColorStop(1, colorWithAlpha(accent, 0));
+    ctx.fillStyle = frameGradient;
+    ctx.fillRect(metrics.width * 0.17, metrics.height * 0.1, metrics.width * 0.66, metrics.height * 0.76);
+    ctx.restore();
+  }
+
+  onPointerDown(event) {
+    if (!this.scene) return;
+    const rect = this.canvas?.getBoundingClientRect();
+    if (!rect) return;
+    const point = {
+      x: event.clientX - rect.left,
+      y: event.clientY - rect.top
+    };
+    const metrics = this.metrics || this.computeMetrics(performance.now() * 0.001);
+    const distance = Math.hypot(point.x - metrics.core.x, point.y - metrics.core.y);
+    const cueType = distance <= metrics.coreRadius * 1.65 ? "pulse" : "reject";
+    const cueColor = cueType === "pulse" ? this.scene.accent : this.scene.blocked;
+    this.triggerCue(cueType, { accent: cueColor });
+  }
+}
+
+function colorWithAlpha(color, alpha = 1) {
+  const normalized = String(color || "#7effde").trim();
+  if (normalized.startsWith("#")) {
+    const hex = normalized.slice(1);
+    const chunk = hex.length === 3 ? hex.split("").map((char) => char + char).join("") : hex.padEnd(6, "0").slice(0, 6);
+    const int = Number.parseInt(chunk, 16);
+    const r = (int >> 16) & 255;
+    const g = (int >> 8) & 255;
+    const b = int & 255;
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }
+  if (normalized.startsWith("rgb(")) {
+    return normalized.replace("rgb(", "rgba(").replace(")", `, ${alpha})`);
+  }
+  return normalized;
+}
+
+function ensureLabSceneEngine() {
+  if (labSceneEngine) return labSceneEngine;
+  const canvas = $("#labReactorCanvas");
+  const capsule = $("#mutationCapsule");
+  if (!canvas || !capsule) return null;
+  const animator = new MutationAnimator(new ResourceManager());
+  labSceneEngine = new LabEngine({ canvas, capsule, animator });
+  labSceneEngine.setActive(activeRoomName() === "lab");
+  return labSceneEngine;
+}
+
+function updateLabScene(scene) {
+  const engine = ensureLabSceneEngine();
+  if (!engine) return;
+  engine.setScene(scene);
+}
+
+function triggerLabSceneCue(type, options = {}) {
+  const engine = ensureLabSceneEngine();
+  if (!engine) return;
+  engine.triggerCue(type, options);
+}
+
+function buildLabSceneState({
+  recipe,
+  inventory,
+  fusionProgress,
+  serumProgress,
+  catalystProgress,
+  formulaSync,
+  rareChance,
+  rareActive,
+  canSynth
+}) {
+  const effectType = recipe.effect?.type || "artifact";
+  const preset = LAB_SCENE_PRESETS[effectType] || LAB_SCENE_PRESETS.artifact;
+  const materialA = labMaterialById(recipe.materials?.[0]?.id);
+  const materialB = labMaterialById(recipe.materials?.[1]?.id);
+  const primaryEnergy = recipe.materials?.[0]
+    ? clamp(labMaterialCount(recipe.materials[0].id, inventory) / Math.max(1, recipe.materials[0].amount), 0, 1)
+    : clamp(inventory.geneStrands / Math.max(1, labGeneCost()), 0, 1);
+  const secondaryEnergy = recipe.materials?.[1]
+    ? clamp(labMaterialCount(recipe.materials[1].id, inventory) / Math.max(1, recipe.materials[1].amount), 0, 1)
+    : clamp(state.seed / Math.max(1, labSeCost()), 0, 1);
+  const status = rareActive ? "ready" : canSynth ? "ready" : formulaSync >= 56 || fusionProgress >= 52 ? "processing" : "locked";
+
+  return {
+    status,
+    effectType,
+    accent: recipe.accent || preset.accent,
+    secondary: materialB?.color || preset.secondary,
+    tertiary: preset.tertiary,
+    blocked: preset.blocked,
+    intensity: clamp((fusionProgress + serumProgress + catalystProgress) / 240, 0.18, 1),
+    sync: clamp(formulaSync / 100, 0, 1),
+    rareChance: clamp(rareChance / 100, 0, 1),
+    slots: [
+      {
+        id: "lab-source-a",
+        role: "source-a",
+        occupied: true,
+        ready: primaryEnergy >= 1,
+        locked: status === "locked" && primaryEnergy < 0.34,
+        energy: primaryEnergy,
+        color: materialA?.color || preset.accent,
+        secondaryColor: preset.secondary
+      },
+      {
+        id: "lab-source-b",
+        role: "source-b",
+        occupied: true,
+        ready: secondaryEnergy >= 1,
+        locked: status === "locked" && secondaryEnergy < 0.34,
+        energy: secondaryEnergy,
+        color: materialB?.color || preset.secondary,
+        secondaryColor: preset.tertiary
+      },
+      {
+        id: "lab-core",
+        role: "core",
+        occupied: true,
+        ready: status === "ready",
+        locked: false,
+        energy: clamp((formulaSync + rareChance) / 140, 0.2, 1),
+        color: recipe.accent || preset.accent,
+        secondaryColor: preset.secondary
+      }
+    ]
+  };
+}
 
 function activeRoomName() {
   return Object.entries(rooms).find(([, room]) => room?.classList.contains("active"))?.[0] || "farm";
@@ -1802,6 +2418,154 @@ function consumeZenBoost() {
   return true;
 }
 
+function zenGeneLabel(value = state.zenGene) {
+  const gene = normalizeZenGene(value);
+  if (gene === "aura") return "Aura DNA";
+  if (gene === "crystal") return "Crystal DNA";
+  return "Sprout DNA";
+}
+
+function nextZenGeneForRecipe(recipe = labRecipe()) {
+  const effectType = recipe.effect?.type || "artifact";
+  let artifactCount = Math.max(0, Math.floor(Number(state.artifact) || 0));
+  if (effectType === "artifact") {
+    artifactCount += Math.max(1, Number(recipe.artifact || 1));
+  }
+  if (artifactCount > 0 && artifactCount % 3 === 0) return "aura";
+  if (artifactCount > 0 && artifactCount % 2 === 0) return "crystal";
+  return "sprout";
+}
+
+function labEffectSummary(recipe = labRecipe()) {
+  const effectType = recipe.effect?.type || "artifact";
+  if (effectType === "serum") {
+    const minutes = Math.max(1, Math.round(Math.max(60_000, Number(recipe.effect?.boostMs) || BOOST_MS) / 60000));
+    return `Boosts growing capsules for ${minutes}m and speeds the farm loop.`;
+  }
+  if (effectType === "catalyst") {
+    const minutes = Math.max(1, Math.round(Math.max(60_000, Number(recipe.effect?.rareMs) || 60_000) / 60000));
+    const charge = Math.max(0, Math.floor(Number(recipe.effect?.zenEnergy) || 0));
+    return charge > 0
+      ? `Opens a ${minutes}m rare window and stores +${charge} Zen charge.`
+      : `Opens a ${minutes}m rare mutation window.`;
+  }
+  return `Adds +${Math.max(1, Number(recipe.artifact || 1))} artifact depth and raises resonance.`;
+}
+
+function labZenLinkSummary(recipe = labRecipe()) {
+  const effectType = recipe.effect?.type || "artifact";
+  if (effectType === "serum") {
+    return {
+      tag: "Farm -> Lab",
+      text: "Faster capsules return more materials, which means more Lab fuel for Zen."
+    };
+  }
+  if (effectType === "catalyst") {
+    const charge = Math.max(0, Math.floor(Number(recipe.effect?.zenEnergy) || 0));
+    return {
+      tag: charge > 0 ? "Zen charge" : "Rare bridge",
+      text: charge > 0 ? `After synthesis you bank +${charge} Zen charge for future actions.` : "This recipe prepares a stronger Zen-powered rare run."
+    };
+  }
+  return {
+    tag: "Zen DNA",
+    text: `${zenGeneLabel(nextZenGeneForRecipe(recipe))} becomes the active Zen direction after synthesis.`
+  };
+}
+
+function labSynthState(recipe = labRecipe(), inventory = normalizeInventory(state.inventory)) {
+  const missingMaterial = recipe.materials.find((entry) => labMaterialCount(entry.id, inventory) < entry.amount);
+  if (missingMaterial) {
+    const material = labMaterialById(missingMaterial.id);
+    return {
+      ok: false,
+      label: "Need ingredients",
+      detail: `Collect ${missingMaterial.amount} ${material?.short || missingMaterial.id} to run this formula.`
+    };
+  }
+  if (inventory.geneStrands < labGeneCost()) {
+    return {
+      ok: false,
+      label: "Need gene strands",
+      detail: `Collect ${labGeneCost()} GS to stabilize the synthesis.`
+    };
+  }
+  if (state.energy < labEnergyCost()) {
+    return {
+      ok: false,
+      label: "Need CRC",
+      detail: `Store ${labEnergyCost()} CRC before you start the capsule.`
+    };
+  }
+  if (state.seed < labSeCost()) {
+    return {
+      ok: false,
+      label: "Need SE",
+      detail: `Store ${labSeCost()} SE before you synthesize this result.`
+    };
+  }
+  if ((recipe.effect?.type || "artifact") === "serum" && !labGrowingTargets().length) {
+    return {
+      ok: false,
+      label: "Need growing target",
+      detail: "Plant something first so the serum has a live capsule to affect."
+    };
+  }
+  return {
+    ok: true,
+    label: "Ready to synthesize",
+    detail: zenEnergyBalance() > 0 ? "Zen charge will be consumed to strengthen this run." : "Tap the button to create the result and push the Lab loop forward."
+  };
+}
+
+function labRequirementItems(recipe = labRecipe(), inventory = normalizeInventory(state.inventory)) {
+  const items = recipe.materials.map((entry) => {
+    const material = labMaterialById(entry.id);
+    const have = labMaterialCount(entry.id, inventory);
+    return {
+      label: material?.short || entry.id,
+      name: material?.name || entry.id,
+      value: `${have}/${entry.amount}`,
+      ready: have >= entry.amount,
+      color: material?.color || recipe.accent || "#7effde"
+    };
+  });
+  items.push(
+    {
+      label: "GS",
+      name: "Gene strands",
+      value: `${Math.max(0, Math.floor(Number(inventory.geneStrands) || 0))}/${labGeneCost()}`,
+      ready: inventory.geneStrands >= labGeneCost(),
+      color: "#b48eff"
+    },
+    {
+      label: "CRC",
+      name: "Capsule energy",
+      value: `${Math.max(0, Math.floor(Number(state.energy) || 0))}/${labEnergyCost()}`,
+      ready: state.energy >= labEnergyCost(),
+      color: "#7effde"
+    },
+    {
+      label: "SE",
+      name: "Seed enzyme",
+      value: `${Math.max(0, Math.floor(Number(state.seed) || 0))}/${labSeCost()}`,
+      ready: state.seed >= labSeCost(),
+      color: "#ffd670"
+    }
+  );
+  if ((recipe.effect?.type || "artifact") === "serum") {
+    const targets = labGrowingTargets().length;
+    items.push({
+      label: "TARGET",
+      name: "Growing capsule",
+      value: targets > 0 ? `${targets} live` : "0 live",
+      ready: targets > 0,
+      color: "#58dcff"
+    });
+  }
+  return items;
+}
+
 function renderLabInventory(recipe = labRecipe(), inventory = normalizeInventory(state.inventory), uniqueCount = 0) {
   const inventoryGrid = $("#labInventoryGrid");
   if (!inventoryGrid) return;
@@ -2801,6 +3565,35 @@ function renderMutationLab(progress) {
   setText("#labUpgradeLevelValue", labLevel);
   setText("#mutationAutoState", state.mutationAuto ? "On" : "Off");
   setText("#uniqueMutationCount", `${uniqueCount} rare cores`);
+  setText("#labActionState", synthState.label);
+  setText("#labActiveRecipeTitle", recipe.name);
+  setText("#labActiveRecipeNote", recipe.note || "Check the formula inputs and run the capsule when all lines are ready.");
+  setText("#fusionDnaA", `${recipe.modeLabel || "Fusion"} formula: ${recipe.result}`);
+  setText("#fusionDnaB", `${familyA} feed · ${labStoredSummary(recipe, inventory)}`);
+  setText("#mutationTier", `${tier} · ${recipe.modeLabel || "Fusion"}`);
+  setText("#labFormulaState", `Target result: ${recipe.result}`);
+  setText(
+    "#labActiveRecipeNote",
+    canSynth
+      ? (recipe.note || "All lines are stable. Launch the capsule to create a new result.")
+      : synthState.detail
+  );
+  setText("#labRequirementSummary", `${readyRequirements}/${requirements.length} ready`);
+  setText("#labOutputSectionState", recipe.output || "Lab output");
+  setText("#labMapState", zenLink.tag);
+  setText("#labOutputType", recipe.output || "Lab output");
+  setText("#labOutputName", recipe.result);
+  setText("#labOutputEffect", labEffectSummary(recipe));
+  setText("#labOutputZenTag", zenLink.tag);
+  setText("#labOutputZenLink", zenLink.text);
+  setText("#labActionState", synthState.label);
+  setText("#labActiveRecipeTitle", recipe.name);
+  setText("#labActiveRecipeNote", recipe.note || "Check the formula inputs and run the capsule when all lines are ready.");
+  setText("#labOutputType", recipe.output || "Lab output");
+  setText("#labOutputName", recipe.result);
+  setText("#labOutputEffect", labEffectSummary(recipe));
+  setText("#labOutputZenTag", zenLink.tag);
+  setText("#labOutputZenLink", zenLink.text);
   setText("#synthCostLabel", labRecipeSummary(recipe));
   setText("#synthBoostLabel", zenEnergyBalance() > 0 ? `GS ${labGeneCost()} / CRC ${labEnergyCost()} / SE ${labSeCost()} / Zen` : `GS ${labGeneCost()} / CRC ${labEnergyCost()} / SE ${labSeCost()}`);
   setText("#synthBoostLabel", zenEnergyBalance() > 0 ? `GS ${labGeneCost()} · Energy ${labEnergyCost()} · Zen` : `GS ${labGeneCost()} · Energy ${labEnergyCost()}`);
@@ -2811,6 +3604,11 @@ function renderMutationLab(progress) {
     { type: "se", value: labSeCost() },
     ...(zenEnergyBalance() > 0 ? [{ type: "zen", value: 1 }] : [])
   ]));
+  setText("#synthCostLabel", `Create ${recipe.result}`);
+  setText("#synthActionHint", synthState.detail);
+  setText("#synthCostLabel", canSynth ? "Launch synthesis" : synthState.label);
+  setText("#synthBoostLabel", `Create ${recipe.result}`);
+  setText("#synthActionHint", `Cost: ${synthCosts.join(" · ")}`);
   setClass("#mutationAutoBtn", "active", state.mutationAuto);
   setClass("#labRoom", "rare-active", rareActive);
 
@@ -2863,11 +3661,8 @@ function renderMutationLab(progress) {
     8,
     100
   );
-  const canSynth = labRecipeReady(recipe, inventory)
-    && inventory.geneStrands >= labGeneCost()
-    && state.energy >= labEnergyCost()
-    && state.seed >= labSeCost()
-    && (recipe.effect?.type !== "serum" || labGrowingTargets().length > 0);
+  const synthState = labSynthState(recipe, inventory);
+  const canSynth = synthState.ok;
   const formulaSync = clamp(
     Math.round((fusionProgress + serumProgress + catalystProgress + rareChance) / 4),
     1,
@@ -2899,6 +3694,15 @@ function renderMutationLab(progress) {
       power: clamp(labLevel * 8, 0, 100)
     }
   ];
+  const zenLink = labZenLinkSummary(recipe);
+  const requirements = labRequirementItems(recipe, inventory);
+  const readyRequirements = requirements.filter((item) => item.ready).length;
+  const synthCosts = [
+    `${labGeneCost()} GS`,
+    `${labEnergyCost()} CRC`,
+    `${labSeCost()} SE`,
+    ...(zenEnergyBalance() > 0 ? ["1 ZEN"] : [])
+  ];
 
   setText("#fusionProgressLabel", `${fusionProgress}%`);
   setStyle("#fusionProgressBar", "--fusion", `${fusionProgress}%`);
@@ -2912,6 +3716,27 @@ function renderMutationLab(progress) {
   setText("#labUpgradeLevelValue", labLevel);
   setText("#mutationAutoState", state.mutationAuto ? "On" : "Off");
   setText("#uniqueMutationCount", `${uniqueCount} rare cores`);
+  setText("#labActionState", synthState.label);
+  setText("#labActiveRecipeTitle", recipe.name);
+  setText("#labActiveRecipeNote", recipe.note || "Check the formula inputs and run the capsule when all lines are ready.");
+  setText("#fusionDnaA", `${recipe.modeLabel || "Fusion"} formula: ${recipe.result}`);
+  setText("#fusionDnaB", `${familyA} feed · ${labStoredSummary(recipe, inventory)}`);
+  setText("#mutationTier", `${tier} · ${recipe.modeLabel || "Fusion"}`);
+  setText("#labFormulaState", `Target result: ${recipe.result}`);
+  setText(
+    "#labActiveRecipeNote",
+    canSynth
+      ? (recipe.note || "All lines are stable. Launch the capsule to create a new result.")
+      : synthState.detail
+  );
+  setText("#labRequirementSummary", `${readyRequirements}/${requirements.length} ready`);
+  setText("#labOutputSectionState", recipe.output || "Lab output");
+  setText("#labMapState", zenLink.tag);
+  setText("#labOutputType", recipe.output || "Lab output");
+  setText("#labOutputName", recipe.result);
+  setText("#labOutputEffect", labEffectSummary(recipe));
+  setText("#labOutputZenTag", zenLink.tag);
+  setText("#labOutputZenLink", zenLink.text);
   setText("#synthCostLabel", `${recipe.result} · ${recipe.output || "Lab output"}`);
   setHTML("#synthBoostLabel", resourceCostListHtml([
     { type: "gs", value: labGeneCost() },
@@ -2919,13 +3744,33 @@ function renderMutationLab(progress) {
     { type: "se", value: labSeCost() },
     ...(zenEnergyBalance() > 0 ? [{ type: "zen", value: 1 }] : [])
   ]));
+  setText("#synthCostLabel", `Create ${recipe.result}`);
+  setText("#synthActionHint", synthState.detail);
+  setText("#synthCostLabel", canSynth ? "Launch synthesis" : synthState.label);
+  setText("#synthBoostLabel", `Create ${recipe.result}`);
+  setText("#synthActionHint", `Cost: ${synthCosts.join(" · ")}`);
   setClass("#mutationAutoBtn", "active", state.mutationAuto);
   setClass("#labRoom", "rare-active", rareActive);
   setStyle("#labRoom", "--lab-accent", recipe.accent || "#7effde");
   renderLabInventory(recipe, inventory, uniqueCount);
+  updateLabScene(buildLabSceneState({
+    recipe,
+    inventory,
+    fusionProgress,
+    serumProgress,
+    catalystProgress,
+    formulaSync,
+    rareChance,
+    rareActive,
+    canSynth
+  }));
 
   const synthButton = $("#synthBtn");
-  if (synthButton) synthButton.disabled = !canSynth;
+  if (synthButton) {
+    synthButton.disabled = !canSynth;
+    synthButton.classList.toggle("ready", canSynth);
+    synthButton.classList.toggle("blocked", !canSynth);
+  }
 
   const strip = $("#labHarvestStrip");
   if (strip) {
@@ -2940,6 +3785,29 @@ function renderMutationLab(progress) {
         </div>
       `;
     }).join("");
+  }
+
+  const requirementList = $("#labRequirementList");
+  if (requirementList) {
+    requirementList.innerHTML = requirements.map((item) => `
+      <article class="lab-req-item ${item.ready ? "ready" : "blocked"}" style="--req-color:${escapeHtml(item.color)}">
+        <span>${escapeHtml(item.label)}</span>
+        <strong>${escapeHtml(item.value)}</strong>
+        <em>${escapeHtml(item.name)}</em>
+      </article>
+    `).join("");
+  }
+
+  const lastResult = $("#labLastResult");
+  if (lastResult) {
+    if (lastLabSynthesis) {
+      const linkSuffix = lastLabSynthesis.zenLinked ? " / Zen linked" : "";
+      lastResult.textContent = `Last result: ${lastLabSynthesis.result}${lastLabSynthesis.meta}${linkSuffix}`;
+    } else {
+      lastResult.textContent = canSynth
+        ? "Launch the capsule to mint this result."
+        : "Load every requirement above to unlock the launch.";
+    }
   }
 
   const recipeGrid = $("#labRecipeGrid");
@@ -4142,6 +5010,9 @@ function applyUniqueMutationReward(product = {}) {
     seGain,
     uniqueMutations: state.labUniqueMutations
   });
+  triggerLabSceneCue("rare", {
+    accent: "#ffd670"
+  });
   render();
   scheduleBackendSync(true);
 }
@@ -4238,6 +5109,9 @@ function synthArtifact() {
   if (missingMaterial) {
     const material = labMaterialById(missingMaterial.id);
     toast(`Need ${missingMaterial.amount} ${material?.name || missingMaterial.id}`);
+    triggerLabSceneCue("reject", {
+      accent: "#ff6b7d"
+    });
     trackAction("lab_blocked_no_material", {
       recipeId: recipe.id,
       material: missingMaterial.id,
@@ -4248,6 +5122,9 @@ function synthArtifact() {
   }
   if (inventory.geneStrands < geneCost) {
     toast(`Need ${geneCost} GS`);
+    triggerLabSceneCue("reject", {
+      accent: "#ff6b7d"
+    });
     trackAction("lab_blocked_no_genes", {
       recipeId: recipe.id,
       geneStrands: inventory.geneStrands,
@@ -4257,6 +5134,9 @@ function synthArtifact() {
   }
   if (state.energy < energyCost) {
     toast(`Need ${energyCost} CRC`);
+    triggerLabSceneCue("reject", {
+      accent: "#ff6b7d"
+    });
     trackAction("lab_blocked_no_energy", {
       recipeId: recipe.id,
       energy: state.energy,
@@ -4266,6 +5146,9 @@ function synthArtifact() {
   }
   if (state.seed < seCost) {
     toast(`Need ${seCost} SE`);
+    triggerLabSceneCue("reject", {
+      accent: "#ff6b7d"
+    });
     trackAction("lab_blocked_no_se", {
       recipeId: recipe.id,
       se: state.seed,
@@ -4279,6 +5162,9 @@ function synthArtifact() {
     serumTargets = applyLabSerum(Math.max(60_000, Number(recipe.effect?.boostMs) || BOOST_MS));
     if (!serumTargets) {
       toast("Need growing capsule");
+      triggerLabSceneCue("reject", {
+        accent: "#5f7a86"
+      });
       trackAction("lab_blocked_no_target", {
         recipeId: recipe.id,
         capsule: activeDonorCapsule
@@ -4316,6 +5202,16 @@ function synthArtifact() {
       ? `${recipe.result} · ${Math.round((Number(recipe.effect?.rareMs) || 0) / 60000)}m`
       : `${recipe.result} +1`;
   toast(zenBoosted ? `${resultToast} · Zen linked` : resultToast);
+  lastLabSynthesis = {
+    result: recipe.result,
+    meta: recipe.effect?.type === "serum"
+      ? ` / ${serumTargets} live slots`
+      : recipe.effect?.type === "catalyst"
+        ? ` / rare ${Math.round((Number(recipe.effect?.rareMs) || 0) / 60000)}m`
+        : ` / ${zenGeneLabel(state.zenGene)}`,
+    zenLinked: zenBoosted,
+    at: Date.now()
+  };
   trackAction("lab_recipe_synthesized", {
     recipeId: recipe.id,
     effectType: recipe.effect?.type || "artifact",
@@ -4327,6 +5223,9 @@ function synthArtifact() {
     serumTargets,
     rareUntil: state.labRareUntil,
     artifact: state.artifact
+  });
+  triggerLabSceneCue(recipe.effect?.type === "catalyst" ? "rare" : "synth", {
+    accent: recipe.accent || "#7effde"
   });
   render();
 }
@@ -4407,6 +5306,7 @@ function switchRoom(name) {
   });
   if (name === "zen" && state.zenStartedAt && !state.zenPausedAt) startZenAmbient();
   if (name !== "zen") stopZenAmbient(1);
+  labSceneEngine?.setActive(name === "lab");
   trackAction("room_opened", { room: name });
 }
 
@@ -4464,6 +5364,9 @@ $("#labRecipeGrid")?.addEventListener("click", (event) => {
   if (state.labRecipeId === recipeId) return;
   state.labRecipeId = recipeId;
   playTone("tap");
+  triggerLabSceneCue("pulse", {
+    accent: labRecipeById(recipeId)?.accent || "#7effde"
+  });
   trackAction("lab_recipe_selected", { recipeId });
   render();
   scheduleBackendSync(true);
@@ -4881,5 +5784,6 @@ trackAction("app_opened", {
   room: "farm",
   telegram: Boolean(tg?.initData || tg?.initDataUnsafe?.user)
 });
+ensureLabSceneEngine();
 render();
 window.setInterval(render, 500);

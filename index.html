@@ -8,11 +8,11 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Exo+2:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=168">
+    <link rel="stylesheet" href="styles.css?v=174">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="game-core/config.js?v=8" defer></script>
     <script src="game-core/state.js?v=7" defer></script>
-    <script src="app.js?v=94" defer></script>
+    <script src="app.js?v=97" defer></script>
   </head>
   <body>
     <main class="app room-farm" aria-label="Green Farm Tycoon MVP">
@@ -382,93 +382,7 @@
 
       <section class="room" id="labRoom" aria-label="Lab mutation room">
         <div class="room-title"><span>Lab</span><strong id="artifactLabel">Empty</strong></div>
-        <section class="mutation-lab" aria-label="Mutation lab">
-          <div class="lab-machine-top">
-            <i aria-hidden="true"></i>
-            <strong>LAB LEVEL <b id="labLevelValue">4</b></strong>
-            <button class="lab-upgrade-btn" id="labUpgradeBtn" type="button" aria-label="Upgrade lab capsule">
-              <span class="upgrade-glyph" aria-hidden="true">
-                <svg viewBox="0 0 44 44" focusable="false">
-                  <path class="upgrade-ring" d="M22 4 38 13v18L22 40 6 31V13L22 4Z"></path>
-                  <path class="upgrade-core" d="M22 11 31 17v10l-9 6-9-6V17l9-6Z"></path>
-                  <path class="upgrade-arrow" d="M22 29V16m0 0-6 6m6-6 6 6"></path>
-                </svg>
-                <b>UP</b>
-              </span>
-            </button>
-          </div>
-
-          <section class="lab-inventory-panel" id="labInventoryPanel" aria-label="Lab inventory">
-            <div class="lab-inventory-head">
-              <span>Inventory</span>
-              <strong id="labInventoryCount">0 items</strong>
-            </div>
-            <div class="lab-inventory-grid" id="labInventoryGrid"></div>
-          </section>
-
-          <div class="fusion-panel lab-panel">
-            <span>Fusion process</span>
-            <strong id="fusionProgressLabel">55%</strong>
-            <i><b id="fusionProgressBar"></b></i>
-            <em id="fusionDnaA">DNA A: Neon Lettuce</em>
-            <em id="fusionDnaB">DNA B: Crystal Sprout</em>
-            <div class="lab-harvest-strip" id="labHarvestStrip" aria-label="Lab harvest materials"></div>
-          </div>
-
-          <div class="mutation-capsule" id="mutationCapsule" aria-hidden="true">
-            <div class="capsule-shell"></div>
-            <div class="lab-reactor-field">
-              <span></span><span></span><span></span>
-            </div>
-            <div class="dna-helix">
-              <i></i><i></i><i></i><i></i><i></i><i></i>
-              <i></i><i></i><i></i><i></i><i></i><i></i>
-            </div>
-            <div class="helix-glow"></div>
-          </div>
-
-          <div class="lab-holo-cube lab-panel" id="labHoloCube">
-            <div class="lab-holo-header">
-              <span>Mutation map</span>
-              <strong id="rareChance">12%</strong>
-              <em id="mutationTier">Rare chance</em>
-            </div>
-            <div class="lab-formula-core" aria-label="Schrodinger formula">
-              <div class="lab-formula-line" aria-hidden="true">
-                <span class="formula-psi">Ψ(x,t)</span>
-                <span>=</span>
-                <span class="formula-sum">
-                  <i>N</i>
-                  <b>Σ</b>
-                  <em>i = 1</em>
-                </span>
-                <span class="formula-wave">A<sub>i</sub>e<sup>i(k<sub>i</sub>x - ω<sub>i</sub>t)</sup></span>
-                <span>+</span>
-                <span class="formula-lab">L(x,t)</span>
-              </div>
-              <div class="lab-formula-state">
-                <span id="labFormulaState">Collapse: Proto Core</span>
-                <b id="labFormulaSync">SYNC 46%</b>
-              </div>
-              <div class="lab-formula-factors" id="labFormulaFactors" aria-label="Formula factors"></div>
-            </div>
-            <div class="lab-holo-map" id="labMutationMap" aria-label="Mutation progress map"></div>
-          </div>
-
-          <div class="lab-recipe-grid" id="labRecipeGrid" aria-label="Lab recipes"></div>
-
-          <div class="lab-machine-base" aria-hidden="true">
-            <i></i><i></i><i></i>
-          </div>
-
-          <section class="mutation-actions" aria-label="Mutation actions">
-            <button class="mutation-stars" id="rareMutationBtn" type="button" aria-label="Create unique mutation with 10 Stars">
-              <span>Unicum</span>
-              <strong>★ 10</strong>
-              <b id="uniqueMutationCount">0 rare cores</b>
-            </button>
-          </section>
-        </section>
+        <section class="lab-blank-stage" aria-label="Empty lab room"></section>
       </section>
 
       <section class="room" id="zenRoom" aria-label="Meditation room">
