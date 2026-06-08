@@ -1684,19 +1684,10 @@ function safeBiomass(value = state.biomass) {
   return Math.max(0, Math.floor(Number(value) || 0));
 }
 
-function labRecipe() {
-  return Array.isArray(LAB_RECIPES) && LAB_RECIPES.length ? LAB_RECIPES[0] : {
-    id: "starter_bio_fusion",
-    name: "Starter Bio Fusion",
-    result: "Proto Core",
-    materials: [],
-    geneStrands: 2,
-    energy: 5,
-    se: 1,
-    score: 8,
-    resonance: 1,
-    artifact: 1
-  };
+function defaultLabRecipeId() {
+  return Array.isArray(LAB_RECIPES) && LAB_RECIPES.length
+    ? String(LAB_RECIPES[0]?.id || "starter_bio_fusion")
+    : "starter_bio_fusion";
 }
 
 function labMaterialById(id) {
@@ -1752,10 +1743,108 @@ function labSeCost() {
   return Math.max(1, Math.floor(Number(recipe.se ?? recipe.seed ?? 1) || 1));
 }
 
+function normalizeLabRecipeId(value = state.labRecipeId) {
+  const recipe = Array.isArray(LAB_RECIPES)
+    ? LAB_RECIPES.find((item) => item.id === value)
+    : null;
+  return recipe?.id || defaultLabRecipeId();
+}
+
+function labRecipeById(id = state.labRecipeId) {
+  return Array.isArray(LAB_RECIPES)
+    ? LAB_RECIPES.find((recipe) => recipe.id === id) || LAB_RECIPES[0] || null
+    : null;
+}
+
+function labRecipe() {
+  return labRecipeById(normalizeLabRecipeId(state.labRecipeId)) || {
+    id: "starter_bio_fusion",
+    name: "Proto Fusion",
+    modeLabel: "Fusion",
+    result: "Proto Core",
+    note: "Stable biotech merge for early artifact growth.",
+    output: "Artifact core",
+    accent: "#7effde",
+    materials: [],
+    geneStrands: 2,
+    energy: 5,
+    se: 1,
+    score: 8,
+    resonance: 1,
+    artifact: 1,
+    effect: { type: "artifact" }
+  };
+}
+
+function labGrowingTargets() {
+  ensureFarmModel();
+  if (activeDonorCapsule === 0) {
+    return state.farmSlots.filter((slot, index) => isSlotUnlocked(index) && slot?.strain && farmSlotProgress(slot) < 100);
+  }
+  const capsuleSlots = state.capsuleSlots?.[String(activeDonorCapsule)] || [];
+  return capsuleSlots.filter((slot, index) => isCapsuleSlotUnlocked(activeDonorCapsule, index) && slot?.strain && farmSlotProgress(slot) < 100);
+}
+
+function applyLabSerum(boostMs) {
+  const targets = labGrowingTargets();
+  const now = Date.now();
+  targets.forEach((slot) => {
+    slot.plantedAt = Math.max(0, Number(slot.plantedAt) - boostMs);
+    slot.boostUntil = now + 2_800;
+  });
+  if (activeDonorCapsule === 0) syncLegacyFarmFromActiveSlot();
+  return targets.length;
+}
+
 function consumeZenBoost() {
   if (zenEnergyBalance() <= 0) return false;
   state.zenEnergy = zenEnergyBalance() - 1;
   return true;
+}
+
+function renderLabInventory(recipe = labRecipe(), inventory = normalizeInventory(state.inventory), uniqueCount = 0) {
+  const inventoryGrid = $("#labInventoryGrid");
+  if (!inventoryGrid) return;
+  const recipeMaterials = (recipe.materials || []).slice(0, 3).map((entry) => {
+    const material = labMaterialById(entry.id);
+    const count = labMaterialCount(entry.id, inventory);
+    return {
+      type: "mat",
+      icon: material?.short?.slice(0, 2).toUpperCase() || "MT",
+      name: material?.name || entry.id,
+      amount: `${count}/${entry.amount}`,
+      ready: count >= entry.amount,
+      color: material?.color || recipe.accent || "#7effde"
+    };
+  });
+  const items = [
+    {
+      type: "dna",
+      icon: "DNA",
+      name: "Gene strands",
+      amount: `${Math.max(0, Math.floor(Number(inventory.geneStrands) || 0))}/${labGeneCost()}`,
+      ready: inventory.geneStrands >= labGeneCost(),
+      color: "#b48eff"
+    },
+    ...recipeMaterials,
+    {
+      type: "core",
+      icon: "CORE",
+      name: "Rare core",
+      amount: `x${uniqueCount}`,
+      ready: uniqueCount > 0,
+      color: "#ffd670"
+    }
+  ].slice(0, 5);
+  const totalStored = items.reduce((sum, item) => sum + (item.ready ? 1 : 0), 0);
+  setText("#labInventoryCount", `${totalStored}/${items.length} ready`);
+  inventoryGrid.innerHTML = items.map((item) => `
+    <article class="lab-inventory-item ${item.ready ? "ready" : "empty"} ${escapeHtml(item.type)}" style="--inv-color:${escapeHtml(item.color)}">
+      <span class="lab-inventory-glyph" aria-hidden="true"><i></i><b>${escapeHtml(item.icon)}</b></span>
+      <strong>${escapeHtml(item.name)}</strong>
+      <em>${escapeHtml(item.amount)}</em>
+    </article>
+  `).join("");
 }
 
 function mergeMissionState(localValue = {}, remoteValue = {}) {
@@ -1855,7 +1944,8 @@ function serverStatePayload() {
     },
     lab: {
       uniqueMutations: Math.max(0, Math.floor(Number(state.labUniqueMutations) || 0)),
-      rareUntil: Math.max(0, Number(state.labRareUntil) || 0)
+      rareUntil: Math.max(0, Number(state.labRareUntil) || 0),
+      recipeId: normalizeLabRecipeId(state.labRecipeId)
     },
     zen: {
       energy: Math.max(0, Math.floor(Number(state.zenEnergy) || 0)),
@@ -2096,6 +2186,7 @@ function applyServerPlayerState(player = {}) {
       Math.floor(Number(player.lab.uniqueMutations) || 0)
     );
     state.labRareUntil = Math.max(Number(state.labRareUntil) || 0, Number(player.lab.rareUntil) || 0);
+    state.labRecipeId = normalizeLabRecipeId(player.lab.recipeId || state.labRecipeId);
   }
 
   if (player.zen) {
@@ -2151,6 +2242,7 @@ function applyAuthoritativePlayerState(player = {}) {
   if (player.lab) {
     state.labUniqueMutations = Math.max(0, Math.floor(Number(player.lab.uniqueMutations) || 0));
     state.labRareUntil = Math.max(0, Number(player.lab.rareUntil) || 0);
+    state.labRecipeId = normalizeLabRecipeId(player.lab.recipeId || state.labRecipeId);
   }
 
   if (player.zen) {
@@ -2706,6 +2798,7 @@ function renderMutationLab(progress) {
   setText("#rareChance", `${rareChance}%`);
   setText("#mutationTier", tier);
   setText("#labLevelValue", labLevel);
+  setText("#labUpgradeLevelValue", labLevel);
   setText("#mutationAutoState", state.mutationAuto ? "On" : "Off");
   setText("#uniqueMutationCount", `${uniqueCount} rare cores`);
   setText("#synthCostLabel", labRecipeSummary(recipe));
@@ -2734,6 +2827,193 @@ function renderMutationLab(progress) {
         </div>
       `;
     }).join("");
+  }
+}
+
+function renderMutationLab(progress) {
+  const variant = currentPlantVariant();
+  const recipe = labRecipe();
+  const inventory = normalizeInventory(state.inventory);
+  const labLevel = 4 + Math.min(9, state.artifact);
+  const uniqueCount = Math.max(0, Math.floor(Number(state.labUniqueMutations) || 0));
+  const fusionProgress = clamp(
+    46 + state.artifact * 7 + uniqueCount * 3 + Math.round(progress / 5)
+      + (recipe.effect?.type === "serum" ? 8 : 0)
+      + (labRecipeReady(recipe, inventory) ? 4 : 0),
+    42,
+    99
+  );
+  const rareChance = clamp(
+    12 + state.artifact * 3 + uniqueCount * 6 + Math.round(progress / 12)
+      + (recipe.effect?.type === "catalyst" ? 18 : 0)
+      - (recipe.effect?.type === "serum" ? 4 : 0),
+    12,
+    88
+  );
+  const familyA = ["Neon Lettuce", "Crystal Sprout", "Solar Moss", "Aqua Fern"][variant.id % 4];
+  const tier = rareChance >= 72 ? "Unique chance" : rareChance >= 42 ? "Epic chance" : rareChance >= 24 ? "Rare chance" : "Stable chance";
+  const rareActive = state.labRareUntil > Date.now();
+  const serumProgress = clamp(
+    18 + safeDataModuleLevel() * 7 + Math.round(progress / 4) + (recipe.effect?.type === "serum" ? 22 : 0),
+    8,
+    100
+  );
+  const catalystProgress = clamp(
+    14 + uniqueCount * 8 + state.artifact * 4 + (rareActive ? 20 : 0) + (recipe.effect?.type === "catalyst" ? 16 : 0),
+    8,
+    100
+  );
+  const canSynth = labRecipeReady(recipe, inventory)
+    && inventory.geneStrands >= labGeneCost()
+    && state.energy >= labEnergyCost()
+    && state.seed >= labSeCost()
+    && (recipe.effect?.type !== "serum" || labGrowingTargets().length > 0);
+  const formulaSync = clamp(
+    Math.round((fusionProgress + serumProgress + catalystProgress + rareChance) / 4),
+    1,
+    99
+  );
+  const formulaFactors = [
+    {
+      type: "crc",
+      label: "A1 CRC",
+      value: `${Math.min(state.energy, labEnergyCost())}/${labEnergyCost()}`,
+      power: clamp(Math.round((state.energy / Math.max(1, labEnergyCost())) * 100), 0, 100)
+    },
+    {
+      type: "se",
+      label: "A2 SE",
+      value: `${Math.min(state.seed, labSeCost())}/${labSeCost()}`,
+      power: clamp(Math.round((state.seed / Math.max(1, labSeCost())) * 100), 0, 100)
+    },
+    {
+      type: "zen",
+      label: "ω Zen",
+      value: zenEnergyBalance() > 0 ? `x${zenEnergyBalance()}` : "0",
+      power: clamp(zenEnergyBalance() * 34, 0, 100)
+    },
+    {
+      type: "lab",
+      label: "L Lab",
+      value: `L${labLevel}`,
+      power: clamp(labLevel * 8, 0, 100)
+    }
+  ];
+
+  setText("#fusionProgressLabel", `${fusionProgress}%`);
+  setStyle("#fusionProgressBar", "--fusion", `${fusionProgress}%`);
+  setText("#fusionDnaA", `${recipe.modeLabel || "Fusion"}: ${recipe.result} · ${familyA}`);
+  setText("#fusionDnaB", `${recipe.note || "Lab recipe"} · ${labStoredSummary(recipe, inventory)}`);
+  setText("#rareChance", `${rareChance}%`);
+  setText("#mutationTier", `${tier} · ${recipe.modeLabel || "Fusion"}`);
+  setText("#labFormulaState", `Collapse: ${recipe.result}`);
+  setText("#labFormulaSync", `SYNC ${formulaSync}%`);
+  setText("#labLevelValue", labLevel);
+  setText("#labUpgradeLevelValue", labLevel);
+  setText("#mutationAutoState", state.mutationAuto ? "On" : "Off");
+  setText("#uniqueMutationCount", `${uniqueCount} rare cores`);
+  setText("#synthCostLabel", `${recipe.result} · ${recipe.output || "Lab output"}`);
+  setHTML("#synthBoostLabel", resourceCostListHtml([
+    { type: "gs", value: labGeneCost() },
+    { type: "crc", value: labEnergyCost() },
+    { type: "se", value: labSeCost() },
+    ...(zenEnergyBalance() > 0 ? [{ type: "zen", value: 1 }] : [])
+  ]));
+  setClass("#mutationAutoBtn", "active", state.mutationAuto);
+  setClass("#labRoom", "rare-active", rareActive);
+  setStyle("#labRoom", "--lab-accent", recipe.accent || "#7effde");
+  renderLabInventory(recipe, inventory, uniqueCount);
+
+  const synthButton = $("#synthBtn");
+  if (synthButton) synthButton.disabled = !canSynth;
+
+  const strip = $("#labHarvestStrip");
+  if (strip) {
+    strip.innerHTML = recipe.materials.map((entry) => {
+      const material = labMaterialById(entry.id);
+      const count = labMaterialCount(entry.id, inventory);
+      const ready = count >= entry.amount;
+      return `
+        <div class="lab-mat-chip ${ready ? "ready" : ""}" style="--mat-color:${escapeHtml(material?.color || "#7effde")}">
+          <strong>${escapeHtml(material?.short || entry.id)}</strong>
+          <span>${count}/${entry.amount}</span>
+        </div>
+      `;
+    }).join("");
+  }
+
+  const recipeGrid = $("#labRecipeGrid");
+  if (recipeGrid) {
+    recipeGrid.innerHTML = LAB_RECIPES.map((entry) => {
+      const active = entry.id === recipe.id;
+      const ready = labRecipeReady(entry, inventory);
+      return `
+        <button
+          class="lab-recipe-card ${active ? "active" : ""} ${ready ? "ready" : ""}"
+          type="button"
+          data-lab-recipe="${entry.id}"
+          style="--recipe-accent:${escapeHtml(entry.accent || "#7effde")}"
+          aria-pressed="${active ? "true" : "false"}"
+        >
+          <span>${escapeHtml(entry.modeLabel || "Lab")}</span>
+          <strong>${escapeHtml(entry.name)}</strong>
+          <small>${escapeHtml(entry.result)}</small>
+          <em>${ready ? "Ready" : escapeHtml(labRecipeSummary(entry))}</em>
+        </button>
+      `;
+    }).join("");
+  }
+
+  const formulaPanel = $("#labFormulaFactors");
+  if (formulaPanel) {
+    formulaPanel.innerHTML = formulaFactors.map((factor) => `
+      <span class="formula-factor ${factor.power >= 100 ? "ready" : ""}" style="--factor-power:${factor.power}%">
+        <i class="formula-factor-icon ${escapeHtml(factor.type)}"></i>
+        <b>${escapeHtml(factor.label)}</b>
+        <em>${escapeHtml(factor.value)}</em>
+      </span>
+    `).join("");
+  }
+
+  const mutationMap = $("#labMutationMap");
+  if (mutationMap) {
+    const branches = [
+      {
+        id: "fusion",
+        label: "Fusion",
+        progress: fusionProgress,
+        accent: "#7effde",
+        status: recipe.effect?.type === "artifact" ? recipe.result : "Core map",
+        note: `Artifact depth ${Math.max(1, state.artifact)}`
+      },
+      {
+        id: "growth",
+        label: "Growth",
+        progress: serumProgress,
+        accent: "#58dcff",
+        status: recipe.effect?.type === "serum" ? "Active serum" : "Capsule line",
+        note: `${labGrowingTargets().length} live slots`
+      },
+      {
+        id: "rare",
+        label: "Rare",
+        progress: catalystProgress,
+        accent: "#ffd670",
+        status: recipe.effect?.type === "catalyst" ? "Catalyst" : `${rareChance}% chance`,
+        note: rareActive ? "Window open" : `${uniqueCount} rare cores`
+      }
+    ];
+
+    mutationMap.innerHTML = branches.map((branch) => `
+      <article class="lab-path-card ${recipe.effect?.type === branch.id || (branch.id === "fusion" && recipe.effect?.type === "artifact") ? "active" : ""}" style="--path-accent:${branch.accent}; --path-progress:${branch.progress}%">
+        <div class="lab-path-head">
+          <b>${escapeHtml(branch.label)}</b>
+          <span>${branch.progress}%</span>
+        </div>
+        <div class="lab-path-bar"><i class="lab-path-fill"></i></div>
+        <small>${escapeHtml(branch.status)} · ${escapeHtml(branch.note)}</small>
+      </article>
+    `).join("");
   }
 }
 
@@ -3947,6 +4227,110 @@ function synthArtifact() {
   render();
 }
 
+function synthArtifact() {
+  const recipe = labRecipe();
+  const energyCost = labEnergyCost();
+  const geneCost = labGeneCost();
+  const seCost = labSeCost();
+  const inventory = normalizeInventory(state.inventory);
+  const missingMaterial = recipe.materials.find((entry) => labMaterialCount(entry.id, inventory) < entry.amount);
+
+  if (missingMaterial) {
+    const material = labMaterialById(missingMaterial.id);
+    toast(`Need ${missingMaterial.amount} ${material?.name || missingMaterial.id}`);
+    trackAction("lab_blocked_no_material", {
+      recipeId: recipe.id,
+      material: missingMaterial.id,
+      have: labMaterialCount(missingMaterial.id, inventory),
+      cost: missingMaterial.amount
+    });
+    return;
+  }
+  if (inventory.geneStrands < geneCost) {
+    toast(`Need ${geneCost} GS`);
+    trackAction("lab_blocked_no_genes", {
+      recipeId: recipe.id,
+      geneStrands: inventory.geneStrands,
+      cost: geneCost
+    });
+    return;
+  }
+  if (state.energy < energyCost) {
+    toast(`Need ${energyCost} CRC`);
+    trackAction("lab_blocked_no_energy", {
+      recipeId: recipe.id,
+      energy: state.energy,
+      cost: energyCost
+    });
+    return;
+  }
+  if (state.seed < seCost) {
+    toast(`Need ${seCost} SE`);
+    trackAction("lab_blocked_no_se", {
+      recipeId: recipe.id,
+      se: state.seed,
+      cost: seCost
+    });
+    return;
+  }
+
+  let serumTargets = 0;
+  if (recipe.effect?.type === "serum") {
+    serumTargets = applyLabSerum(Math.max(60_000, Number(recipe.effect?.boostMs) || BOOST_MS));
+    if (!serumTargets) {
+      toast("Need growing capsule");
+      trackAction("lab_blocked_no_target", {
+        recipeId: recipe.id,
+        capsule: activeDonorCapsule
+      });
+      return;
+    }
+  }
+
+  const zenBoosted = consumeZenBoost();
+  state.energy -= energyCost;
+  state.seed -= seCost;
+  state.inventory = inventory;
+  recipe.materials.forEach((entry) => {
+    state.inventory.materials[entry.id] = Math.max(0, labMaterialCount(entry.id, state.inventory) - entry.amount);
+  });
+  state.inventory.geneStrands -= geneCost;
+  state.plantVariant = (state.plantVariant + 7 + activeDonorCapsule) % PLANT_VARIANTS.length;
+  state.score += zenBoosted ? Math.max(14, Number(recipe.score || 8) + 6) : Math.max(8, Number(recipe.score || 8));
+  state.resonance += zenBoosted ? Math.max(2, Number(recipe.resonance || 1) + 1) : Math.max(1, Number(recipe.resonance || 1));
+
+  if (recipe.effect?.type === "artifact") {
+    state.artifact += Math.max(1, Number(recipe.artifact || 1));
+  } else if (recipe.effect?.type === "catalyst") {
+    const rareMs = Math.max(60_000, Number(recipe.effect?.rareMs) || 0);
+    state.labRareUntil = Math.max(Date.now(), Number(state.labRareUntil) || 0) + rareMs;
+    state.zenEnergy = zenEnergyBalance() + Math.max(0, Math.floor(Number(recipe.effect?.zenEnergy) || 0));
+  }
+
+  state.zenGene = state.artifact % 3 === 0 ? "aura" : state.artifact % 2 === 0 ? "crystal" : "sprout";
+  playTone("lab");
+
+  const resultToast = recipe.effect?.type === "serum"
+    ? `${recipe.result} · ${serumTargets} slots`
+    : recipe.effect?.type === "catalyst"
+      ? `${recipe.result} · ${Math.round((Number(recipe.effect?.rareMs) || 0) / 60000)}m`
+      : `${recipe.result} +1`;
+  toast(zenBoosted ? `${resultToast} · Zen linked` : resultToast);
+  trackAction("lab_recipe_synthesized", {
+    recipeId: recipe.id,
+    effectType: recipe.effect?.type || "artifact",
+    materials: recipe.materials,
+    geneCost,
+    energyCost,
+    seCost,
+    zenBoosted,
+    serumTargets,
+    rareUntil: state.labRareUntil,
+    artifact: state.artifact
+  });
+  render();
+}
+
 function claimZenDna(index) {
   const elapsed = zenElapsed();
   if (!state.zenStartedAt || state.zenPausedAt || !zenDnaIsVisible(elapsed, true, false)) return;
@@ -4073,7 +4457,25 @@ $("#mutationAutoBtn")?.addEventListener("click", () => {
   });
   render();
 });
+$("#labRecipeGrid")?.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-lab-recipe]");
+  if (!button) return;
+  const recipeId = normalizeLabRecipeId(button.dataset.labRecipe);
+  if (state.labRecipeId === recipeId) return;
+  state.labRecipeId = recipeId;
+  playTone("tap");
+  trackAction("lab_recipe_selected", { recipeId });
+  render();
+  scheduleBackendSync(true);
+});
 $("#synthBtn")?.addEventListener("click", synthArtifact);
+$("#labUpgradeBtn")?.addEventListener("click", () => {
+  playTone("tap");
+  openSheet("#labUpgradeSheet");
+  trackAction("lab_upgrade_preview_opened", {
+    level: 4 + Math.min(9, Math.max(0, Math.floor(Number(state.artifact) || 0)))
+  });
+});
 $("#rareMutationBtn")?.addEventListener("click", buyUniqueMutation);
 $("#meditateBtn")?.addEventListener("click", meditate);
 $("#capsuleDrone")?.addEventListener("click", () => {

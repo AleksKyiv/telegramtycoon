@@ -1659,7 +1659,10 @@ function mergeFarmState(existing, incoming, context = {}) {
 function safeLabState(value) {
   return {
     uniqueMutations: Math.min(9999, safeNumber(value?.uniqueMutations)),
-    rareUntil: safeTimestamp(value?.rareUntil)
+    rareUntil: safeTimestamp(value?.rareUntil),
+    recipeId: typeof value?.recipeId === "string" && value.recipeId.trim()
+      ? value.recipeId.trim().slice(0, 64)
+      : "starter_bio_fusion"
   };
 }
 
@@ -1668,7 +1671,8 @@ function mergeLabState(existing, incoming) {
   const next = safeLabState(incoming);
   return {
     uniqueMutations: Math.max(current.uniqueMutations, next.uniqueMutations),
-    rareUntil: Math.max(current.rareUntil, next.rareUntil)
+    rareUntil: Math.max(current.rareUntil, next.rareUntil),
+    recipeId: next.recipeId || current.recipeId
   };
 }
 

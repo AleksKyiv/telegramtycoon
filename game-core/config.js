@@ -187,8 +187,12 @@
     LAB_RECIPES: [
       {
         id: "starter_bio_fusion",
-        name: "Starter Bio Fusion",
+        name: "Proto Fusion",
+        modeLabel: "Fusion",
         result: "Proto Core",
+        note: "Stable biotech merge that converts raw harvest matter into artifact progress.",
+        output: "Artifact core",
+        accent: "#7effde",
         materials: [
           { id: "bio_leaf", amount: 2 },
           { id: "green_fiber", amount: 2 },
@@ -197,9 +201,61 @@
         geneStrands: 2,
         energy: 5,
         se: 1,
-        score: 8,
+        score: 12,
         resonance: 1,
-        artifact: 1
+        artifact: 1,
+        effect: {
+          type: "artifact"
+        }
+      },
+      {
+        id: "capsule_growth_serum",
+        name: "Capsule Serum",
+        modeLabel: "Serum",
+        result: "Growth Serum",
+        note: "Inject the active capsule and fast-forward every growing slot inside it.",
+        output: "Capsule boost",
+        accent: "#58dcff",
+        materials: [
+          { id: "grain_mesh", amount: 2 },
+          { id: "solar_pollen", amount: 1 },
+          { id: "mint_flux", amount: 1 }
+        ],
+        geneStrands: 3,
+        energy: 6,
+        se: 1,
+        score: 18,
+        resonance: 1,
+        artifact: 0,
+        effect: {
+          type: "serum",
+          boostMs: 180000
+        }
+      },
+      {
+        id: "quantum_rare_catalyst",
+        name: "Rare Catalyst",
+        modeLabel: "Catalyst",
+        result: "Quantum Catalyst",
+        note: "Overclock the lab and open a stronger rare window for unstable experiments.",
+        output: "Rare mode",
+        accent: "#ffd670",
+        materials: [
+          { id: "green_fiber", amount: 2 },
+          { id: "grain_mesh", amount: 1 },
+          { id: "mint_flux", amount: 1 }
+        ],
+        geneStrands: 4,
+        energy: 8,
+        se: 2,
+        score: 24,
+        resonance: 2,
+        artifact: 0,
+        effect: {
+          type: "catalyst",
+          rareMs: 1200000,
+          zenEnergy: 1
+        }
       }
     ],
     DRONE_SKINS: [

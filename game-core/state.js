@@ -15,8 +15,12 @@
     PLANT_VARIANTS,
     FARM_SLOT_COUNT,
     FARM_STRAINS,
+    LAB_RECIPES,
     DRONE_SKINS
   } = config;
+  const DEFAULT_LAB_RECIPE_ID = Array.isArray(LAB_RECIPES) && LAB_RECIPES.length
+    ? String(LAB_RECIPES[0]?.id || "starter_bio_fusion")
+    : "starter_bio_fusion";
 
   function clamp(value, min, max) {
     return Math.max(min, Math.min(max, value));
@@ -144,6 +148,7 @@
       farmSlots: [],
       labUniqueMutations: 0,
       labRareUntil: 0,
+      labRecipeId: DEFAULT_LAB_RECIPE_ID,
       sessions: 0,
       plantVariant: 0,
       autoCollect: false,
@@ -214,6 +219,9 @@
     restored.zenDnaClaims = restored.zenDnaClaims && typeof restored.zenDnaClaims === "object" ? restored.zenDnaClaims : {};
     restored.labUniqueMutations = Math.max(0, Math.floor(Number(restored.labUniqueMutations) || 0));
     restored.labRareUntil = Math.max(0, Number(restored.labRareUntil) || 0);
+    restored.labRecipeId = Array.isArray(LAB_RECIPES) && LAB_RECIPES.some((recipe) => recipe.id === restored.labRecipeId)
+      ? restored.labRecipeId
+      : DEFAULT_LAB_RECIPE_ID;
     restored.droneLevel = safeDroneLevel(restored.droneLevel);
     restored.droneSkin = normalizeDroneSkin(restored.droneSkin);
     restored.dataModuleLevel = safeDataModuleLevel(restored.dataModuleLevel);
