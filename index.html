@@ -8,11 +8,11 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Exo+2:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=179">
+    <link rel="stylesheet" href="styles.css?v=180">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="game-core/config.js?v=8" defer></script>
     <script src="game-core/state.js?v=7" defer></script>
-    <script src="app.js?v=99" defer></script>
+    <script src="app.js?v=100" defer></script>
   </head>
   <body>
     <main class="app room-farm" aria-label="Green Farm Tycoon MVP">
@@ -427,7 +427,7 @@
               <section class="lab-reactor-shell" aria-label="Synthesis reactor">
                 <div class="lab-reactor-head">
                   <span>Reactor</span>
-                  <button class="lab-reactor-upgrade" type="button" aria-label="Upgrade reactor">
+                  <button class="lab-reactor-upgrade" id="labUpgradeBtn" type="button" aria-label="Upgrade reactor">
                     <span class="upgrade-glyph" aria-hidden="true">
                       <svg viewBox="0 0 44 44" focusable="false">
                         <path class="upgrade-ring" d="M22 4 38 13v18L22 40 6 31V13L22 4Z"></path>
@@ -457,7 +457,7 @@
                   </button>
                 </div>
 
-                <button class="lab-synth-cta" type="button" aria-label="Start synthesis">
+                <button class="lab-synth-cta" id="synthBtn" type="button" aria-label="Start synthesis">
                   <span></span>
                   <b>Synthesize</b>
                 </button>

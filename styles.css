@@ -17863,3 +17863,294 @@ button {
     opacity: 0;
   }
 }
+
+/* Fallback visibility pass: keep the rebuilt Lab readable even if the room class lags behind in a live tab. */
+#labRoom {
+  position: relative;
+  overflow: hidden;
+}
+
+#labRoom .lab-blank-stage {
+  position: relative;
+  min-height: clamp(540px, 72vh, 920px);
+  border-radius: 28px;
+  background: transparent;
+}
+
+#labRoom .lab-shell {
+  position: relative;
+  min-height: inherit;
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  padding: 14px;
+}
+
+#labRoom .lab-top-inventory,
+#labRoom .lab-inventory-drawer,
+#labRoom .lab-load-rack,
+#labRoom .lab-reactor-shell,
+#labRoom .lab-synthesis-panel {
+  position: relative;
+  z-index: 1;
+  border: 1px solid rgba(126, 255, 222, 0.12);
+  background: rgba(3, 12, 14, 0.68);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+#labRoom .lab-top-inventory {
+  display: grid;
+  gap: 5px;
+  padding: 6px;
+  border-radius: 14px;
+}
+
+#labRoom .lab-top-inventory-head,
+#labRoom .lab-inventory-drawer-head,
+#labRoom .lab-reactor-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+#labRoom .lab-top-inventory-head span,
+#labRoom .lab-inventory-drawer-head span,
+#labRoom .lab-reactor-head > span {
+  color: rgba(215, 245, 236, 0.84);
+  font-family: "Exo 2", sans-serif;
+  font-size: 8px;
+}
+
+#labRoom .lab-top-inventory-head strong,
+#labRoom .lab-inventory-drawer-head strong {
+  color: rgba(239, 255, 249, 0.84);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 8px;
+}
+
+#labRoom .lab-inventory-segments {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+}
+
+#labRoom .lab-segment-chip,
+#labRoom .lab-sample-card,
+#labRoom .lab-load-slot,
+#labRoom .lab-chamber,
+#labRoom .lab-reactor-upgrade,
+#labRoom .lab-synth-cta {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(2, 11, 12, 0.5);
+  color: rgba(232, 255, 249, 0.88);
+}
+
+#labRoom .lab-segment-chip {
+  min-height: 28px;
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  gap: 4px;
+  align-items: center;
+  padding: 4px;
+  border-radius: 8px;
+}
+
+#labRoom .lab-segment-glyph,
+#labRoom .lab-sample-glyph,
+#labRoom .lab-output-glyph {
+  width: 16px;
+  height: 16px;
+}
+
+#labRoom .lab-segment-copy b,
+#labRoom .lab-segment-copy em,
+#labRoom .lab-sample-card strong,
+#labRoom .lab-sample-card b {
+  display: block;
+  font-family: "Exo 2", sans-serif;
+  line-height: 1;
+}
+
+#labRoom .lab-segment-copy b,
+#labRoom .lab-sample-card strong {
+  font-size: 7px;
+}
+
+#labRoom .lab-segment-copy em,
+#labRoom .lab-sample-card b {
+  font-size: 7px;
+  opacity: 0.8;
+}
+
+#labRoom .lab-inventory-drawer {
+  display: grid;
+  gap: 4px;
+  padding: 5px;
+  border-radius: 10px;
+}
+
+#labRoom .lab-inventory-drawer-grid {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(58px, 1fr);
+  gap: 4px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+#labRoom .lab-inventory-drawer-grid::-webkit-scrollbar {
+  display: none;
+}
+
+#labRoom .lab-sample-card {
+  min-height: 42px;
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px;
+  padding: 5px;
+  border-radius: 8px;
+}
+
+#labRoom .lab-workbench {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(74px, 0.34fr) minmax(0, 1fr);
+  gap: 8px;
+  align-items: stretch;
+  min-height: 146px;
+}
+
+#labRoom .lab-load-rack {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+  padding: 5px;
+  border-radius: 12px;
+}
+
+#labRoom .lab-load-slot {
+  min-height: 52px;
+  display: grid;
+  place-items: center;
+  gap: 3px;
+  padding: 4px;
+  border-radius: 8px;
+}
+
+#labRoom .lab-slot-glyph {
+  width: 18px;
+  height: 18px;
+}
+
+#labRoom .lab-reactor-shell {
+  min-width: 0;
+  display: grid;
+  grid-template-rows: 24px minmax(0, 1fr) 32px;
+  gap: 5px;
+  padding: 6px;
+  border-radius: 14px;
+}
+
+#labRoom .lab-reactor-upgrade {
+  min-width: 46px;
+  height: 22px;
+  display: inline-grid;
+  grid-template-columns: 16px auto;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 5px;
+  border-radius: 8px;
+}
+
+#labRoom .lab-chamber-stack {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+}
+
+#labRoom .lab-chamber {
+  min-height: 58px;
+  display: grid;
+  place-items: center;
+  padding: 5px;
+  border-radius: 10px;
+}
+
+#labRoom .lab-synth-cta {
+  min-height: 30px;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 10px;
+}
+
+#labRoom .lab-synthesis-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 40px minmax(46px, 0.16fr);
+  gap: 5px;
+  align-items: center;
+  min-height: 38px;
+  padding: 4px 5px;
+  border-radius: 999px;
+}
+
+#labRoom .lab-synthesis-inputs {
+  min-width: 0;
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+#labRoom .lab-synthesis-inputs::-webkit-scrollbar {
+  display: none;
+}
+
+#labRoom .lab-need-cell {
+  width: 27px;
+  height: 27px;
+  min-height: 27px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(126, 255, 222, 0.18);
+  border-radius: 999px;
+  background: rgba(2, 11, 12, 0.5);
+}
+
+#labRoom .lab-synthesis-output,
+#labRoom .lab-synthesis-state {
+  position: relative;
+  z-index: 1;
+}
+
+@media (max-width: 480px), (max-height: 760px) {
+  #labRoom .lab-blank-stage {
+    min-height: clamp(460px, 66vh, 720px);
+  }
+
+  #labRoom .lab-shell {
+    gap: 12px;
+    padding: 12px;
+  }
+
+  #labRoom .lab-workbench {
+    grid-template-columns: 72px minmax(0, 1fr);
+    gap: 6px;
+    min-height: 132px;
+  }
+
+  #labRoom .lab-synthesis-panel {
+    grid-template-columns: minmax(0, 1fr) 30px 32px;
+    min-height: 32px;
+    gap: 3px;
+    padding: 3px 4px;
+  }
+}
