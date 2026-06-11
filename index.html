@@ -8,11 +8,11 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Exo+2:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=174">
+    <link rel="stylesheet" href="styles.css?v=179">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="game-core/config.js?v=8" defer></script>
     <script src="game-core/state.js?v=7" defer></script>
-    <script src="app.js?v=97" defer></script>
+    <script src="app.js?v=99" defer></script>
   </head>
   <body>
     <main class="app room-farm" aria-label="Green Farm Tycoon MVP">
@@ -382,7 +382,103 @@
 
       <section class="room" id="labRoom" aria-label="Lab mutation room">
         <div class="room-title"><span>Lab</span><strong id="artifactLabel">Empty</strong></div>
-        <section class="lab-blank-stage" aria-label="Empty lab room"></section>
+        <section class="lab-blank-stage" aria-label="Lab room">
+          <div class="lab-shell">
+            <i class="lab-glass-wall left" aria-hidden="true"></i>
+            <i class="lab-glass-wall right" aria-hidden="true"></i>
+
+            <section class="lab-top-inventory" aria-label="Lab inventory">
+              <div class="lab-top-inventory-head">
+                <span>Inventory</span>
+                <strong id="labInventorySummary">No stock</strong>
+              </div>
+
+              <div class="lab-inventory-segments" id="labInventorySegments" aria-label="Inventory categories"></div>
+
+              <div class="lab-inventory-drawer">
+                <div class="lab-inventory-drawer-head">
+                  <span id="labInventoryCategoryLabel">Greens</span>
+                  <strong id="labInventoryCategoryMeta">No samples yet</strong>
+                </div>
+                <div class="lab-inventory-drawer-grid" id="labInventoryCategoryGrid" aria-label="Inventory category items"></div>
+              </div>
+            </section>
+
+            <section class="lab-workbench" aria-label="Lab workbench">
+              <div class="lab-load-rack" aria-label="Loaded synthesis inputs">
+                <button class="lab-load-slot active" type="button" aria-label="Primary input slot">
+                  <span class="lab-slot-glyph dna"></span>
+                  <b>DNA</b>
+                </button>
+                <button class="lab-load-slot" type="button" aria-label="Secondary input slot">
+                  <span class="lab-slot-glyph sample"></span>
+                  <b>MAT</b>
+                </button>
+                <button class="lab-load-slot" type="button" aria-label="SE input slot">
+                  <span class="lab-slot-glyph se"></span>
+                  <b>SE</b>
+                </button>
+                <button class="lab-load-slot locked" type="button" aria-label="Catalyst input slot">
+                  <span class="lab-slot-glyph catalyst"></span>
+                  <b>CAT</b>
+                </button>
+              </div>
+
+              <section class="lab-reactor-shell" aria-label="Synthesis reactor">
+                <div class="lab-reactor-head">
+                  <span>Reactor</span>
+                  <button class="lab-reactor-upgrade" type="button" aria-label="Upgrade reactor">
+                    <span class="upgrade-glyph" aria-hidden="true">
+                      <svg viewBox="0 0 44 44" focusable="false">
+                        <path class="upgrade-ring" d="M22 4 38 13v18L22 40 6 31V13L22 4Z"></path>
+                        <path class="upgrade-core" d="M22 11 31 17v10l-9 6-9-6V17l9-6Z"></path>
+                        <path class="upgrade-arrow" d="M22 29V16m0 0-6 6m6-6 6 6"></path>
+                      </svg>
+                    </span>
+                    <b>L1</b>
+                  </button>
+                </div>
+
+                <div class="lab-chamber-stack" aria-label="Parallel synthesis chambers">
+                  <button class="lab-chamber active" type="button" aria-label="Synthesis chamber one">
+                    <i></i>
+                    <span></span>
+                    <b>01</b>
+                  </button>
+                  <button class="lab-chamber locked" type="button" aria-label="Locked permanent synthesis chamber">
+                    <i></i>
+                    <span></span>
+                    <b>★100</b>
+                  </button>
+                  <button class="lab-chamber rental" type="button" aria-label="Rental synthesis chamber">
+                    <i></i>
+                    <span></span>
+                    <b>★20</b>
+                  </button>
+                </div>
+
+                <button class="lab-synth-cta" type="button" aria-label="Start synthesis">
+                  <span></span>
+                  <b>Synthesize</b>
+                </button>
+              </section>
+            </section>
+
+            <section class="lab-synthesis-panel" id="labSynthesisPanel" aria-label="Synthesis requirements and output">
+              <div class="lab-synthesis-inputs" id="labSynthesisInputs" aria-label="Required synthesis inputs"></div>
+
+              <div class="lab-synthesis-output" aria-label="Synthesis output preview">
+                <span class="lab-output-glyph" id="labSynthesisOutputGlyph" aria-hidden="true"></span>
+                <strong id="labSynthesisOutputName">Artifact</strong>
+              </div>
+
+              <div class="lab-synthesis-state" aria-label="Synthesis state">
+                <span id="labSynthesisState">Idle</span>
+                <b id="labSynthesisMeta">0/0</b>
+              </div>
+            </section>
+          </div>
+        </section>
       </section>
 
       <section class="room" id="zenRoom" aria-label="Meditation room">

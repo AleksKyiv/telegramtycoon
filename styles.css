@@ -16781,8 +16781,1085 @@ button {
   background: transparent;
 }
 
+.app.room-lab .lab-shell {
+  position: relative;
+  min-height: inherit;
+  display: grid;
+  align-content: start;
+  gap: 18px;
+  padding: 14px;
+}
+
+.app.room-lab .lab-glass-wall {
+  position: absolute;
+  top: 14px;
+  bottom: 14px;
+  width: clamp(72px, 11vw, 108px);
+  border: 1px solid rgba(126, 255, 222, 0.12);
+  border-radius: 28px;
+  background:
+    linear-gradient(180deg, rgba(126, 255, 222, 0.08), rgba(126, 255, 222, 0.01)),
+    linear-gradient(160deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.01));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    inset 0 0 24px rgba(126, 255, 222, 0.06);
+  opacity: 0.8;
+  pointer-events: none;
+}
+
+.app.room-lab .lab-glass-wall::before,
+.app.room-lab .lab-glass-wall::after {
+  content: "";
+  position: absolute;
+  inset: 16px 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(126, 255, 222, 0.08);
+}
+
+.app.room-lab .lab-glass-wall::after {
+  inset: 32px 22px;
+  border-color: rgba(126, 255, 222, 0.05);
+}
+
+.app.room-lab .lab-glass-wall.left {
+  left: 0;
+}
+
+.app.room-lab .lab-glass-wall.right {
+  right: 0;
+}
+
+.app.room-lab .lab-top-inventory {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid rgba(126, 255, 222, 0.18);
+  border-radius: 24px;
+  background:
+    linear-gradient(180deg, rgba(5, 18, 19, 0.84), rgba(3, 12, 14, 0.9)),
+    rgba(3, 12, 14, 0.9);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 18px 42px rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(10px) saturate(1.08);
+  -webkit-backdrop-filter: blur(10px) saturate(1.08);
+}
+
+.app.room-lab .lab-top-inventory-head,
+.app.room-lab .lab-inventory-drawer-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.app.room-lab .lab-top-inventory-head span,
+.app.room-lab .lab-inventory-drawer-head span {
+  color: rgba(177, 208, 200, 0.8);
+  font-family: "Orbitron", monospace;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.app.room-lab .lab-top-inventory-head strong,
+.app.room-lab .lab-inventory-drawer-head strong {
+  color: #f0fffb;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.app.room-lab .lab-inventory-segments {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.app.room-lab .lab-segment-chip {
+  min-height: 56px;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(3, 13, 15, 0.5)),
+    rgba(3, 13, 15, 0.5);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  color: inherit;
+  text-align: left;
+}
+
+.app.room-lab .lab-segment-chip.active {
+  border-color: color-mix(in srgb, var(--segment-accent, #7effde) 50%, transparent);
+  background:
+    radial-gradient(circle at 18% 20%, color-mix(in srgb, var(--segment-accent, #7effde) 22%, transparent), transparent 50%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(2, 12, 14, 0.54)),
+    rgba(2, 12, 14, 0.54);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 0 20px color-mix(in srgb, var(--segment-accent, #7effde) 18%, transparent);
+}
+
+.app.room-lab .lab-segment-glyph,
+.app.room-lab .lab-sample-glyph {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  color: var(--segment-accent, var(--sample-accent, #7effde));
+}
+
+.app.room-lab .lab-segment-glyph svg,
+.app.room-lab .lab-sample-glyph svg,
+.app.room-lab .lab-inventory-empty .lab-segment-glyph svg {
+  width: 100%;
+  height: 100%;
+}
+
+.app.room-lab .lab-segment-copy,
+.app.room-lab .lab-sample-card {
+  min-width: 0;
+}
+
+.app.room-lab .lab-segment-copy b,
+.app.room-lab .lab-segment-copy em,
+.app.room-lab .lab-sample-card strong,
+.app.room-lab .lab-sample-card b,
+.app.room-lab .lab-sample-card em,
+.app.room-lab .lab-inventory-empty strong,
+.app.room-lab .lab-inventory-empty em {
+  display: block;
+  min-width: 0;
+}
+
+.app.room-lab .lab-segment-copy b,
+.app.room-lab .lab-sample-card strong,
+.app.room-lab .lab-inventory-empty strong {
+  color: #f4fff9;
+  font-size: 10px;
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.app.room-lab .lab-segment-copy em,
+.app.room-lab .lab-sample-card em,
+.app.room-lab .lab-inventory-empty em {
+  color: rgba(184, 213, 205, 0.78);
+  font-size: 8px;
+  font-style: normal;
+}
+
+.app.room-lab .lab-inventory-drawer {
+  display: grid;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid rgba(126, 255, 222, 0.12);
+  border-radius: 18px;
+  background:
+    linear-gradient(160deg, rgba(5, 21, 21, 0.76), rgba(3, 11, 13, 0.86)),
+    rgba(3, 11, 13, 0.86);
+}
+
+.app.room-lab .lab-inventory-drawer-grid {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(92px, 1fr);
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+}
+
+.app.room-lab .lab-inventory-drawer-grid::-webkit-scrollbar {
+  display: none;
+}
+
+.app.room-lab .lab-sample-card {
+  min-height: 78px;
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid color-mix(in srgb, var(--sample-accent, #7effde) 26%, transparent);
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 18% 16%, color-mix(in srgb, var(--sample-accent, #7effde) 18%, transparent), transparent 42%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(2, 11, 13, 0.62)),
+    rgba(2, 11, 13, 0.62);
+}
+
+.app.room-lab .lab-sample-card.ready {
+  box-shadow: 0 0 18px color-mix(in srgb, var(--sample-accent, #7effde) 16%, transparent);
+}
+
+.app.room-lab .lab-sample-card.empty {
+  opacity: 0.56;
+}
+
+.app.room-lab .lab-sample-card b {
+  color: var(--sample-accent, #7effde);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.app.room-lab .lab-inventory-empty {
+  min-height: 84px;
+  display: grid;
+  place-items: center;
+  gap: 6px;
+  padding: 12px;
+  border: 1px dashed color-mix(in srgb, var(--empty-accent, #7effde) 36%, transparent);
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 50% 20%, color-mix(in srgb, var(--empty-accent, #7effde) 14%, transparent), transparent 48%),
+    rgba(2, 11, 13, 0.56);
+  text-align: center;
+}
+
+.app.room-lab .lab-workspace-placeholder {
+  min-height: clamp(260px, 38vh, 520px);
+  border-radius: 24px;
+  border: 1px dashed rgba(126, 255, 222, 0.08);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0)),
+    rgba(2, 11, 13, 0.16);
+}
+
 @media (max-width: 480px), (max-height: 760px) {
   .app.room-lab .lab-blank-stage {
     min-height: clamp(460px, 66vh, 720px);
+  }
+
+  .app.room-lab .lab-shell {
+    gap: 14px;
+    padding: 12px;
+  }
+
+  .app.room-lab .lab-glass-wall {
+    display: none;
+  }
+
+  .app.room-lab .lab-inventory-segments {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .app.room-lab .lab-sample-card {
+    min-height: 72px;
+  }
+
+  .app.room-lab .lab-segment-chip {
+    min-height: 52px;
+    grid-template-columns: 24px minmax(0, 1fr);
+    gap: 6px;
+    padding: 7px;
+  }
+
+  .app.room-lab .lab-segment-glyph,
+  .app.room-lab .lab-sample-glyph {
+    width: 24px;
+    height: 24px;
+  }
+
+  .app.room-lab .lab-segment-copy b {
+    font-size: 9px;
+  }
+
+  .app.room-lab .lab-segment-copy em {
+    font-size: 7px;
+  }
+
+  .app.room-lab .lab-top-inventory {
+    gap: 6px;
+    padding: 8px;
+  }
+
+  .app.room-lab .lab-inventory-drawer {
+    gap: 6px;
+    padding: 7px;
+  }
+}
+
+/* Compact inventory pass: the Lab top bar should read like an inventory strip, not controls. */
+.app.room-lab .lab-top-inventory {
+  gap: 5px;
+  padding: 6px;
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, rgba(4, 18, 18, 0.66), rgba(2, 10, 12, 0.72)),
+    rgba(2, 10, 12, 0.72);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 10px 22px rgba(0, 0, 0, 0.14);
+}
+
+.app.room-lab .lab-top-inventory-head {
+  min-height: 12px;
+}
+
+.app.room-lab .lab-top-inventory-head span,
+.app.room-lab .lab-inventory-drawer-head span {
+  font-family: "Exo 2", sans-serif;
+  font-size: 8px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: none;
+}
+
+.app.room-lab .lab-top-inventory-head strong,
+.app.room-lab .lab-inventory-drawer-head strong {
+  font-size: 8px;
+  font-weight: 500;
+  opacity: 0.78;
+}
+
+.app.room-lab .lab-inventory-segments {
+  gap: 4px;
+}
+
+.app.room-lab .lab-segment-chip {
+  min-height: 28px;
+  grid-template-columns: 16px minmax(0, 1fr);
+  gap: 4px;
+  padding: 4px;
+  border-radius: 8px;
+  border-color: rgba(255, 255, 255, 0.055);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.025), rgba(2, 11, 12, 0.42)),
+    rgba(2, 11, 12, 0.42);
+  box-shadow: none;
+}
+
+.app.room-lab .lab-segment-chip.active {
+  border-color: color-mix(in srgb, var(--segment-accent, #7effde) 42%, transparent);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--segment-accent, #7effde) 10%, transparent), rgba(2, 11, 12, 0.48)),
+    rgba(2, 11, 12, 0.48);
+  box-shadow: inset 0 0 12px color-mix(in srgb, var(--segment-accent, #7effde) 10%, transparent);
+}
+
+.app.room-lab .lab-segment-glyph,
+.app.room-lab .lab-sample-glyph {
+  width: 16px;
+  height: 16px;
+  opacity: 0.92;
+}
+
+.app.room-lab .lab-segment-copy b,
+.app.room-lab .lab-sample-card strong,
+.app.room-lab .lab-inventory-empty strong {
+  font-family: "Exo 2", sans-serif;
+  font-size: 7px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.app.room-lab .lab-segment-copy em,
+.app.room-lab .lab-sample-card em,
+.app.room-lab .lab-inventory-empty em {
+  font-size: 7px;
+  line-height: 1;
+  opacity: 0.72;
+}
+
+.app.room-lab .lab-inventory-drawer {
+  gap: 4px;
+  padding: 5px;
+  border-radius: 10px;
+  border-color: rgba(126, 255, 222, 0.08);
+  background: rgba(2, 11, 12, 0.5);
+}
+
+.app.room-lab .lab-inventory-drawer-grid {
+  grid-auto-columns: minmax(58px, 1fr);
+  gap: 4px;
+}
+
+.app.room-lab .lab-sample-card {
+  min-height: 42px;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
+  align-items: center;
+  align-content: center;
+  gap: 4px;
+  padding: 5px;
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.026), rgba(2, 10, 12, 0.5)),
+    rgba(2, 10, 12, 0.5);
+}
+
+.app.room-lab .lab-sample-card.ready {
+  box-shadow: inset 0 0 10px color-mix(in srgb, var(--sample-accent, #7effde) 8%, transparent);
+}
+
+.app.room-lab .lab-sample-card b {
+  font-size: 9px;
+  font-weight: 500;
+}
+
+.app.room-lab .lab-sample-card em {
+  display: none;
+}
+
+.app.room-lab .lab-inventory-empty {
+  min-height: 42px;
+  gap: 4px;
+  padding: 7px;
+  border-radius: 9px;
+}
+
+@media (max-width: 480px), (max-height: 760px) {
+  .app.room-lab .lab-top-inventory {
+    gap: 4px;
+    padding: 5px;
+  }
+
+  .app.room-lab .lab-inventory-segments {
+    gap: 3px;
+  }
+
+  .app.room-lab .lab-segment-chip {
+    min-height: 26px;
+    grid-template-columns: 14px minmax(0, 1fr);
+    gap: 3px;
+    padding: 3px;
+  }
+
+  .app.room-lab .lab-segment-glyph,
+  .app.room-lab .lab-sample-glyph {
+    width: 14px;
+    height: 14px;
+  }
+
+  .app.room-lab .lab-segment-copy b {
+    font-size: 6.5px;
+  }
+
+  .app.room-lab .lab-segment-copy em {
+    font-size: 6.5px;
+  }
+
+  .app.room-lab .lab-sample-card {
+    min-height: 38px;
+    grid-template-columns: 14px minmax(0, 1fr) auto;
+    padding: 4px;
+  }
+}
+
+/* Lab workbench shell: compact loading rack plus a rectangular three-chamber reactor. */
+.app.room-lab .lab-workbench {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(74px, 0.34fr) minmax(0, 1fr);
+  gap: 8px;
+  align-items: stretch;
+  min-height: 146px;
+}
+
+.app.room-lab .lab-load-rack {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+  padding: 5px;
+  border: 1px solid rgba(126, 255, 222, 0.09);
+  border-radius: 12px;
+  background: rgba(2, 10, 12, 0.46);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.app.room-lab .lab-load-slot {
+  min-height: 52px;
+  display: grid;
+  place-items: center;
+  gap: 3px;
+  padding: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.055);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.022), rgba(2, 11, 12, 0.45)),
+    rgba(2, 11, 12, 0.45);
+  color: rgba(232, 255, 249, 0.84);
+}
+
+.app.room-lab .lab-load-slot.active {
+  border-color: rgba(126, 255, 222, 0.32);
+  box-shadow: inset 0 0 12px rgba(126, 255, 222, 0.08);
+}
+
+.app.room-lab .lab-load-slot.locked {
+  opacity: 0.46;
+}
+
+.app.room-lab .lab-load-slot b {
+  color: rgba(224, 248, 242, 0.76);
+  font-family: "Exo 2", sans-serif;
+  font-size: 7px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.app.room-lab .lab-slot-glyph {
+  position: relative;
+  width: 18px;
+  height: 18px;
+  display: block;
+  color: #7effde;
+}
+
+.app.room-lab .lab-slot-glyph::before,
+.app.room-lab .lab-slot-glyph::after {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  border: 1px solid currentColor;
+  opacity: 0.82;
+}
+
+.app.room-lab .lab-slot-glyph.dna::before {
+  border-radius: 50%;
+  transform: skewY(-26deg);
+}
+
+.app.room-lab .lab-slot-glyph.dna::after {
+  border-radius: 50%;
+  transform: skewY(26deg);
+}
+
+.app.room-lab .lab-slot-glyph.sample {
+  color: #b78cff;
+}
+
+.app.room-lab .lab-slot-glyph.sample::before {
+  border-radius: 6px 6px 9px 9px;
+}
+
+.app.room-lab .lab-slot-glyph.sample::after {
+  inset: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.app.room-lab .lab-slot-glyph.se {
+  color: #ffd670;
+}
+
+.app.room-lab .lab-slot-glyph.se::before {
+  border-radius: 50% 50% 50% 8px;
+  transform: rotate(-45deg);
+}
+
+.app.room-lab .lab-slot-glyph.se::after {
+  display: none;
+}
+
+.app.room-lab .lab-slot-glyph.catalyst {
+  color: #ff72d2;
+}
+
+.app.room-lab .lab-slot-glyph.catalyst::before {
+  transform: rotate(45deg);
+}
+
+.app.room-lab .lab-slot-glyph.catalyst::after {
+  inset: 6px;
+  transform: rotate(45deg);
+  background: currentColor;
+}
+
+.app.room-lab .lab-reactor-shell {
+  min-width: 0;
+  display: grid;
+  grid-template-rows: 24px minmax(0, 1fr) 32px;
+  gap: 5px;
+  padding: 6px;
+  border: 1px solid rgba(126, 255, 222, 0.12);
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, rgba(6, 22, 22, 0.58), rgba(2, 10, 12, 0.74)),
+    rgba(2, 10, 12, 0.74);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    inset 0 0 28px rgba(126, 255, 222, 0.035);
+  backdrop-filter: blur(9px) saturate(1.04);
+  -webkit-backdrop-filter: blur(9px) saturate(1.04);
+}
+
+.app.room-lab .lab-reactor-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.app.room-lab .lab-reactor-head > span {
+  color: rgba(190, 220, 213, 0.72);
+  font-family: "Exo 2", sans-serif;
+  font-size: 8px;
+  font-weight: 500;
+}
+
+.app.room-lab .lab-reactor-upgrade {
+  height: 22px;
+  min-width: 46px;
+  display: inline-grid;
+  grid-template-columns: 16px auto;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 5px;
+  border: 1px solid rgba(255, 214, 112, 0.18);
+  border-radius: 8px;
+  background: rgba(255, 214, 112, 0.055);
+  color: #ffd670;
+}
+
+.app.room-lab .lab-reactor-upgrade .upgrade-glyph {
+  width: 14px;
+  height: 14px;
+}
+
+.app.room-lab .lab-reactor-upgrade b {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 8px;
+  font-weight: 500;
+}
+
+.app.room-lab .lab-chamber-stack {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+}
+
+.app.room-lab .lab-chamber {
+  position: relative;
+  min-height: 58px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  padding: 5px;
+  border: 1px solid rgba(126, 255, 222, 0.14);
+  border-radius: 10px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.028), rgba(2, 10, 12, 0.58)),
+    rgba(2, 10, 12, 0.58);
+}
+
+.app.room-lab .lab-chamber.active {
+  border-color: rgba(126, 255, 222, 0.34);
+}
+
+.app.room-lab .lab-chamber.locked {
+  border-color: rgba(255, 214, 112, 0.16);
+  opacity: 0.62;
+}
+
+.app.room-lab .lab-chamber.rental {
+  border-color: rgba(255, 114, 210, 0.18);
+  opacity: 0.7;
+}
+
+.app.room-lab .lab-chamber i {
+  width: 24px;
+  height: 40px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  color: #7effde;
+  opacity: 0.78;
+  box-shadow: inset 0 -10px 18px rgba(126, 255, 222, 0.08);
+}
+
+.app.room-lab .lab-chamber.locked i {
+  color: #ffd670;
+}
+
+.app.room-lab .lab-chamber.rental i {
+  color: #ff72d2;
+}
+
+.app.room-lab .lab-chamber span {
+  position: absolute;
+  inset: auto 13px 10px;
+  height: 2px;
+  border-radius: 999px;
+  background: currentColor;
+  color: #7effde;
+  opacity: 0.6;
+}
+
+.app.room-lab .lab-chamber b {
+  position: absolute;
+  right: 5px;
+  bottom: 4px;
+  color: rgba(236, 255, 250, 0.76);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 7px;
+  font-weight: 500;
+}
+
+.app.room-lab .lab-synth-cta {
+  min-height: 30px;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid rgba(126, 255, 222, 0.22);
+  border-radius: 10px;
+  background:
+    linear-gradient(90deg, rgba(126, 255, 222, 0.16), rgba(88, 220, 255, 0.08)),
+    rgba(2, 12, 13, 0.68);
+  color: #eafff9;
+}
+
+.app.room-lab .lab-synth-cta span {
+  width: 16px;
+  height: 16px;
+  border: 1px solid #7effde;
+  border-radius: 50%;
+  box-shadow: inset 0 0 8px rgba(126, 255, 222, 0.18);
+}
+
+.app.room-lab .lab-synth-cta b {
+  font-family: "Exo 2", sans-serif;
+  font-size: 9px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+@media (max-width: 480px), (max-height: 760px) {
+  .app.room-lab .lab-workbench {
+    grid-template-columns: 72px minmax(0, 1fr);
+    gap: 6px;
+    min-height: 132px;
+  }
+
+  .app.room-lab .lab-load-rack {
+    gap: 4px;
+    padding: 4px;
+  }
+
+  .app.room-lab .lab-load-slot {
+    min-height: 45px;
+  }
+
+  .app.room-lab .lab-reactor-shell {
+    grid-template-rows: 22px minmax(0, 1fr) 28px;
+    gap: 4px;
+    padding: 5px;
+  }
+
+  .app.room-lab .lab-chamber-stack {
+    gap: 4px;
+  }
+
+  .app.room-lab .lab-chamber {
+    min-height: 50px;
+  }
+
+  .app.room-lab .lab-chamber i {
+    width: 20px;
+    height: 34px;
+  }
+}
+
+/* Synthesis rail: keep recipe logic visually attached to the reactor instead of adding a separate HUD card. */
+.app.room-lab .lab-synthesis-panel {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 40px minmax(46px, 0.16fr);
+  gap: 5px;
+  align-items: center;
+  min-height: 38px;
+  padding: 4px 5px;
+  border: 1px solid rgba(126, 255, 222, 0.07);
+  border-radius: 999px;
+  background:
+    linear-gradient(90deg, rgba(5, 26, 24, 0.16), rgba(126, 255, 222, 0.055) 52%, rgba(5, 26, 24, 0.18)),
+    rgba(1, 8, 10, 0.34);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.055),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.16);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  overflow: hidden;
+}
+
+.app.room-lab .lab-synthesis-panel.ready {
+  border-color: rgba(126, 255, 222, 0.14);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    inset 0 0 18px rgba(126, 255, 222, 0.05),
+    0 0 16px rgba(126, 255, 222, 0.045);
+}
+
+.app.room-lab .lab-synthesis-panel::before {
+  content: "";
+  position: absolute;
+  left: 12px;
+  right: 48px;
+  top: 50%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(126, 255, 222, 0.22), transparent);
+  opacity: 0.68;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.app.room-lab .lab-synthesis-panel::after {
+  content: "";
+  position: absolute;
+  width: 34px;
+  height: 1px;
+  left: 34%;
+  top: 50%;
+  background: linear-gradient(90deg, transparent, rgba(180, 255, 231, 0.72), transparent);
+  opacity: 0.55;
+  transform: translateY(-50%);
+  animation: lab-rail-pulse 2.2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.app.room-lab .lab-synthesis-inputs {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  display: flex;
+  grid-auto-flow: column;
+  gap: 5px;
+  align-items: center;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.app.room-lab .lab-synthesis-inputs::-webkit-scrollbar {
+  display: none;
+}
+
+.app.room-lab .lab-need-cell {
+  position: relative;
+  flex: 0 0 auto;
+  width: 27px;
+  height: 27px;
+  min-height: 27px;
+  display: grid;
+  place-items: center;
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr;
+  align-items: center;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--need-accent, #7effde) 22%, transparent);
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 50% 38%, color-mix(in srgb, var(--need-accent, #7effde) 18%, transparent), transparent 58%),
+    rgba(2, 11, 12, 0.46);
+}
+
+.app.room-lab .lab-need-cell.ready {
+  box-shadow:
+    inset 0 0 9px color-mix(in srgb, var(--need-accent, #7effde) 12%, transparent),
+    0 0 10px color-mix(in srgb, var(--need-accent, #7effde) 12%, transparent);
+}
+
+.app.room-lab .lab-need-cell.missing {
+  opacity: 0.4;
+  border-style: dashed;
+}
+
+.app.room-lab .lab-need-cell span {
+  width: 15px;
+  height: 15px;
+  color: var(--need-accent, #7effde);
+  filter: drop-shadow(0 0 7px color-mix(in srgb, var(--need-accent, #7effde) 34%, transparent));
+}
+
+.app.room-lab .lab-need-cell span svg {
+  width: 100%;
+  height: 100%;
+}
+
+.app.room-lab .lab-need-cell b,
+.app.room-lab .lab-need-cell em {
+  display: block;
+  font-family: "Exo 2", sans-serif;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.app.room-lab .lab-need-cell b {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+}
+
+.app.room-lab .lab-need-cell em {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  min-width: 13px;
+  height: 13px;
+  display: grid;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--need-accent, #7effde) 26%, transparent);
+  border-radius: 999px;
+  background: rgba(1, 8, 10, 0.86);
+  color: color-mix(in srgb, var(--need-accent, #7effde) 88%, white 12%);
+  font-size: 5.5px;
+  font-style: normal;
+  letter-spacing: -0.04em;
+}
+
+.app.room-lab .lab-synthesis-state {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  min-height: 27px;
+  display: grid;
+  place-items: center;
+}
+
+.app.room-lab .lab-synthesis-state span {
+  width: 23px;
+  height: 23px;
+  border: 1px solid rgba(126, 255, 222, 0.2);
+  border-radius: 999px;
+  background:
+    radial-gradient(circle, rgba(126, 255, 222, 0.38), rgba(126, 255, 222, 0.08) 45%, transparent 68%),
+    rgba(2, 11, 12, 0.44);
+  color: transparent;
+  font-size: 0;
+  box-shadow: inset 0 0 8px rgba(126, 255, 222, 0.08);
+}
+
+.app.room-lab .lab-synthesis-panel:not(.ready) .lab-synthesis-state span {
+  border-color: rgba(255, 105, 105, 0.16);
+  background:
+    radial-gradient(circle, rgba(255, 105, 105, 0.22), rgba(255, 105, 105, 0.055) 45%, transparent 68%),
+    rgba(2, 11, 12, 0.44);
+}
+
+.app.room-lab .lab-synthesis-state b {
+  position: absolute;
+  left: 50%;
+  bottom: -1px;
+  transform: translateX(-50%);
+  padding: 1px 3px;
+  border-radius: 999px;
+  background: rgba(1, 8, 10, 0.78);
+  color: #7effde;
+  font-family: "Exo 2", sans-serif;
+  font-size: 5.5px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.app.room-lab .lab-synthesis-output {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  width: 34px;
+  height: 34px;
+  justify-self: end;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgba(142, 245, 255, 0.24);
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 50% 38%, rgba(142, 245, 255, 0.2), transparent 58%),
+    rgba(2, 11, 12, 0.5);
+  box-shadow:
+    inset 0 0 12px rgba(142, 245, 255, 0.08),
+    0 0 14px rgba(142, 245, 255, 0.06);
+}
+
+.app.room-lab .lab-output-glyph {
+  width: 18px;
+  height: 18px;
+  color: #8ef5ff;
+  filter: drop-shadow(0 0 9px rgba(142, 245, 255, 0.28));
+}
+
+.app.room-lab .lab-output-glyph svg {
+  width: 100%;
+  height: 100%;
+}
+
+.app.room-lab .lab-synthesis-output strong {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  display: block;
+  overflow: hidden;
+  opacity: 0;
+}
+
+@media (max-width: 480px), (max-height: 760px) {
+  .app.room-lab .lab-synthesis-panel {
+    grid-template-columns: minmax(0, 1fr) 30px 32px;
+    min-height: 32px;
+    gap: 3px;
+    padding: 3px 4px;
+  }
+
+  .app.room-lab .lab-synthesis-inputs {
+    gap: 4px;
+  }
+
+  .app.room-lab .lab-need-cell {
+    width: 24px;
+    height: 24px;
+    min-height: 24px;
+  }
+
+  .app.room-lab .lab-need-cell span {
+    width: 13px;
+    height: 13px;
+  }
+
+  .app.room-lab .lab-synthesis-state span {
+    width: 20px;
+    height: 20px;
+  }
+
+  .app.room-lab .lab-synthesis-output {
+    width: 29px;
+    height: 29px;
+  }
+
+  .app.room-lab .lab-output-glyph {
+    width: 16px;
+    height: 16px;
+  }
+}
+
+@keyframes lab-rail-pulse {
+  0% {
+    transform: translate(-48px, -50%);
+    opacity: 0;
+  }
+
+  34% {
+    opacity: 0.62;
+  }
+
+  100% {
+    transform: translate(150px, -50%);
+    opacity: 0;
   }
 }

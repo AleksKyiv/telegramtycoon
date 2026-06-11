@@ -2314,6 +2314,239 @@ function labMaterialCount(id, inventory = normalizeInventory(state.inventory)) {
   return Math.max(0, Math.floor(Number(inventory.materials?.[id]) || 0));
 }
 
+const LAB_INVENTORY_CATEGORY_DEFS = [
+  { id: "greens", label: "Greens", accent: "#6cff9f", detail: "Leaf samples" },
+  { id: "flowers", label: "Flowers", accent: "#d58cff", detail: "Bloom samples" },
+  { id: "mushrooms", label: "Mushrooms", accent: "#ffd670", detail: "Spore samples" },
+  { id: "artifacts", label: "Artifacts", accent: "#8ef5ff", detail: "Synth outputs" }
+];
+
+function normalizeLabInventoryCategory(value = state.labInventoryCategory) {
+  const category = String(value || "").trim().toLowerCase();
+  return LAB_INVENTORY_CATEGORY_DEFS.some((item) => item.id === category) ? category : "greens";
+}
+
+function labInventoryCategoryForMaterial(material = {}) {
+  const source = `${material.id || ""} ${material.name || ""} ${material.short || ""} ${material.strainId || ""}`.toLowerCase();
+  if (/(petal|pollen|bloom|orchid|rose|tulip|daisy|aurora|flora|flower)/.test(source)) return "flowers";
+  if (/(spore|fung|myco|mush|cap)/.test(source)) return "mushrooms";
+  return "greens";
+}
+
+function labInventoryGlyph(kind = "greens") {
+  if (kind === "flowers") {
+    return `
+      <svg viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+        <g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M24 10c2.8 2.8 3 7.4.2 10.2C21.4 17.4 21.2 12.8 24 10Z"/>
+          <path d="M36 24c-2.8 2.8-7.4 3-10.2.2 2.8-2.8 7.4-3 10.2-.2Z"/>
+          <path d="M24 38c-2.8-2.8-3-7.4-.2-10.2 2.8 2.8 3 7.4.2 10.2Z"/>
+          <path d="M12 24c2.8-2.8 7.4-3 10.2-.2-2.8 2.8-7.4 3-10.2.2Z"/>
+          <circle cx="24" cy="24" r="4.5"/>
+        </g>
+      </svg>
+    `;
+  }
+  if (kind === "mushrooms") {
+    return `
+      <svg viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+        <g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 24c2.2-7.6 8.4-11.4 12-11.4S33.8 16.4 36 24c-4.6 2-8.6 2.8-12 2.8S16.6 26 12 24Z"/>
+          <path d="M24 26.8v9.4"/>
+          <path d="M19.4 36.2h9.2"/>
+          <path d="M19 18.6h.01M24 16.4h.01M29 18.6h.01"/>
+        </g>
+      </svg>
+    `;
+  }
+  if (kind === "artifacts") {
+    return `
+      <svg viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+        <g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M24 8 35 16v16L24 40 13 32V16 24Z"/>
+          <path d="M24 8v16m0 0 11-8m-11 8-11-8"/>
+          <path d="M19.4 28.6 24 32l4.6-3.4"/>
+        </g>
+      </svg>
+    `;
+  }
+  return `
+    <svg viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+      <g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M17 10c6 2.8 8 7.6 8 14.2S23 35.4 17 38"/>
+        <path d="M31 10c-6 2.8-8 7.6-8 14.2S25 35.4 31 38"/>
+        <path d="M18.8 15.4h10.4M17.6 22.8h12.8M18.8 30.2h10.4"/>
+      </g>
+    </svg>
+  `;
+}
+
+function labInventoryCollections(inventory = normalizeInventory(state.inventory), uniqueCount = Math.max(0, Math.floor(Number(state.labUniqueMutations) || 0))) {
+  const groups = {
+    greens: [],
+    flowers: [],
+    mushrooms: [],
+    artifacts: []
+  };
+
+  LAB_MATERIALS.forEach((material) => {
+    const category = labInventoryCategoryForMaterial(material);
+    const amount = labMaterialCount(material.id, inventory);
+    groups[category].push({
+      id: material.id,
+      label: material.name || material.id,
+      meta: material.short || "Sample",
+      amount,
+      amountText: `x${amount}`,
+      accent: material.color || "#7effde",
+      kind: category,
+      empty: amount <= 0
+    });
+  });
+
+  groups.artifacts.push(
+    {
+      id: "artifact_depth",
+      label: "Artifact Core",
+      meta: "Core depth",
+      amount: Math.max(0, Math.floor(Number(state.artifact) || 0)),
+      amountText: `x${Math.max(0, Math.floor(Number(state.artifact) || 0))}`,
+      accent: "#8ef5ff",
+      kind: "artifacts",
+      empty: Math.max(0, Math.floor(Number(state.artifact) || 0)) <= 0
+    },
+    {
+      id: "rare_core",
+      label: "Rare Core",
+      meta: "Unique reserve",
+      amount: uniqueCount,
+      amountText: `x${uniqueCount}`,
+      accent: "#ffd670",
+      kind: "artifacts",
+      empty: uniqueCount <= 0
+    }
+  );
+
+  return LAB_INVENTORY_CATEGORY_DEFS.map((definition) => {
+    const items = groups[definition.id] || [];
+    return {
+      ...definition,
+      items,
+      total: items.reduce((sum, item) => sum + item.amount, 0),
+      unlocked: items.filter((item) => !item.empty).length
+    };
+  });
+}
+
+function renderLabInventoryBar(inventory = normalizeInventory(state.inventory), uniqueCount = Math.max(0, Math.floor(Number(state.labUniqueMutations) || 0))) {
+  const segments = $("#labInventorySegments");
+  const drawer = $("#labInventoryCategoryGrid");
+  if (!segments || !drawer) return;
+
+  const categories = labInventoryCollections(inventory, uniqueCount);
+  const activeId = normalizeLabInventoryCategory(state.labInventoryCategory);
+  const active = categories.find((category) => category.id === activeId) || categories[0];
+  const totalSamples = categories.reduce((sum, category) => sum + category.total, 0);
+
+  setText("#labInventorySummary", totalSamples > 0 ? `${totalSamples} stored` : "No stock");
+  setText("#labInventoryCategoryLabel", active.label);
+  setText("#labInventoryCategoryMeta", active.total > 0 ? `${active.total} stored · ${active.unlocked} live` : active.detail);
+
+  segments.innerHTML = categories.map((category) => `
+    <button
+      class="lab-segment-chip ${category.id === active.id ? "active" : ""}"
+      type="button"
+      data-lab-category="${category.id}"
+      style="--segment-accent:${escapeHtml(category.accent)}"
+      aria-pressed="${category.id === active.id ? "true" : "false"}"
+    >
+      <span class="lab-segment-glyph">${labInventoryGlyph(category.id)}</span>
+      <span class="lab-segment-copy">
+        <b>${escapeHtml(category.label)}</b>
+        <em>${escapeHtml(String(category.total))}</em>
+      </span>
+    </button>
+  `).join("");
+
+  if (!active.items.length) {
+    drawer.innerHTML = `
+      <article class="lab-inventory-empty" style="--empty-accent:${escapeHtml(active.accent)}">
+        <span class="lab-segment-glyph">${labInventoryGlyph(active.id)}</span>
+        <strong>${escapeHtml(active.label)}</strong>
+        <em>${escapeHtml(active.detail)}</em>
+      </article>
+    `;
+    return;
+  }
+
+  drawer.innerHTML = active.items.map((item) => `
+    <article class="lab-sample-card ${item.empty ? "empty" : "ready"}" style="--sample-accent:${escapeHtml(item.accent)}">
+      <span class="lab-sample-glyph">${labInventoryGlyph(item.kind)}</span>
+      <strong>${escapeHtml(item.label)}</strong>
+      <b>${escapeHtml(item.amountText)}</b>
+      <em>${escapeHtml(item.meta)}</em>
+    </article>
+  `).join("");
+}
+
+function renderLabSynthesisPanel(recipe = labRecipe(), inventory = normalizeInventory(state.inventory)) {
+  const inputs = $("#labSynthesisInputs");
+  if (!inputs) return;
+
+  const materialItems = (recipe.materials || []).map((entry) => {
+    const material = labMaterialById(entry.id);
+    const have = labMaterialCount(entry.id, inventory);
+    const kind = labInventoryCategoryForMaterial(material || entry);
+    return {
+      label: material?.short || entry.id,
+      have,
+      need: Math.max(1, Math.floor(Number(entry.amount) || 1)),
+      accent: material?.color || recipe.accent || "#7effde",
+      glyph: labInventoryGlyph(kind)
+    };
+  });
+
+  const items = [
+    ...materialItems,
+    {
+      label: "DNA",
+      have: Math.max(0, Math.floor(Number(inventory.geneStrands) || 0)),
+      need: labGeneCost(),
+      accent: "#7effde",
+      glyph: labInventoryGlyph("greens")
+    },
+    {
+      label: "SE",
+      have: Math.max(0, Math.floor(Number(state.seed) || 0)),
+      need: labSeCost(),
+      accent: "#ffd670",
+      glyph: `
+        <svg viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+          <path d="M24 8c8 9 12 15 12 22a12 12 0 0 1-24 0c0-7 4-13 12-22Z" fill="none" stroke="currentColor" stroke-width="1.8"/>
+          <path d="M19 31c2.6 2.8 7.4 2.8 10 0" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+        </svg>
+      `
+    }
+  ].slice(0, 6);
+
+  const readyCount = items.filter((item) => item.have >= item.need).length;
+  const isReady = readyCount === items.length && items.length > 0;
+
+  inputs.innerHTML = items.map((item) => `
+    <article class="lab-need-cell ${item.have >= item.need ? "ready" : "missing"}" style="--need-accent:${escapeHtml(item.accent)}">
+      <span>${item.glyph}</span>
+      <b>${escapeHtml(item.label)}</b>
+      <em>${Math.min(item.have, item.need)}/${item.need}</em>
+    </article>
+  `).join("");
+
+  setHTML("#labSynthesisOutputGlyph", labInventoryGlyph("artifacts"));
+  setText("#labSynthesisOutputName", recipe.result || "Artifact");
+  setText("#labSynthesisState", isReady ? "Ready" : "Missing");
+  setText("#labSynthesisMeta", `${readyCount}/${items.length}`);
+  setClass("#labSynthesisPanel", "ready", isReady);
+}
+
 function labRecipeSummary(recipe = labRecipe()) {
   return recipe.materials.map((entry) => {
     const material = labMaterialById(entry.id);
@@ -3634,6 +3867,7 @@ function renderMutationLab(progress) {
   const inventory = normalizeInventory(state.inventory);
   const labLevel = 4 + Math.min(9, state.artifact);
   const uniqueCount = Math.max(0, Math.floor(Number(state.labUniqueMutations) || 0));
+  state.labInventoryCategory = normalizeLabInventoryCategory(state.labInventoryCategory);
   const fusionProgress = clamp(
     46 + state.artifact * 7 + uniqueCount * 3 + Math.round(progress / 5)
       + (recipe.effect?.type === "serum" ? 8 : 0)
@@ -3752,6 +3986,8 @@ function renderMutationLab(progress) {
   setClass("#mutationAutoBtn", "active", state.mutationAuto);
   setClass("#labRoom", "rare-active", rareActive);
   setStyle("#labRoom", "--lab-accent", recipe.accent || "#7effde");
+  renderLabInventoryBar(inventory, uniqueCount);
+  renderLabSynthesisPanel(recipe, inventory);
   renderLabInventory(recipe, inventory, uniqueCount);
   updateLabScene(buildLabSceneState({
     recipe,
@@ -5370,6 +5606,16 @@ $("#labRecipeGrid")?.addEventListener("click", (event) => {
   trackAction("lab_recipe_selected", { recipeId });
   render();
   scheduleBackendSync(true);
+});
+$("#labInventorySegments")?.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-lab-category]");
+  if (!button) return;
+  const categoryId = normalizeLabInventoryCategory(button.dataset.labCategory);
+  if (state.labInventoryCategory === categoryId) return;
+  state.labInventoryCategory = categoryId;
+  playTone("tap");
+  trackAction("lab_inventory_category_selected", { categoryId });
+  render();
 });
 $("#synthBtn")?.addEventListener("click", synthArtifact);
 $("#labUpgradeBtn")?.addEventListener("click", () => {
