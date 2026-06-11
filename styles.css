@@ -17864,6 +17864,21 @@ button {
   }
 }
 
+/* Lab plain-room pass: remove every decorative underlay so the new layout sits on a clean sheet. */
+#labRoom::before,
+#labRoom::after,
+.app.room-lab #labRoom::before,
+.app.room-lab #labRoom::after {
+  display: none !important;
+  content: none !important;
+  background: none !important;
+}
+
+#labRoom .lab-glass-wall,
+.app.room-lab .lab-glass-wall {
+  display: none !important;
+}
+
 /* Fallback visibility pass: keep the rebuilt Lab readable even if the room class lags behind in a live tab. */
 #labRoom {
   position: relative;
