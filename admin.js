@@ -43,12 +43,41 @@ const elements = {
   actionZen: document.getElementById("actionZen"),
   actionStars: document.getElementById("actionStars"),
   actionSummary: document.getElementById("actionSummary"),
+  labInsightHeadline: document.getElementById("labInsightHeadline"),
+  labRuns: document.getElementById("labRuns"),
+  labUniqueCreated: document.getElementById("labUniqueCreated"),
+  labBlocked: document.getElementById("labBlocked"),
+  labBlockedReasons: document.getElementById("labBlockedReasons"),
+  labGeneTotal: document.getElementById("labGeneTotal"),
+  labArtifactTotal: document.getElementById("labArtifactTotal"),
+  labPlayers: document.getElementById("labPlayers"),
+  labReserve: document.getElementById("labReserve"),
+  labRecipeList: document.getElementById("labRecipeList"),
+  zenInsightHeadline: document.getElementById("zenInsightHeadline"),
+  zenStarted: document.getElementById("zenStarted"),
+  zenCompleted: document.getElementById("zenCompleted"),
+  zenCompletionRate: document.getElementById("zenCompletionRate"),
+  zenPaused: document.getElementById("zenPaused"),
+  zenDnaCollected: document.getElementById("zenDnaCollected"),
+  zenEnergyStored: document.getElementById("zenEnergyStored"),
+  zenPlayers: document.getElementById("zenPlayers"),
+  zenBestDuration: document.getElementById("zenBestDuration"),
+  zenDurationList: document.getElementById("zenDurationList"),
   paymentTotal: document.getElementById("paymentTotal"),
   paymentPaid: document.getElementById("paymentPaid"),
   paymentStars: document.getElementById("paymentStars"),
   paymentPending: document.getElementById("paymentPending"),
   paymentSupport: document.getElementById("paymentSupport"),
   paymentPlatformSplit: document.getElementById("paymentPlatformSplit"),
+  paymentMonthTabs: document.getElementById("paymentMonthTabs"),
+  paymentMonthLabel: document.getElementById("paymentMonthLabel"),
+  paymentPeakDay: document.getElementById("paymentPeakDay"),
+  paymentMonthPaid: document.getElementById("paymentMonthPaid"),
+  paymentMonthOrders: document.getElementById("paymentMonthOrders"),
+  paymentMonthStars: document.getElementById("paymentMonthStars"),
+  paymentMonthBuyers: document.getElementById("paymentMonthBuyers"),
+  paymentMonthPending: document.getElementById("paymentMonthPending"),
+  paymentDailyChart: document.getElementById("paymentDailyChart"),
   paymentsTable: document.getElementById("paymentsTable"),
   botStarsStatus: document.getElementById("botStarsStatus"),
   botStarsBalance: document.getElementById("botStarsBalance"),
@@ -57,11 +86,18 @@ const elements = {
   botStarsUpdatedAt: document.getElementById("botStarsUpdatedAt"),
   botStarsTransactions: document.getElementById("botStarsTransactions"),
   roomsGrid: document.getElementById("roomsGrid"),
+  audienceUsers: document.getElementById("audienceUsers"),
+  audienceTracked: document.getElementById("audienceTracked"),
+  audienceLocaleCount: document.getElementById("audienceLocaleCount"),
+  audienceTopLocale: document.getElementById("audienceTopLocale"),
+  localeSummary: document.getElementById("localeSummary"),
   playersTable: document.getElementById("playersTable"),
   eventsList: document.getElementById("eventsList")
 };
 
 let refreshTimer = null;
+let selectedPaymentMonthKey = "";
+let latestOverview = null;
 
 init();
 
@@ -114,6 +150,13 @@ function bindEvents() {
   });
 
   elements.refreshBtn.addEventListener("click", loadOverview);
+  elements.paymentMonthTabs?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-payment-month]");
+    if (!button) return;
+    selectedPaymentMonthKey = button.dataset.paymentMonth || "";
+    button.blur();
+    if (latestOverview) renderPaymentAnalytics(latestOverview.paymentsAnalytics || {});
+  });
 
   elements.exportDataBtn.addEventListener("click", () => {
     window.open("/api/admin/export", "_blank", "noopener");
@@ -130,6 +173,7 @@ async function loadOverview() {
   elements.refreshBtn.disabled = true;
   try {
     const overview = await api("/api/admin/overview");
+    latestOverview = overview;
     renderOverview(overview);
   } catch (error) {
     if (error.status === 401) {
@@ -160,9 +204,11 @@ function renderOverview(overview) {
   renderVisualAnalytics(overview);
   renderDataStore(overview);
   renderActionTracking(overview);
+  renderInsights(overview);
   renderPayments(overview);
   renderBotStars(overview.botStars);
   renderRooms(overview.rooms);
+  renderAudience(overview);
   renderPlayers(overview.players);
   renderEvents(overview.events);
 }
@@ -240,6 +286,76 @@ function renderActionTracking(overview) {
     .join("");
 }
 
+function renderInsights(overview) {
+  renderLabInsights(overview.labInsights || {});
+  renderZenInsights(overview.zenInsights || {});
+}
+
+function renderLabInsights(lab = {}) {
+  const topRecipes = lab.topRecipes || [];
+  const blockerSummary = lab.topBlockers || [];
+
+  elements.labInsightHeadline.textContent = `${formatNumber(lab.synthesized || 0)} runs`;
+  elements.labRuns.textContent = formatNumber(lab.synthesized || 0);
+  elements.labUniqueCreated.textContent = `${formatNumber(lab.uniqueCreated || 0)} unique created`;
+  elements.labBlocked.textContent = formatNumber(lab.blocked || 0);
+  elements.labBlockedReasons.textContent = blockerSummary.length
+    ? blockerSummary.map((item) => `${actionLabel(item.type)} ${formatNumber(item.count)}`).join(" · ")
+    : "No blockers yet";
+  elements.labGeneTotal.textContent = formatNumber(lab.geneStrands || 0);
+  elements.labArtifactTotal.textContent = `${formatNumber(lab.artifacts || 0)} artifacts`;
+  elements.labPlayers.textContent = formatNumber(lab.playersTouched || 0);
+  elements.labReserve.textContent = `${formatNumber(lab.uniqueReserve || 0)} unique reserve`;
+
+  if (!topRecipes.length) {
+    elements.labRecipeList.innerHTML = `<div class="empty-state">Ще немає синтезів. Після першого проходу тут з'являться топ-рецепти.</div>`;
+    return;
+  }
+
+  elements.labRecipeList.innerHTML = topRecipes
+    .map(
+      (item) => `
+        <div class="insight-row">
+          <span>${escapeHtml(item.label || item.id || "recipe")}</span>
+          <strong>${formatNumber(item.count)}</strong>
+          <small>${escapeHtml(item.meta || "synthesized")}</small>
+        </div>
+      `
+    )
+    .join("");
+}
+
+function renderZenInsights(zen = {}) {
+  const durationSummary = zen.durationSummary || [];
+
+  elements.zenInsightHeadline.textContent = `${formatNumber(zen.completed || 0)} sessions`;
+  elements.zenStarted.textContent = formatNumber(zen.started || 0);
+  elements.zenCompleted.textContent = `${formatNumber(zen.completed || 0)} completed`;
+  elements.zenCompletionRate.textContent = `${formatNumber(zen.completionRate || 0)}%`;
+  elements.zenPaused.textContent = `${formatNumber(zen.paused || 0)} paused`;
+  elements.zenDnaCollected.textContent = formatNumber(zen.dnaCollected || 0);
+  elements.zenEnergyStored.textContent = `${formatNumber(zen.storedEnergy || 0)} stored energy`;
+  elements.zenPlayers.textContent = formatNumber(zen.playersTouched || 0);
+  elements.zenBestDuration.textContent = zen.bestDurationLabel || "No preference yet";
+
+  if (!durationSummary.length) {
+    elements.zenDurationList.innerHTML = `<div class="empty-state">Ще немає достатньо Zen-подій. Після сесій тут з'явиться розподіл по тривалостях.</div>`;
+    return;
+  }
+
+  elements.zenDurationList.innerHTML = durationSummary
+    .map(
+      (item) => `
+        <div class="insight-row">
+          <span>${escapeHtml(item.label)}</span>
+          <strong>${formatNumber(item.count)}</strong>
+          <small>${escapeHtml(item.meta || "selected")}</small>
+        </div>
+      `
+    )
+    .join("");
+}
+
 function renderPayments(overview) {
   const { stats, payments = [] } = overview;
   elements.paymentTotal.textContent = `${formatNumber(stats.paymentOrderCount)} orders`;
@@ -248,6 +364,7 @@ function renderPayments(overview) {
   elements.paymentPending.textContent = formatNumber(stats.pendingOrderCount);
   elements.paymentSupport.textContent = "Ready";
   renderPaymentPlatforms(stats.paidPaymentPlatforms || stats.paymentPlatforms || {});
+  renderPaymentAnalytics(overview.paymentsAnalytics || {});
 
   if (!payments.length) {
     elements.paymentsTable.innerHTML = `
@@ -278,6 +395,64 @@ function renderPayments(overview) {
         </tr>
       `
     )
+    .join("");
+}
+
+function renderPaymentAnalytics(analytics = {}) {
+  const months = Array.isArray(analytics.months) ? analytics.months : [];
+  if (!months.length) {
+    elements.paymentMonthTabs.innerHTML = "";
+    elements.paymentMonthLabel.textContent = "No purchase data";
+    elements.paymentPeakDay.textContent = "No peak day yet";
+    elements.paymentMonthPaid.textContent = "0";
+    elements.paymentMonthOrders.textContent = "0 total orders";
+    elements.paymentMonthStars.textContent = "0";
+    elements.paymentMonthBuyers.textContent = "0";
+    elements.paymentMonthPending.textContent = "0 pending";
+    elements.paymentDailyChart.innerHTML = `<div class="empty-state">No purchases recorded yet.</div>`;
+    return;
+  }
+
+  if (!selectedPaymentMonthKey || !months.some((month) => month.key === selectedPaymentMonthKey)) {
+    selectedPaymentMonthKey = analytics.currentMonthKey || months[0].key;
+  }
+
+  const selectedMonth = months.find((month) => month.key === selectedPaymentMonthKey) || months[0];
+  elements.paymentMonthTabs.innerHTML = months
+    .map(
+      (month) => `
+        <button type="button" class="month-chip ${month.key === selectedMonth.key ? "active" : ""}" data-payment-month="${escapeHtml(month.key)}">
+          <span>${escapeHtml(month.label)}</span>
+          <strong>${formatNumber(month.paidOrders)}</strong>
+        </button>
+      `
+    )
+    .join("");
+
+  elements.paymentMonthLabel.textContent = selectedMonth.label;
+  elements.paymentPeakDay.textContent = selectedMonth.peakDayLabel || "No peak day yet";
+  elements.paymentMonthPaid.textContent = formatNumber(selectedMonth.paidOrders);
+  elements.paymentMonthOrders.textContent = `${formatNumber(selectedMonth.totalOrders)} total orders`;
+  elements.paymentMonthStars.textContent = formatNumber(selectedMonth.stars);
+  elements.paymentMonthBuyers.textContent = formatNumber(selectedMonth.uniqueBuyers);
+  elements.paymentMonthPending.textContent = `${formatNumber(selectedMonth.pendingOrders)} pending`;
+
+  const maxPaid = Math.max(1, ...selectedMonth.days.map((day) => Math.max(day.paidOrders, day.orders)));
+  elements.paymentDailyChart.innerHTML = selectedMonth.days
+    .map((day) => {
+      const value = Math.max(day.paidOrders, day.orders);
+      const height = value ? Math.max(10, Math.round((value / maxPaid) * 100)) : 0;
+      const showLabel = day.day === 1 || day.day === selectedMonth.days.length || day.day % 5 === 0;
+      return `
+        <div class="day-bar" title="${escapeHtml(`${day.label}: ${day.paidOrders} paid / ${day.orders} orders / ${day.stars} stars`)}">
+          <div class="day-bar-track">
+            <span class="day-bar-fill" style="height:${height}%"></span>
+          </div>
+          <strong>${showLabel ? escapeHtml(day.label) : ""}</strong>
+          <small>${day.paidOrders ? formatNumber(day.paidOrders) : ""}</small>
+        </div>
+      `;
+    })
     .join("");
 }
 
@@ -337,15 +512,37 @@ function renderRooms(rooms) {
   elements.roomsGrid.innerHTML = rooms
     .map(
       (room) => `
-        <article class="room-card">
+        <article class="room-card ${room.featured ? "featured-room" : ""} ${room.tone ? `tone-${escapeHtml(room.tone)}` : ""}">
           <span>${escapeHtml(room.status)}</span>
           <h3>${escapeHtml(room.name)}</h3>
           <p>${escapeHtml(room.focus)}</p>
-          <small>Далі: ${escapeHtml(room.next)}</small>
+          <small>${formatNumber(room.opens || 0)} opens · Далі: ${escapeHtml(room.next)}</small>
         </article>
       `
     )
     .join("");
+}
+
+function renderAudience(overview) {
+  const audience = overview.audienceInsights || {};
+  const locales = Array.isArray(audience.locales) ? audience.locales : [];
+
+  elements.audienceUsers.textContent = formatNumber(audience.uniqueUsers || overview.stats?.uniqueUsers || 0);
+  elements.audienceTracked.textContent = formatNumber(audience.localeTracked || 0);
+  elements.audienceLocaleCount.textContent = `${formatNumber(audience.localeCount || 0)} locales`;
+  elements.audienceTopLocale.textContent = formatLocaleLabel(audience.topLocale);
+  elements.localeSummary.innerHTML = locales.length
+    ? locales
+      .map(
+        (item) => `
+          <span class="platform-pill locale-pill ${item.id === "unknown" ? "muted-pill" : ""}">
+            <b>${escapeHtml(formatLocaleLabel(item.label || item.id))}</b>
+            <strong>${formatNumber(item.count)}</strong>
+          </span>
+        `
+      )
+      .join("")
+    : `<span class="platform-pill muted-pill"><b>No locale data yet</b><strong>0</strong></span>`;
 }
 
 function renderPlayers(players) {
@@ -370,6 +567,7 @@ function renderPlayers(players) {
               <span>${escapeHtml(nickname)}</span>
             </span>
           </td>
+          <td><span class="locale-badge ${player.locale ? "" : "muted-pill"}">${escapeHtml(formatLocaleLabel(player.locale))}</span></td>
           <td>${formatNumber(player.score)}</td>
           <td>${formatNumber(player.resonance)}</td>
           <td>${formatNumber(player.sessions)}</td>
@@ -416,12 +614,24 @@ function eventTitle(event) {
     farm_blocked_no_energy: "Farm no energy",
     lab_mutation_clicked: "Lab mutation",
     lab_auto_toggled: "Lab auto",
+    lab_recipe_selected: "Lab recipe selected",
+    lab_recipe_synthesized: "Lab synthesized",
+    lab_unique_mutation_created: "Lab unique created",
+    lab_inventory_category_selected: "Lab inventory tab",
+    lab_upgrade_preview_opened: "Lab upgrade opened",
+    lab_blocked_no_material: "Lab no material",
+    lab_blocked_no_genes: "Lab no genes",
     lab_blocked_no_energy: "Lab no energy",
+    lab_blocked_no_se: "Lab no SE",
+    lab_blocked_no_target: "Lab no target",
     zen_started: "Zen started",
     zen_paused: "Zen paused",
     zen_resumed: "Zen resumed",
     zen_completed: "Zen completed",
     zen_duration_selected: "Zen duration",
+    zen_dna_collected: "Zen DNA collected",
+    zen_sound_selected: "Zen sound",
+    zen_gene_selected: "Zen gene",
     mission_opened: "Mission opened",
     mission_claimed: "Mission claimed",
     drone_menu_opened: "Drone menu",
@@ -503,6 +713,11 @@ function platformLabel(platform) {
   if (value === "desktop") return "Desktop";
   if (value === "web") return "Web";
   return "Unknown";
+}
+
+function formatLocaleLabel(locale) {
+  const value = String(locale || "").trim();
+  return value ? value.toUpperCase() : "Unknown";
 }
 
 function shortId(value) {

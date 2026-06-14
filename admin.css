@@ -492,6 +492,112 @@ input:focus {
 .action-card.zen { border-color: rgba(200, 255, 106, 0.22); }
 .action-card.stars { border-color: rgba(255, 209, 102, 0.28); }
 
+.insights-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.insight-panel {
+  min-width: 0;
+}
+
+.lab-insight-panel {
+  background:
+    radial-gradient(circle at 88% 0%, rgba(88, 220, 255, 0.14), transparent 32%),
+    var(--panel);
+}
+
+.zen-insight-panel {
+  background:
+    radial-gradient(circle at 12% 0%, rgba(200, 255, 106, 0.12), transparent 34%),
+    var(--panel);
+}
+
+.insight-panel .panel-head > strong {
+  align-self: start;
+  border: 1px solid rgba(92, 255, 207, 0.24);
+  border-radius: 999px;
+  padding: 9px 12px;
+  color: var(--accent);
+  background: rgba(92, 255, 207, 0.08);
+  font-size: 12px;
+}
+
+.insight-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.insight-card {
+  min-height: 108px;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.045);
+  padding: 14px;
+}
+
+.insight-card span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.insight-card strong {
+  color: var(--text);
+  font-size: 30px;
+  line-height: 1;
+}
+
+.insight-card small {
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.insight-list {
+  display: grid;
+  gap: 10px;
+}
+
+.insight-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 10px;
+  align-items: center;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.insight-row span,
+.insight-row strong,
+.insight-row small {
+  min-width: 0;
+}
+
+.insight-row span {
+  color: var(--text);
+  font-weight: 800;
+}
+
+.insight-row strong {
+  color: var(--accent);
+  font-size: 18px;
+}
+
+.insight-row small {
+  grid-column: 1 / -1;
+  color: var(--muted);
+}
+
 .payments-panel {
   margin-bottom: 14px;
   background:
@@ -573,6 +679,117 @@ input:focus {
   margin: -2px 0 14px;
 }
 
+.payments-analytics {
+  margin-bottom: 16px;
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.payments-month-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.month-chip {
+  min-height: 0;
+  padding: 8px 10px;
+  border-radius: 14px;
+  display: grid;
+  gap: 2px;
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: none;
+}
+
+.month-chip span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.month-chip strong {
+  color: var(--text);
+  font-size: 16px;
+  line-height: 1;
+}
+
+.month-chip.active {
+  border-color: rgba(92, 255, 207, 0.36);
+  background: linear-gradient(180deg, rgba(92, 255, 207, 0.18), rgba(92, 255, 207, 0.06));
+}
+
+.payments-month-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: baseline;
+  margin-bottom: 12px;
+}
+
+.payments-month-head strong {
+  font-size: 18px;
+}
+
+.payments-month-head small {
+  color: var(--muted);
+}
+
+.payment-grid-compact {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-bottom: 12px;
+}
+
+.payment-grid-compact .payment-card {
+  min-height: 88px;
+}
+
+.payment-grid-compact .payment-card strong {
+  font-size: 26px;
+}
+
+.payments-daily-chart {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(22px, 1fr));
+  gap: 6px;
+  align-items: end;
+  min-height: 178px;
+}
+
+.day-bar {
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+}
+
+.day-bar-track {
+  width: 100%;
+  min-height: 116px;
+  display: flex;
+  align-items: end;
+  border-radius: 10px;
+  padding: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.015));
+}
+
+.day-bar-fill {
+  width: 100%;
+  border-radius: 7px;
+  background: linear-gradient(180deg, rgba(200, 255, 106, 0.96), rgba(92, 255, 207, 0.45));
+  box-shadow: 0 0 18px rgba(92, 255, 207, 0.16);
+}
+
+.day-bar strong,
+.day-bar small {
+  color: var(--muted);
+  font-size: 10px;
+}
+
 .platform-pill,
 .platform-badge {
   display: inline-flex;
@@ -623,6 +840,57 @@ input:focus {
 
 .payments-table-wrap table {
   min-width: 940px;
+}
+
+.audience-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.audience-card {
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 14px;
+  display: grid;
+  gap: 8px;
+}
+
+.audience-card span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.audience-card strong {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.locale-split {
+  margin-top: -4px;
+}
+
+.locale-pill b,
+.locale-badge {
+  letter-spacing: 0.04em;
+}
+
+.locale-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 54px;
+  padding: 5px 9px;
+  border: 1px solid rgba(92, 255, 207, 0.22);
+  border-radius: 999px;
+  background: rgba(92, 255, 207, 0.08);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 900;
 }
 
 .payment-status {
@@ -811,6 +1079,27 @@ input:focus {
   overflow: hidden;
 }
 
+.room-card.featured-room {
+  grid-column: 1 / -1;
+  min-height: 196px;
+  background:
+    radial-gradient(circle at 84% 18%, rgba(255, 123, 138, 0.18), transparent 28%),
+    radial-gradient(circle at 18% 10%, rgba(88, 220, 255, 0.12), transparent 24%),
+    linear-gradient(145deg, rgba(20, 13, 24, 0.94), rgba(14, 25, 31, 0.94));
+  border-color: rgba(255, 123, 138, 0.22);
+}
+
+.room-card.tone-companion::after {
+  width: 220px;
+  height: 220px;
+  inset: auto -40px -84px auto;
+  background: radial-gradient(circle, rgba(255, 123, 138, 0.22), transparent 72%);
+}
+
+.room-card.tone-companion span {
+  color: #ffb8c2;
+}
+
 .room-card::after {
   content: "";
   position: absolute;
@@ -950,6 +1239,7 @@ td {
 
 @media (max-width: 920px) {
   .status-grid,
+  .insights-grid,
   .rooms-grid,
   .content-grid,
   .control-visuals,
@@ -957,9 +1247,20 @@ td {
   .action-grid,
   .payment-grid,
   .bot-stars-grid,
+  .payment-grid-compact,
+  .insight-stats,
+  .audience-strip,
   .data-grid,
   .action-summary {
     grid-template-columns: 1fr;
+  }
+
+  .payments-month-head {
+    display: grid;
+  }
+
+  .payments-daily-chart {
+    grid-template-columns: repeat(auto-fit, minmax(18px, 1fr));
   }
 
   .bot-stars-row {

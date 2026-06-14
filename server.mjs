@@ -487,6 +487,7 @@ function createDefaultPlayerRecord({ id, user, verified }) {
     id,
     telegramId: user?.id || null,
     username: user?.username || null,
+    locale: safeLocale(user?.language_code || user?.locale),
     name: displayName(user, "Guest"),
     score: 0,
     energy: 10,
@@ -524,6 +525,7 @@ function ensurePlayerRecord({ clientId, user, verified }) {
 
   existing.telegramId = user?.id || existing.telegramId || null;
   existing.username = user?.username || existing.username || null;
+  existing.locale = safeLocale(user?.language_code || user?.locale) || safeLocale(existing.locale);
   existing.name = displayName(user, existing.name || "Guest");
   existing.score = safeNumber(existing.score);
   existing.energy = safeNumber(existing.energy);
@@ -639,12 +641,14 @@ function upsertPlayer({ clientId, user, state, verified, eventType = "player_syn
     gene: state?.zenGene
   });
   const farmPass = mergeFarmPassState(existing.farmPass, state?.farmPass);
+  const locale = safeLocale(state?.locale || user?.language_code || user?.locale || existing.locale);
   const name = displayName(user, existing.name || "Guest");
 
   const player = {
     id,
     telegramId: user?.id || null,
     username: user?.username || existing.username || null,
+    locale,
     name,
     score: Math.max(safeNumber(existing.score), score),
     energy,
@@ -1137,7 +1141,39 @@ async function adminOverview() {
   );
   const actionEvents = db.events.filter((event) => event.kind === "player_action");
   const actionCounts = countEvents(actionEvents);
+  const roomOpenCounts = countBy(
+    actionEvents.filter((event) => event.type === "room_opened"),
+    (event) => String(event.details?.room || "").trim().toLowerCase()
+  );
+  const labEvents = actionEvents.filter((event) => String(event.type || "").startsWith("lab_"));
+  const zenEvents = actionEvents.filter((event) => String(event.type || "").startsWith("zen_"));
+  const topLabRecipes = summarizeCounts(
+    countBy(
+      labEvents.filter((event) => event.type === "lab_recipe_synthesized"),
+      (event) => String(event.details?.recipeId || event.details?.recipe || "").trim()
+    ),
+    { limit: 5, meta: "synthesized" }
+  );
+  const topLabBlockers = summarizeCounts(
+    countBy(
+      labEvents.filter((event) => String(event.type || "").startsWith("lab_blocked_")),
+      (event) => String(event.type || "").trim()
+    ),
+    { limit: 3, meta: "blocked" }
+  );
+  const zenDurationSummary = summarizeCounts(
+    countBy(
+      zenEvents.filter((event) => event.type === "zen_duration_selected"),
+      (event) => String(event.details?.durationMs || event.details?.duration || "").trim()
+    ),
+    { limit: 3, meta: "selected" }
+  ).map((item) => ({
+    ...item,
+    label: formatZenDurationLabel(item.id)
+  }));
   const payments = paymentRecords();
+  const audienceInsights = buildAudienceInsights(rankedPlayers);
+  const paymentsAnalytics = buildPaymentAnalytics(payments);
   const botStars = await botStarsSnapshot();
   const paymentStats = payments.reduce(
     (accumulator, payment) => {
@@ -1160,6 +1196,7 @@ async function adminOverview() {
     dataStore: dataStoreStatus(),
     stats: {
       players: rankedPlayers.length,
+      uniqueUsers: audienceInsights.uniqueUsers,
       telegramPlayers: rankedPlayers.filter((player) => player.telegramId).length,
       verifiedPlayers: rankedPlayers.filter((player) => player.verified).length,
       guests: rankedPlayers.filter((player) => !player.telegramId).length,
@@ -1186,38 +1223,81 @@ async function adminOverview() {
       paidPaymentPlatforms: paymentStats.paidPlatforms,
       roomOpenCount: actionEvents.filter((event) => event.type === "room_opened").length
     },
+    audienceInsights,
+    labInsights: {
+      synthesized: countActionPrefix(actionEvents, "lab_recipe_synthesized"),
+      uniqueCreated: countActionPrefix(actionEvents, "lab_unique_mutation_created"),
+      blocked: labEvents.filter((event) => String(event.type || "").startsWith("lab_blocked_")).length,
+      geneStrands: rankedPlayers.reduce((sum, player) => sum + safeNumber(safeInventory(player.inventory).geneStrands), 0),
+      artifacts: rankedPlayers.reduce((sum, player) => sum + safeNumber(player.artifact), 0),
+      uniqueReserve: rankedPlayers.reduce((sum, player) => sum + safeNumber(safeLabState(player.lab).uniqueMutations), 0),
+      playersTouched: rankedPlayers.filter((player) => {
+        const inventory = safeInventory(player.inventory);
+        const lab = safeLabState(player.lab);
+        return safeNumber(player.artifact) > 0 || safeNumber(inventory.geneStrands) > 0 || safeNumber(lab.uniqueMutations) > 0;
+      }).length,
+      topRecipes: topLabRecipes,
+      topBlockers: topLabBlockers
+    },
+    zenInsights: {
+      started: countActionPrefix(actionEvents, "zen_started"),
+      completed: countActionPrefix(actionEvents, "zen_completed"),
+      paused: countActionPrefix(actionEvents, "zen_paused"),
+      dnaCollected: countActionPrefix(actionEvents, "zen_dna_collected"),
+      storedEnergy: rankedPlayers.reduce((sum, player) => sum + safeNumber(safeZenState(player.zen).energy), 0),
+      playersTouched: rankedPlayers.filter((player) => safeNumber(player.sessions) > 0 || safeNumber(safeZenState(player.zen).energy) > 0).length,
+      completionRate: Math.round(
+        (countActionPrefix(actionEvents, "zen_completed") / Math.max(1, countActionPrefix(actionEvents, "zen_started"))) * 100
+      ),
+      bestDurationLabel: zenDurationSummary[0]?.label || "No preference yet",
+      durationSummary: zenDurationSummary
+    },
     actionSummary: Object.entries(actionCounts)
       .sort(([, left], [, right]) => right - left)
       .slice(0, 10)
       .map(([type, count]) => ({ type, count })),
     rooms: [
       {
+        id: "companion",
+        name: "AI Companion",
+        status: "Flagship emotional layer",
+        focus: "Персональна AI-баришня, яка пам'ятає темп гравця, реагує на Farm, Lab і Zen та створює відчуття живого зв'язку з проєктом.",
+        next: "Зібрати loop affection, mood, gifts, voice moments і щоденне повернення в діалог.",
+        opens: (roomOpenCounts.companion || 0) + (roomOpenCounts.ai || 0),
+        featured: true,
+        tone: "companion"
+      },
+      {
         id: "farm",
         name: "Farm",
         status: "Prototype",
         focus: "Вирощування мікрокультур і перший ресурсний цикл",
-        next: "Зберігати повний прогрес кожної капсули"
+        next: "Зберігати повний прогрес кожної капсули",
+        opens: roomOpenCounts.farm || 0
       },
       {
         id: "lab",
         name: "Lab",
         status: "Concept + visual shell",
         focus: "Мутації, артефакти, рідкість і майбутні NFT-продукти",
-        next: "Описати формулу шансів і інвентар артефактів"
+        next: "Описати формулу шансів і інвентар артефактів",
+        opens: roomOpenCounts.lab || 0
       },
       {
         id: "zen",
         name: "Zen",
         status: "Core product direction",
         focus: "Медитація, звук, Zen energy, головна цінність проекту",
-        next: "Почати логувати старт/кінець Zen-сесій"
+        next: "Почати логувати старт/кінець Zen-сесій",
+        opens: roomOpenCounts.zen || 0
       },
       {
         id: "missions",
         name: "Missions",
         status: "Starter funnel",
         focus: "Перші бонуси за Telegram, YouTube, Instagram, TikTok та майбутні рекламні кампанії",
-        next: "Додати реальні посилання і перевірку Telegram-підписки"
+        next: "Додати реальні посилання і перевірку Telegram-підписки",
+        opens: (roomOpenCounts.missions || 0) + (roomOpenCounts.daily || 0)
       }
     ],
     players: playersByActivity.slice(0, 100).map((player) => ({
@@ -1225,6 +1305,7 @@ async function adminOverview() {
       id: player.id,
       telegramId: player.telegramId,
       username: player.username,
+      locale: safeLocale(player.locale),
       name: player.name,
       score: player.score,
       energy: player.energy,
@@ -1246,6 +1327,7 @@ async function adminOverview() {
       updatedAt: player.updatedAt
     })),
     payments: payments.slice(0, 80),
+    paymentsAnalytics,
     botStars,
     leaderboard: leaderboardResponse().leaderboard,
     events: db.events.slice(0, 80)
@@ -1480,6 +1562,207 @@ function countEvents(events) {
 
 function countActionPrefix(events, prefix) {
   return events.filter((event) => event.type.startsWith(prefix)).length;
+}
+
+function countBy(items, getKey) {
+  return items.reduce((counts, item) => {
+    const key = getKey(item);
+    if (!key) return counts;
+    counts[key] = (counts[key] || 0) + 1;
+    return counts;
+  }, {});
+}
+
+function summarizeCounts(counts, { limit = 5, labelMap = null, meta = "" } = {}) {
+  return Object.entries(counts || {})
+    .sort(([, left], [, right]) => right - left)
+    .slice(0, limit)
+    .map(([id, count]) => ({
+      id,
+      count,
+      label: labelMap?.[id] || id,
+      meta
+    }));
+}
+
+function formatZenDurationLabel(value) {
+  const ms = safeNumber(value);
+  if (!ms) return "Unknown";
+  const minutes = Math.max(1, Math.round(ms / 60_000));
+  return `${minutes} min`;
+}
+
+function getKyivDateParts(value) {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return null;
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Kyiv",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).formatToParts(date);
+  const lookup = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  if (!lookup.year || !lookup.month || !lookup.day) return null;
+  return {
+    year: lookup.year,
+    month: lookup.month,
+    day: lookup.day
+  };
+}
+
+function formatMonthLabel(monthKey) {
+  const [year, month] = String(monthKey || "").split("-");
+  if (!year || !month) return "Unknown month";
+  const date = new Date(`${year}-${month}-15T12:00:00Z`);
+  if (!Number.isFinite(date.getTime())) return monthKey;
+  return new Intl.DateTimeFormat("uk-UA", {
+    timeZone: "Europe/Kyiv",
+    month: "long",
+    year: "numeric"
+  }).format(date);
+}
+
+function formatLocaleLabel(locale) {
+  const value = safeLocale(locale);
+  return value ? value.toUpperCase() : "Unknown";
+}
+
+function playerUniqueKey(player) {
+  if (player?.telegramId) return `tg:${player.telegramId}`;
+  return `id:${player?.id || "guest"}`;
+}
+
+function buildAudienceInsights(players) {
+  const uniquePlayers = new Map();
+  players.forEach((player) => {
+    uniquePlayers.set(playerUniqueKey(player), player);
+  });
+
+  const localeCounts = {};
+  let localeTracked = 0;
+  [...uniquePlayers.values()].forEach((player) => {
+    const locale = safeLocale(player?.locale);
+    const localeKey = locale || "unknown";
+    if (locale) localeTracked += 1;
+    localeCounts[localeKey] = (localeCounts[localeKey] || 0) + 1;
+  });
+
+  const localeSummary = Object.entries(localeCounts)
+    .sort(([, left], [, right]) => right - left)
+    .slice(0, 8)
+    .map(([id, count]) => ({
+      id,
+      count,
+      label: formatLocaleLabel(id),
+      meta: "users"
+    }));
+
+  return {
+    uniqueUsers: uniquePlayers.size,
+    localeTracked,
+    localeCount: Object.keys(localeCounts).filter((key) => key !== "unknown").length,
+    topLocale: localeSummary[0]?.label || "Unknown",
+    locales: localeSummary
+  };
+}
+
+function buildPaymentAnalytics(payments) {
+  const monthMap = new Map();
+
+  payments.forEach((payment) => {
+    const parts = getKyivDateParts(payment.paidAt || payment.createdAt);
+    if (!parts) return;
+    const monthKey = `${parts.year}-${parts.month}`;
+    const dayKey = `${monthKey}-${parts.day}`;
+    const buyerKey = payment.paidByTelegramId || payment.telegramId || payment.playerId || payment.id;
+    const stars = safeNumber(payment.stars);
+    const isPaid = payment.status === "paid";
+    const isPending = payment.status === "pending";
+
+    if (!monthMap.has(monthKey)) {
+      monthMap.set(monthKey, {
+        key: monthKey,
+        label: formatMonthLabel(monthKey),
+        totalOrders: 0,
+        paidOrders: 0,
+        pendingOrders: 0,
+        stars: 0,
+        uniqueBuyers: new Set(),
+        dayMap: new Map()
+      });
+    }
+
+    const month = monthMap.get(monthKey);
+    month.totalOrders += 1;
+    if (isPaid) {
+      month.paidOrders += 1;
+      month.stars += stars;
+    }
+    if (isPending) month.pendingOrders += 1;
+    if (buyerKey) month.uniqueBuyers.add(String(buyerKey));
+
+    if (!month.dayMap.has(dayKey)) {
+      month.dayMap.set(dayKey, {
+        day: Number(parts.day),
+        label: parts.day,
+        orders: 0,
+        paidOrders: 0,
+        stars: 0,
+        uniqueBuyers: new Set()
+      });
+    }
+
+    const day = month.dayMap.get(dayKey);
+    day.orders += 1;
+    if (isPaid) {
+      day.paidOrders += 1;
+      day.stars += stars;
+    }
+    if (buyerKey) day.uniqueBuyers.add(String(buyerKey));
+  });
+
+  const months = [...monthMap.values()]
+    .sort((left, right) => right.key.localeCompare(left.key))
+    .map((month) => {
+      const [year, monthNumber] = month.key.split("-").map(Number);
+      const daysInMonth = new Date(Date.UTC(year, monthNumber, 0)).getUTCDate();
+      const days = Array.from({ length: daysInMonth }, (_, index) => {
+        const label = String(index + 1).padStart(2, "0");
+        const dayKey = `${month.key}-${label}`;
+        const day = month.dayMap.get(dayKey);
+        return {
+          day: index + 1,
+          label,
+          orders: day?.orders || 0,
+          paidOrders: day?.paidOrders || 0,
+          stars: day?.stars || 0,
+          uniqueBuyers: day?.uniqueBuyers?.size || 0
+        };
+      });
+
+      const peakDay = [...days].sort((left, right) =>
+        right.paidOrders - left.paidOrders || right.stars - left.stars || left.day - right.day
+      )[0];
+
+      return {
+        key: month.key,
+        label: month.label,
+        totalOrders: month.totalOrders,
+        paidOrders: month.paidOrders,
+        pendingOrders: month.pendingOrders,
+        stars: month.stars,
+        uniqueBuyers: month.uniqueBuyers.size,
+        peakDayLabel: peakDay && (peakDay.paidOrders > 0 || peakDay.orders > 0)
+          ? `${peakDay.label}.${month.key.slice(5)} · ${peakDay.paidOrders} paid`
+          : "No paid purchases yet",
+        days
+      };
+    });
+
+  return {
+    currentMonthKey: months[0]?.key || null,
+    months
+  };
 }
 
 function safeEventType(value) {
@@ -2011,6 +2294,7 @@ function playerToRow(player) {
       droneLevel: safeDroneLevel(player.droneLevel),
       droneSkin: safeDroneSkin(player.droneSkin),
       dataModuleLevel: safeDataModuleLevel(player.dataModuleLevel),
+      locale: safeLocale(player.locale),
       unlockedSlots: safeUnlockedSlots(player.unlockedSlots),
       farm: safeFarmState(player.farm),
       lab: safeLabState(player.lab),
@@ -2028,6 +2312,7 @@ function playerFromRow(row) {
     id: row.id,
     telegramId: row.telegram_id || null,
     username: row.username || null,
+    locale: safeLocale(row.state?.locale),
     name: row.name || "Guest",
     score: safeNumber(row.score),
     energy: safeNumber(row.energy),
@@ -2289,6 +2574,15 @@ function safePlatform(value) {
   if (platform.includes("desktop") || platform.includes("tdesktop") || platform.includes("mac") || platform.includes("windows") || platform.includes("linux")) return "desktop";
   if (platform.includes("web")) return "web";
   return "unknown";
+}
+
+function safeLocale(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replaceAll("_", "-")
+    .replace(/[^a-z0-9-]/g, "")
+    .slice(0, 24);
 }
 
 async function callTelegram(method, payload) {

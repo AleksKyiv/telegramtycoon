@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="theme-color" content="#071210">
     <title>Green Farm Control</title>
-    <link rel="stylesheet" href="/admin.css?v=10">
-    <script src="/admin.js?v=11" defer></script>
+    <link rel="stylesheet" href="/admin.css?v=12">
+    <script src="/admin.js?v=13" defer></script>
   </head>
   <body>
     <main class="admin-shell">
@@ -215,6 +215,74 @@
           <div class="action-summary" id="actionSummary"></div>
         </section>
 
+        <section class="insights-grid" aria-label="Lab and Zen insights">
+          <article class="panel insight-panel lab-insight-panel">
+            <div class="panel-head">
+              <div>
+                <h2>Lab Insights</h2>
+                <p>Що реально відбувається в синтезі, де люди застрягають, і що вже накопичили.</p>
+              </div>
+              <strong id="labInsightHeadline">0 runs</strong>
+            </div>
+            <div class="insight-stats">
+              <article class="insight-card">
+                <span>Recipes run</span>
+                <strong id="labRuns">0</strong>
+                <small id="labUniqueCreated">0 unique created</small>
+              </article>
+              <article class="insight-card">
+                <span>Blocked</span>
+                <strong id="labBlocked">0</strong>
+                <small id="labBlockedReasons">No blockers yet</small>
+              </article>
+              <article class="insight-card">
+                <span>Stored gene strands</span>
+                <strong id="labGeneTotal">0</strong>
+                <small id="labArtifactTotal">0 artifacts</small>
+              </article>
+              <article class="insight-card">
+                <span>Players touched Lab</span>
+                <strong id="labPlayers">0</strong>
+                <small id="labReserve">0 unique reserve</small>
+              </article>
+            </div>
+            <div class="insight-list" id="labRecipeList"></div>
+          </article>
+
+          <article class="panel insight-panel zen-insight-panel">
+            <div class="panel-head">
+              <div>
+                <h2>Zen Insights</h2>
+                <p>Скільки людей заходять у медитацію, скільки доходять до завершення, і що зберігають.</p>
+              </div>
+              <strong id="zenInsightHeadline">0 sessions</strong>
+            </div>
+            <div class="insight-stats">
+              <article class="insight-card">
+                <span>Started</span>
+                <strong id="zenStarted">0</strong>
+                <small id="zenCompleted">0 completed</small>
+              </article>
+              <article class="insight-card">
+                <span>Completion rate</span>
+                <strong id="zenCompletionRate">0%</strong>
+                <small id="zenPaused">0 paused</small>
+              </article>
+              <article class="insight-card">
+                <span>DNA collected</span>
+                <strong id="zenDnaCollected">0</strong>
+                <small id="zenEnergyStored">0 stored energy</small>
+              </article>
+              <article class="insight-card">
+                <span>Players touched Zen</span>
+                <strong id="zenPlayers">0</strong>
+                <small id="zenBestDuration">No preference yet</small>
+              </article>
+            </div>
+            <div class="insight-list" id="zenDurationList"></div>
+          </article>
+        </section>
+
         <section class="panel payments-panel" aria-label="Stars payments">
           <div class="panel-head">
             <div>
@@ -246,6 +314,31 @@
             </article>
           </div>
           <div class="platform-split" id="paymentPlatformSplit"></div>
+          <div class="payments-analytics">
+            <div class="payments-month-tabs" id="paymentMonthTabs"></div>
+            <div class="payments-month-head">
+              <strong id="paymentMonthLabel">No purchase data</strong>
+              <small id="paymentPeakDay">No peak day yet</small>
+            </div>
+            <div class="payment-grid payment-grid-compact">
+              <article class="payment-card paid">
+                <span>Month paid</span>
+                <strong id="paymentMonthPaid">0</strong>
+                <small id="paymentMonthOrders">0 total orders</small>
+              </article>
+              <article class="payment-card stars">
+                <span>Month Stars</span>
+                <strong id="paymentMonthStars">0</strong>
+                <small>paid purchases only</small>
+              </article>
+              <article class="payment-card pending">
+                <span>Unique buyers</span>
+                <strong id="paymentMonthBuyers">0</strong>
+                <small id="paymentMonthPending">0 pending</small>
+              </article>
+            </div>
+            <div class="payments-daily-chart" id="paymentDailyChart"></div>
+          </div>
           <div class="table-wrap payments-table-wrap">
             <table>
               <thead>
@@ -339,12 +432,31 @@
                 <p>Останні активні зверху. Тут видно Telegram ID, рейтинг і базову статистику.</p>
               </div>
             </div>
+            <div class="audience-strip">
+              <article class="audience-card">
+                <span>Unique users</span>
+                <strong id="audienceUsers">0</strong>
+                <small>all saved player profiles</small>
+              </article>
+              <article class="audience-card">
+                <span>Locales tracked</span>
+                <strong id="audienceTracked">0</strong>
+                <small id="audienceLocaleCount">0 locales</small>
+              </article>
+              <article class="audience-card">
+                <span>Top locale</span>
+                <strong id="audienceTopLocale">Unknown</strong>
+                <small>from Telegram language code</small>
+              </article>
+            </div>
+            <div class="platform-split locale-split" id="localeSummary"></div>
             <div class="table-wrap">
               <table>
                 <thead>
                   <tr>
                     <th>Rank</th>
                     <th>Гравець</th>
+                    <th>Locale</th>
                     <th>Score</th>
                     <th>Zen</th>
                     <th>Сесії</th>
