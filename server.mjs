@@ -1300,7 +1300,7 @@ async function adminOverview() {
         opens: (roomOpenCounts.missions || 0) + (roomOpenCounts.daily || 0)
       }
     ],
-    players: playersByActivity.slice(0, 100).map((player) => ({
+    players: playersByActivity.map((player) => ({
       rank: rankById.get(player.id) || null,
       id: player.id,
       telegramId: player.telegramId,
