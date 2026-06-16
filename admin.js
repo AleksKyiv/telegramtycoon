@@ -86,11 +86,23 @@ const elements = {
   botStarsUpdatedAt: document.getElementById("botStarsUpdatedAt"),
   botStarsTransactions: document.getElementById("botStarsTransactions"),
   roomsGrid: document.getElementById("roomsGrid"),
+  playerTotalLabel: document.getElementById("playerTotalLabel"),
   audienceUsers: document.getElementById("audienceUsers"),
   audienceTracked: document.getElementById("audienceTracked"),
   audienceLocaleCount: document.getElementById("audienceLocaleCount"),
   audienceTopLocale: document.getElementById("audienceTopLocale"),
+  memoryProfiles: document.getElementById("memoryProfiles"),
+  memoryTelegram: document.getElementById("memoryTelegram"),
+  memoryGuests: document.getElementById("memoryGuests"),
+  memoryLocales: document.getElementById("memoryLocales"),
+  memoryLocaleMissing: document.getElementById("memoryLocaleMissing"),
   localeSummary: document.getElementById("localeSummary"),
+  playersSearch: document.getElementById("playersSearch"),
+  playersAccountFilter: document.getElementById("playersAccountFilter"),
+  playersLocaleFilter: document.getElementById("playersLocaleFilter"),
+  playersActivityFilter: document.getElementById("playersActivityFilter"),
+  playersResetFilters: document.getElementById("playersResetFilters"),
+  playerResultsLabel: document.getElementById("playerResultsLabel"),
   playersTable: document.getElementById("playersTable"),
   eventsList: document.getElementById("eventsList")
 };
@@ -98,6 +110,12 @@ const elements = {
 let refreshTimer = null;
 let selectedPaymentMonthKey = "";
 let latestOverview = null;
+const playerFilters = {
+  search: "",
+  account: "all",
+  locale: "all",
+  activity: "all"
+};
 
 init();
 
@@ -150,6 +168,26 @@ function bindEvents() {
   });
 
   elements.refreshBtn.addEventListener("click", loadOverview);
+  elements.playersSearch?.addEventListener("input", (event) => {
+    playerFilters.search = String(event.target.value || "").trim().toLowerCase();
+    refreshPlayersView();
+  });
+  elements.playersAccountFilter?.addEventListener("change", (event) => {
+    playerFilters.account = event.target.value || "all";
+    refreshPlayersView();
+  });
+  elements.playersLocaleFilter?.addEventListener("change", (event) => {
+    playerFilters.locale = event.target.value || "all";
+    refreshPlayersView();
+  });
+  elements.playersActivityFilter?.addEventListener("change", (event) => {
+    playerFilters.activity = event.target.value || "all";
+    refreshPlayersView();
+  });
+  elements.playersResetFilters?.addEventListener("click", () => {
+    resetPlayerFilters();
+    refreshPlayersView();
+  });
   elements.paymentMonthTabs?.addEventListener("click", (event) => {
     const button = event.target.closest("[data-payment-month]");
     if (!button) return;
@@ -209,7 +247,8 @@ function renderOverview(overview) {
   renderBotStars(overview.botStars);
   renderRooms(overview.rooms);
   renderAudience(overview);
-  renderPlayers(overview.players);
+  renderPlayerFilters(overview.players || []);
+  refreshPlayersView();
   renderEvents(overview.events);
 }
 
@@ -526,11 +565,21 @@ function renderRooms(rooms) {
 function renderAudience(overview) {
   const audience = overview.audienceInsights || {};
   const locales = Array.isArray(audience.locales) ? audience.locales : [];
+  const stats = overview.stats || {};
+  const uniqueUsers = Number(audience.uniqueUsers || stats.uniqueUsers || stats.players || 0);
+  const localeTracked = Number(audience.localeTracked || 0);
+  const localeMissing = Math.max(0, uniqueUsers - localeTracked);
 
-  elements.audienceUsers.textContent = formatNumber(audience.uniqueUsers || overview.stats?.uniqueUsers || 0);
-  elements.audienceTracked.textContent = formatNumber(audience.localeTracked || 0);
+  elements.playerTotalLabel.textContent = `${formatNumber(uniqueUsers)} saved`;
+  elements.audienceUsers.textContent = formatNumber(uniqueUsers);
+  elements.audienceTracked.textContent = formatNumber(localeTracked);
   elements.audienceLocaleCount.textContent = `${formatNumber(audience.localeCount || 0)} locales`;
   elements.audienceTopLocale.textContent = formatLocaleLabel(audience.topLocale);
+  elements.memoryProfiles.textContent = formatNumber(uniqueUsers);
+  elements.memoryTelegram.textContent = formatNumber(stats.telegramPlayers || 0);
+  elements.memoryGuests.textContent = formatNumber(stats.guests || 0);
+  elements.memoryLocales.textContent = formatNumber(localeTracked);
+  elements.memoryLocaleMissing.textContent = `${formatNumber(localeMissing)} without locale`;
   elements.localeSummary.innerHTML = locales.length
     ? locales
       .map(
@@ -543,6 +592,61 @@ function renderAudience(overview) {
       )
       .join("")
     : `<span class="platform-pill muted-pill"><b>No locale data yet</b><strong>0</strong></span>`;
+}
+
+function renderPlayerFilters(players) {
+  const localeOptions = Array.from(new Set((players || []).map((player) => safePlayerLocale(player.locale)).filter(Boolean)))
+    .sort((left, right) => left.localeCompare(right));
+  const currentLocale = playerFilters.locale;
+
+  elements.playersLocaleFilter.innerHTML = [
+    `<option value="all">All locales</option>`,
+    `<option value="known">Known locale</option>`,
+    `<option value="unknown">Unknown locale</option>`,
+    ...localeOptions.map((locale) => `<option value="${escapeHtml(locale)}">${escapeHtml(formatLocaleLabel(locale))}</option>`)
+  ].join("");
+
+  if (currentLocale === "all" || currentLocale === "known" || currentLocale === "unknown" || localeOptions.includes(currentLocale)) {
+    elements.playersLocaleFilter.value = currentLocale;
+  } else {
+    playerFilters.locale = "all";
+    elements.playersLocaleFilter.value = "all";
+  }
+}
+
+function refreshPlayersView() {
+  const players = Array.isArray(latestOverview?.players) ? latestOverview.players : [];
+  const filteredPlayers = getFilteredPlayers(players);
+  renderPlayers(filteredPlayers);
+  elements.playerResultsLabel.textContent = `${formatNumber(filteredPlayers.length)} shown of ${formatNumber(players.length)}`;
+}
+
+function getFilteredPlayers(players) {
+  const now = Date.now();
+  return (players || []).filter((player) => {
+    const searchTarget = [player.name, player.username, player.telegramId, player.id, safePlayerLocale(player.locale)]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+
+    if (playerFilters.search && !searchTarget.includes(playerFilters.search)) return false;
+
+    const hasTelegram = Boolean(player.telegramId || player.username || player.verified);
+    if (playerFilters.account === "telegram" && !hasTelegram) return false;
+    if (playerFilters.account === "guest" && hasTelegram) return false;
+
+    const locale = safePlayerLocale(player.locale);
+    if (playerFilters.locale === "known" && !locale) return false;
+    if (playerFilters.locale === "unknown" && locale) return false;
+    if (!["all", "known", "unknown"].includes(playerFilters.locale) && playerFilters.locale !== locale) return false;
+
+    const updatedAt = new Date(player.updatedAt).getTime();
+    const isActive24h = Number.isFinite(updatedAt) && now - updatedAt < 24 * 60 * 60 * 1000;
+    if (playerFilters.activity === "active24h" && !isActive24h) return false;
+    if (playerFilters.activity === "inactive24h" && isActive24h) return false;
+
+    return true;
+  });
 }
 
 function renderPlayers(players) {
@@ -718,6 +822,23 @@ function platformLabel(platform) {
 function formatLocaleLabel(locale) {
   const value = String(locale || "").trim();
   return value ? value.toUpperCase() : "Unknown";
+}
+
+function safePlayerLocale(locale) {
+  const value = String(locale || "").trim().toLowerCase();
+  return value || "";
+}
+
+function resetPlayerFilters() {
+  playerFilters.search = "";
+  playerFilters.account = "all";
+  playerFilters.locale = "all";
+  playerFilters.activity = "all";
+
+  if (elements.playersSearch) elements.playersSearch.value = "";
+  if (elements.playersAccountFilter) elements.playersAccountFilter.value = "all";
+  if (elements.playersLocaleFilter) elements.playersLocaleFilter.value = "all";
+  if (elements.playersActivityFilter) elements.playersActivityFilter.value = "all";
 }
 
 function shortId(value) {

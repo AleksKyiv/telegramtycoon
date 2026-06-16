@@ -1326,7 +1326,7 @@ async function adminOverview() {
       createdAt: player.createdAt,
       updatedAt: player.updatedAt
     })),
-    payments: payments.slice(0, 80),
+    payments,
     paymentsAnalytics,
     botStars,
     leaderboard: leaderboardResponse().leaderboard,
@@ -1400,7 +1400,7 @@ async function botStarsSnapshot() {
   try {
     const [balance, starTransactions] = await Promise.all([
       callTelegram("getMyStarBalance", {}),
-      callTelegram("getStarTransactions", { limit: 20 })
+      callTelegram("getStarTransactions", { limit: 100 })
     ]);
     const rawTransactions = Array.isArray(starTransactions?.transactions) ? starTransactions.transactions : [];
     const transactions = rawTransactions.map(normalizeStarTransaction);

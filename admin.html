@@ -431,6 +431,7 @@
                 <h2>Гравці</h2>
                 <p>Останні активні зверху. Тут видно Telegram ID, рейтинг і базову статистику.</p>
               </div>
+              <strong id="playerTotalLabel">0 saved</strong>
             </div>
             <div class="audience-strip">
               <article class="audience-card">
@@ -449,7 +450,65 @@
                 <small>from Telegram language code</small>
               </article>
             </div>
+            <div class="user-memory-grid">
+              <article class="memory-card">
+                <span>Saved profiles</span>
+                <strong id="memoryProfiles">0</strong>
+                <small>all remembered players</small>
+              </article>
+              <article class="memory-card">
+                <span>Telegram linked</span>
+                <strong id="memoryTelegram">0</strong>
+                <small>verified or linked accounts</small>
+              </article>
+              <article class="memory-card">
+                <span>Guests</span>
+                <strong id="memoryGuests">0</strong>
+                <small>profiles without Telegram link</small>
+              </article>
+              <article class="memory-card">
+                <span>Locale known</span>
+                <strong id="memoryLocales">0</strong>
+                <small id="memoryLocaleMissing">0 without locale</small>
+              </article>
+            </div>
             <div class="platform-split locale-split" id="localeSummary"></div>
+            <div class="players-filter-bar" aria-label="Player filters">
+              <div class="players-filter-grid">
+                <label class="filter-field">
+                  <span>Search</span>
+                  <input id="playersSearch" type="search" placeholder="name, @username, tg id" autocomplete="off" />
+                </label>
+                <label class="filter-field">
+                  <span>Account</span>
+                  <select id="playersAccountFilter">
+                    <option value="all">All users</option>
+                    <option value="telegram">Telegram linked</option>
+                    <option value="guest">Guests only</option>
+                  </select>
+                </label>
+                <label class="filter-field">
+                  <span>Locale</span>
+                  <select id="playersLocaleFilter">
+                    <option value="all">All locales</option>
+                    <option value="known">Known locale</option>
+                    <option value="unknown">Unknown locale</option>
+                  </select>
+                </label>
+                <label class="filter-field">
+                  <span>Activity</span>
+                  <select id="playersActivityFilter">
+                    <option value="all">All activity</option>
+                    <option value="active24h">Active 24h</option>
+                    <option value="inactive24h">Inactive 24h</option>
+                  </select>
+                </label>
+              </div>
+              <div class="players-filter-meta">
+                <small id="playerResultsLabel">0 shown</small>
+                <button type="button" class="ghost" id="playersResetFilters">Reset filters</button>
+              </div>
+            </div>
             <div class="table-wrap">
               <table>
                 <thead>

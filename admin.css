@@ -28,7 +28,8 @@ body {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -140,7 +141,19 @@ input {
   outline: none;
 }
 
-input:focus {
+select {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+  min-height: 42px;
+  padding: 0 14px;
+  outline: none;
+}
+
+input:focus,
+select:focus {
   border-color: rgba(92, 255, 207, 0.8);
   box-shadow: 0 0 0 4px rgba(92, 255, 207, 0.1);
 }
@@ -614,6 +627,7 @@ input:focus {
 }
 
 .payments-panel .panel-head > strong,
+.players-panel .panel-head > strong,
 .bot-stars-panel .panel-head > strong {
   align-self: start;
   border: 1px solid rgba(255, 209, 102, 0.3);
@@ -868,6 +882,81 @@ input:focus {
 .audience-card strong {
   font-size: 28px;
   line-height: 1;
+}
+
+.user-memory-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.memory-card {
+  border: 1px solid rgba(92, 255, 207, 0.12);
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(92, 255, 207, 0.08), rgba(255, 255, 255, 0.03));
+  padding: 14px;
+  display: grid;
+  gap: 8px;
+}
+
+.memory-card span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.memory-card strong {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.memory-card small {
+  color: var(--muted);
+}
+
+.players-filter-bar {
+  display: grid;
+  gap: 12px;
+  margin: 14px 0;
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.players-filter-grid {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.4fr) repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.filter-field {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.filter-field span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.players-filter-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.players-filter-meta small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .locale-split {
@@ -1250,6 +1339,8 @@ td {
   .payment-grid-compact,
   .insight-stats,
   .audience-strip,
+  .user-memory-grid,
+  .players-filter-grid,
   .data-grid,
   .action-summary {
     grid-template-columns: 1fr;
@@ -1291,6 +1382,10 @@ td {
     height: 22px;
     justify-self: center;
     background: linear-gradient(180deg, rgba(92, 255, 207, 0.2), rgba(92, 255, 207, 0.66));
+  }
+
+  .players-filter-meta {
+    display: grid;
   }
 }
 
