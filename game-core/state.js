@@ -149,6 +149,7 @@
       labUniqueMutations: 0,
       labRareUntil: 0,
       labRecipeId: DEFAULT_LAB_RECIPE_ID,
+      labSynthesis: null,
       sessions: 0,
       plantVariant: 0,
       autoCollect: false,
@@ -222,6 +223,18 @@
     restored.labRecipeId = Array.isArray(LAB_RECIPES) && LAB_RECIPES.some((recipe) => recipe.id === restored.labRecipeId)
       ? restored.labRecipeId
       : DEFAULT_LAB_RECIPE_ID;
+    const labJob = restored.labSynthesis && typeof restored.labSynthesis === "object" ? restored.labSynthesis : null;
+    restored.labSynthesis = labJob && Array.isArray(LAB_RECIPES) && LAB_RECIPES.some((recipe) => recipe.id === labJob.recipeId)
+      ? {
+        id: String(labJob.id || `lab-${Date.now()}`),
+        recipeId: String(labJob.recipeId),
+        startedAt: Math.max(0, Number(labJob.startedAt) || Date.now()),
+        durationMs: Math.max(45_000, Number(labJob.durationMs) || 60_000),
+        zenBoosted: Boolean(labJob.zenBoosted),
+        serumTargets: Math.max(0, Math.floor(Number(labJob.serumTargets) || 0)),
+        claimed: Boolean(labJob.claimed)
+      }
+      : null;
     restored.droneLevel = safeDroneLevel(restored.droneLevel);
     restored.droneSkin = normalizeDroneSkin(restored.droneSkin);
     restored.dataModuleLevel = safeDataModuleLevel(restored.dataModuleLevel);

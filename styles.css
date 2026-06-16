@@ -18483,6 +18483,23 @@ button {
   opacity: 0.9;
 }
 
+.app.room-lab .nano-lab-stage .nano-reactor-field strong {
+  position: relative;
+  z-index: 2;
+  min-width: 58px;
+  padding: 4px 8px;
+  border: 1px solid rgba(226, 255, 213, 0.18);
+  border-radius: 999px;
+  background: rgba(1, 12, 10, 0.58);
+  color: rgba(241, 255, 237, 0.92);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  font-weight: 400;
+  text-align: center;
+  letter-spacing: 0.08em;
+  box-shadow: 0 0 18px rgba(132, 255, 211, 0.12);
+}
+
 .app.room-lab .nano-lab-stage .nano-reactor-field::after {
   content: "";
   position: absolute;
@@ -18504,6 +18521,22 @@ button {
 
 .app.room-lab #labRoom.synth-ready .nano-reactor-field i {
   background: radial-gradient(circle, #f1ffac, color-mix(in srgb, var(--lab-accent, #80ffd7) 58%, transparent) 48%, transparent 72%);
+}
+
+.app.room-lab #labRoom.synth-running .nano-reactor-field {
+  background:
+    conic-gradient(from -90deg, color-mix(in srgb, var(--lab-accent, #80ffd7) 46%, transparent) 0 var(--reactor-progress, 0%), transparent var(--reactor-progress, 0%) 100%),
+    radial-gradient(circle at 50% 50%, rgba(191, 255, 171, 0.28), rgba(92, 255, 190, 0.12) 34%, transparent 62%);
+}
+
+.app.room-lab #labRoom.synth-running .nano-reactor-field span {
+  animation-duration: 2.4s;
+}
+
+.app.room-lab #labRoom.synth-claim .nano-reactor-field strong {
+  color: #07100b;
+  background: linear-gradient(135deg, #eaff9f, #86ffd9);
+  border-color: rgba(234, 255, 159, 0.7);
 }
 
 .app.room-lab #labRoom.synth-blocked .nano-reactor-field {
@@ -18573,6 +18606,18 @@ button {
   animation: nano-button-ready 2.6s ease-in-out infinite;
 }
 
+.app.room-lab .nano-lab-stage .lab-synth-cta.running {
+  opacity: 0.72;
+  animation: none;
+}
+
+.app.room-lab .nano-lab-stage .lab-synth-cta.claim {
+  border-color: rgba(234, 255, 159, 0.62);
+  background:
+    linear-gradient(135deg, rgba(234, 255, 159, 0.24), rgba(132, 255, 211, 0.16)),
+    rgba(4, 18, 16, 0.82);
+}
+
 .app.room-lab .nano-lab-stage .lab-synth-cta span {
   width: 18px;
   height: 18px;
@@ -18595,6 +18640,23 @@ button {
   grid-template-columns: minmax(0, 1fr) 58px minmax(60px, 0.2fr);
   border-radius: 18px;
   padding: 6px;
+}
+
+.app.room-lab .nano-lab-stage .lab-synthesis-panel::after {
+  content: "";
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 4px;
+  height: 2px;
+  border-radius: 999px;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--lab-accent, #80ffd7) 70%, transparent) var(--synth-progress, 0%), rgba(132, 255, 211, 0.08) var(--synth-progress, 0%));
+  opacity: 0;
+}
+
+.app.room-lab .nano-lab-stage .lab-synthesis-panel.running::after {
+  opacity: 1;
 }
 
 .app.room-lab .nano-lab-stage .lab-need-cell {

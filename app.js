@@ -2319,6 +2319,59 @@ function labMaterialCount(id, inventory = normalizeInventory(state.inventory)) {
   return Math.max(0, Math.floor(Number(inventory.materials?.[id]) || 0));
 }
 
+function labActiveJob() {
+  const job = state.labSynthesis && typeof state.labSynthesis === "object" ? state.labSynthesis : null;
+  if (!job || job.claimed || !labRecipeById(job.recipeId)) {
+    state.labSynthesis = null;
+    return null;
+  }
+  return job;
+}
+
+function labRecipeDurationMs(recipe = labRecipe()) {
+  const materialWeight = (recipe.materials || []).reduce((sum, entry) => sum + Math.max(1, Number(entry.amount) || 1), 0);
+  const costWeight = labGeneCost(recipe) * 0.55 + labSeCost(recipe) * 1.4;
+  const effectWeight = recipe.effect?.type === "catalyst" ? 1.45 : recipe.effect?.type === "serum" ? 1.18 : 1;
+  const labDiscount = Math.min(0.35, Math.max(0, Math.floor(Number(state.artifact) || 0)) * 0.025);
+  return Math.max(45_000, Math.round((42_000 + (materialWeight + costWeight) * 12_000) * effectWeight * (1 - labDiscount)));
+}
+
+function labJobProgress(job = labActiveJob(), now = Date.now()) {
+  if (!job) return { active: false, ready: false, progress: 0, remainingMs: 0, elapsedMs: 0 };
+  const durationMs = Math.max(1, Number(job.durationMs) || 1);
+  const elapsedMs = Math.max(0, now - (Number(job.startedAt) || now));
+  const progress = clamp(elapsedMs / durationMs, 0, 1);
+  return {
+    active: true,
+    ready: progress >= 1,
+    progress,
+    remainingMs: Math.max(0, durationMs - elapsedMs),
+    elapsedMs
+  };
+}
+
+function labFormatClock(ms = 0) {
+  const totalSeconds = Math.max(0, Math.ceil(Number(ms) / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
+function labApplyFinishedRecipe(recipe = labRecipe(), job = {}) {
+  if (recipe.effect?.type === "artifact") {
+    state.artifact += Math.max(1, Number(recipe.artifact || 1));
+  } else if (recipe.effect?.type === "catalyst") {
+    const rareMs = Math.max(60_000, Number(recipe.effect?.rareMs) || 0);
+    state.labRareUntil = Math.max(Date.now(), Number(state.labRareUntil) || 0) + rareMs;
+    state.zenEnergy = zenEnergyBalance() + Math.max(0, Math.floor(Number(recipe.effect?.zenEnergy) || 0));
+  }
+
+  state.score += job.zenBoosted ? Math.max(14, Number(recipe.score || 8) + 6) : Math.max(8, Number(recipe.score || 8));
+  state.resonance += job.zenBoosted ? Math.max(2, Number(recipe.resonance || 1) + 1) : Math.max(1, Number(recipe.resonance || 1));
+  state.plantVariant = (state.plantVariant + 7 + activeDonorCapsule) % PLANT_VARIANTS.length;
+  state.zenGene = state.artifact % 3 === 0 ? "aura" : state.artifact % 2 === 0 ? "crystal" : "sprout";
+}
+
 const LAB_INVENTORY_CATEGORY_DEFS = [
   { id: "greens", label: "Greens", accent: "#6cff9f", detail: "Leaf samples" },
   { id: "flowers", label: "Flowers", accent: "#d58cff", detail: "Bloom samples" },
@@ -2494,7 +2547,7 @@ function renderLabInventoryBar(inventory = normalizeInventory(state.inventory), 
   `).join("");
 }
 
-function renderLabSynthesisPanel(recipe = labRecipe(), inventory = normalizeInventory(state.inventory)) {
+function renderLabSynthesisPanel(recipe = labRecipe(), inventory = normalizeInventory(state.inventory), job = labActiveJob()) {
   const inputs = $("#labSynthesisInputs");
   if (!inputs) return;
 
@@ -2536,6 +2589,8 @@ function renderLabSynthesisPanel(recipe = labRecipe(), inventory = normalizeInve
 
   const readyCount = items.filter((item) => item.have >= item.need).length;
   const isReady = readyCount === items.length && items.length > 0;
+  const jobState = labJobProgress(job);
+  const outputRecipe = job ? labRecipeById(job.recipeId) || recipe : recipe;
 
   inputs.innerHTML = items.map((item) => `
     <article class="lab-need-cell ${item.have >= item.need ? "ready" : "missing"}" style="--need-accent:${escapeHtml(item.accent)}">
@@ -2546,10 +2601,12 @@ function renderLabSynthesisPanel(recipe = labRecipe(), inventory = normalizeInve
   `).join("");
 
   setHTML("#labSynthesisOutputGlyph", labInventoryGlyph("artifacts"));
-  setText("#labSynthesisOutputName", recipe.result || "Artifact");
-  setText("#labSynthesisState", isReady ? "Ready" : "Missing");
-  setText("#labSynthesisMeta", `${readyCount}/${items.length}`);
-  setClass("#labSynthesisPanel", "ready", isReady);
+  setText("#labSynthesisOutputName", outputRecipe.result || "Artifact");
+  setText("#labSynthesisState", jobState.ready ? "Claim" : job ? "Cooking" : isReady ? "Ready" : "Missing");
+  setText("#labSynthesisMeta", job ? labFormatClock(jobState.remainingMs) : `${readyCount}/${items.length}`);
+  setClass("#labSynthesisPanel", "ready", isReady || jobState.ready);
+  setClass("#labSynthesisPanel", "running", Boolean(job && !jobState.ready));
+  setStyle("#labSynthesisPanel", "--synth-progress", `${Math.round(jobState.progress * 100)}%`);
 }
 
 function labRecipeSummary(recipe = labRecipe()) {
@@ -2949,7 +3006,8 @@ function serverStatePayload() {
     lab: {
       uniqueMutations: Math.max(0, Math.floor(Number(state.labUniqueMutations) || 0)),
       rareUntil: Math.max(0, Number(state.labRareUntil) || 0),
-      recipeId: normalizeLabRecipeId(state.labRecipeId)
+      recipeId: normalizeLabRecipeId(state.labRecipeId),
+      job: labActiveJob()
     },
     zen: {
       energy: Math.max(0, Math.floor(Number(state.zenEnergy) || 0)),
@@ -3194,6 +3252,9 @@ function applyServerPlayerState(player = {}) {
     );
     state.labRareUntil = Math.max(Number(state.labRareUntil) || 0, Number(player.lab.rareUntil) || 0);
     state.labRecipeId = normalizeLabRecipeId(player.lab.recipeId || state.labRecipeId);
+    if (!state.labSynthesis && player.lab.job) {
+      state.labSynthesis = normalizeState({ labSynthesis: player.lab.job }).labSynthesis;
+    }
   }
 
   if (player.zen) {
@@ -3250,6 +3311,7 @@ function applyAuthoritativePlayerState(player = {}) {
     state.labUniqueMutations = Math.max(0, Math.floor(Number(player.lab.uniqueMutations) || 0));
     state.labRareUntil = Math.max(0, Number(player.lab.rareUntil) || 0);
     state.labRecipeId = normalizeLabRecipeId(player.lab.recipeId || state.labRecipeId);
+    state.labSynthesis = player.lab.job ? normalizeState({ labSynthesis: player.lab.job }).labSynthesis : null;
   }
 
   if (player.zen) {
@@ -3808,7 +3870,7 @@ function renderMutationLab(progress) {
   setText("#labUpgradeLevelValue", labLevel);
   setText("#nanoReactorLevel", `R${labLevel}`);
   setText("#nanoUpgradeLevel", `L${labLevel}`);
-  setText("#nanoChamberState", "1/3");
+  setText("#nanoChamberState", activeJob ? (jobState.ready ? "DONE" : `${Math.round(jobState.progress * 100)}%`) : "1/3");
   setText("#nanoStarsState", zenEnergyBalance() > 0 ? "ZEN" : "ST");
   setText("#mutationAutoState", state.mutationAuto ? "On" : "Off");
   setText("#uniqueMutationCount", `${uniqueCount} rare cores`);
@@ -3853,8 +3915,8 @@ function renderMutationLab(progress) {
   ]));
   setText("#synthCostLabel", `Create ${recipe.result}`);
   setText("#synthActionHint", synthState.detail);
-  setText("#synthCostLabel", canSynth ? "Launch synthesis" : synthState.label);
-  setText("#synthBoostLabel", `Create ${recipe.result}`);
+  setText("#synthCostLabel", activeJob ? (jobState.ready ? "Claim artifact" : "Synthesis running") : canSynth ? "Launch synthesis" : synthState.label);
+  setText("#synthBoostLabel", activeJob ? jobRecipe.result : `Create ${recipe.result}`);
   setText("#synthActionHint", `Cost: ${synthCosts.join(" · ")}`);
   setClass("#mutationAutoBtn", "active", state.mutationAuto);
   setClass("#labRoom", "rare-active", rareActive);
@@ -3911,6 +3973,9 @@ function renderMutationLab(progress) {
   );
   const synthState = labSynthState(recipe, inventory);
   const canSynth = synthState.ok;
+  const activeJob = labActiveJob();
+  const jobRecipe = activeJob ? labRecipeById(activeJob.recipeId) || recipe : recipe;
+  const jobState = labJobProgress(activeJob);
   const formulaSync = clamp(
     Math.round((fusionProgress + serumProgress + catalystProgress + rareChance) / 4),
     1,
@@ -3964,7 +4029,7 @@ function renderMutationLab(progress) {
   setText("#labUpgradeLevelValue", labLevel);
   setText("#nanoReactorLevel", `R${labLevel}`);
   setText("#nanoUpgradeLevel", `L${labLevel}`);
-  setText("#nanoChamberState", "1/3");
+  setText("#nanoChamberState", activeJob ? (jobState.ready ? "DONE" : `${Math.round(jobState.progress * 100)}%`) : "1/3");
   setText("#nanoStarsState", zenEnergyBalance() > 0 ? "ZEN" : "ST");
   setText("#mutationAutoState", state.mutationAuto ? "On" : "Off");
   setText("#uniqueMutationCount", `${uniqueCount} rare cores`);
@@ -3998,18 +4063,22 @@ function renderMutationLab(progress) {
   ]));
   setText("#synthCostLabel", `Create ${recipe.result}`);
   setText("#synthActionHint", synthState.detail);
-  setText("#synthCostLabel", canSynth ? "Launch synthesis" : synthState.label);
-  setText("#synthBoostLabel", `Create ${recipe.result}`);
-  setText("#synthActionHint", `Cost: ${synthCosts.join(" · ")}`);
+  setText("#synthCostLabel", activeJob ? (jobState.ready ? "Claim artifact" : "Synthesis running") : canSynth ? "Launch synthesis" : synthState.label);
+  setText("#synthBoostLabel", activeJob ? jobRecipe.result : `Create ${recipe.result}`);
+  setText("#synthActionHint", activeJob ? (jobState.ready ? "Capsule stabilized. Claim the result." : `ETA ${labFormatClock(jobState.remainingMs)}`) : `Cost: ${synthCosts.join(" / ")}`);
+  setText("#labReactorTimer", activeJob ? (jobState.ready ? "CLAIM" : labFormatClock(jobState.remainingMs)) : labFormatClock(labRecipeDurationMs(recipe)));
   setClass("#mutationAutoBtn", "active", state.mutationAuto);
   setClass("#labRoom", "rare-active", rareActive);
-  setClass("#labRoom", "synth-ready", canSynth);
-  setClass("#labRoom", "synth-blocked", !canSynth);
-  setStyle("#labRoom", "--lab-accent", recipe.accent || "#7effde");
+  setClass("#labRoom", "synth-ready", canSynth || jobState.ready);
+  setClass("#labRoom", "synth-blocked", !canSynth && !activeJob);
+  setClass("#labRoom", "synth-running", Boolean(activeJob && !jobState.ready));
+  setClass("#labRoom", "synth-claim", Boolean(jobState.ready));
+  setStyle("#labRoom", "--lab-accent", jobRecipe.accent || recipe.accent || "#7effde");
+  setStyle("#labRoom", "--reactor-progress", `${Math.round(jobState.progress * 100)}%`);
   const labRoom = $("#labRoom");
-  if (labRoom) labRoom.dataset.labMode = recipe.effect?.type || "artifact";
+  if (labRoom) labRoom.dataset.labMode = jobRecipe.effect?.type || recipe.effect?.type || "artifact";
   renderLabInventoryBar(inventory, uniqueCount);
-  renderLabSynthesisPanel(recipe, inventory);
+  renderLabSynthesisPanel(recipe, inventory, activeJob);
   renderLabInventory(recipe, inventory, uniqueCount);
   updateLabScene(buildLabSceneState({
     recipe,
@@ -4025,9 +4094,13 @@ function renderMutationLab(progress) {
 
   const synthButton = $("#synthBtn");
   if (synthButton) {
-    synthButton.disabled = !canSynth;
-    synthButton.classList.toggle("ready", canSynth);
-    synthButton.classList.toggle("blocked", !canSynth);
+    synthButton.disabled = Boolean(activeJob && !jobState.ready) || (!activeJob && !canSynth);
+    synthButton.classList.toggle("ready", canSynth || jobState.ready);
+    synthButton.classList.toggle("blocked", !canSynth && !activeJob);
+    synthButton.classList.toggle("running", Boolean(activeJob && !jobState.ready));
+    synthButton.classList.toggle("claim", Boolean(jobState.ready));
+    const label = synthButton.querySelector("b");
+    if (label) label.textContent = activeJob ? (jobState.ready ? "Claim" : "Synthesizing") : "Synthesize";
   }
 
   const strip = $("#labHarvestStrip");
@@ -5243,6 +5316,50 @@ function telegramPlatform() {
 }
 
 function synthArtifact() {
+  const activeJob = labActiveJob();
+  const activeState = labJobProgress(activeJob);
+  if (activeJob && !activeState.ready) {
+    toast(`Synthesis ${labFormatClock(activeState.remainingMs)}`);
+    triggerLabSceneCue("reject", {
+      accent: "#58dcff"
+    });
+    return;
+  }
+  if (activeJob && activeState.ready) {
+    const finishedRecipe = labRecipeById(activeJob.recipeId) || labRecipe();
+    labApplyFinishedRecipe(finishedRecipe, activeJob);
+    playTone("lab");
+    const resultToast = finishedRecipe.effect?.type === "serum"
+      ? `${finishedRecipe.result} / ${activeJob.serumTargets || 0} slots`
+      : finishedRecipe.effect?.type === "catalyst"
+        ? `${finishedRecipe.result} / rare ${Math.round((Number(finishedRecipe.effect?.rareMs) || 0) / 60000)}m`
+        : `${finishedRecipe.result} +${Math.max(1, Number(finishedRecipe.artifact || 1))}`;
+    toast(activeJob.zenBoosted ? `${resultToast} / Zen linked` : resultToast);
+    lastLabSynthesis = {
+      result: finishedRecipe.result,
+      meta: finishedRecipe.effect?.type === "serum"
+        ? ` / ${activeJob.serumTargets || 0} live slots`
+        : finishedRecipe.effect?.type === "catalyst"
+          ? ` / rare ${Math.round((Number(finishedRecipe.effect?.rareMs) || 0) / 60000)}m`
+          : ` / ${zenGeneLabel(state.zenGene)}`,
+      zenLinked: activeJob.zenBoosted,
+      at: Date.now()
+    };
+    state.labSynthesis = null;
+    trackAction("lab_recipe_claimed", {
+      recipeId: finishedRecipe.id,
+      effectType: finishedRecipe.effect?.type || "artifact",
+      artifact: state.artifact,
+      zenBoosted: activeJob.zenBoosted
+    });
+    triggerLabSceneCue(finishedRecipe.effect?.type === "catalyst" ? "rare" : "synth", {
+      accent: finishedRecipe.accent || "#7effde"
+    });
+    render();
+    scheduleBackendSync(true);
+    return;
+  }
+
   const recipe = labRecipe();
   const energyCost = labEnergyCost();
   const geneCost = labGeneCost();
@@ -5312,6 +5429,50 @@ function synthArtifact() {
 }
 
 function synthArtifact() {
+  const activeJob = labActiveJob();
+  const activeState = labJobProgress(activeJob);
+  if (activeJob && !activeState.ready) {
+    toast(`Synthesis ${labFormatClock(activeState.remainingMs)}`);
+    triggerLabSceneCue("reject", {
+      accent: "#58dcff"
+    });
+    return;
+  }
+  if (activeJob && activeState.ready) {
+    const finishedRecipe = labRecipeById(activeJob.recipeId) || labRecipe();
+    labApplyFinishedRecipe(finishedRecipe, activeJob);
+    playTone("lab");
+    const resultToast = finishedRecipe.effect?.type === "serum"
+      ? `${finishedRecipe.result} / ${activeJob.serumTargets || 0} slots`
+      : finishedRecipe.effect?.type === "catalyst"
+        ? `${finishedRecipe.result} / rare ${Math.round((Number(finishedRecipe.effect?.rareMs) || 0) / 60000)}m`
+        : `${finishedRecipe.result} +${Math.max(1, Number(finishedRecipe.artifact || 1))}`;
+    toast(activeJob.zenBoosted ? `${resultToast} / Zen linked` : resultToast);
+    lastLabSynthesis = {
+      result: finishedRecipe.result,
+      meta: finishedRecipe.effect?.type === "serum"
+        ? ` / ${activeJob.serumTargets || 0} live slots`
+        : finishedRecipe.effect?.type === "catalyst"
+          ? ` / rare ${Math.round((Number(finishedRecipe.effect?.rareMs) || 0) / 60000)}m`
+          : ` / ${zenGeneLabel(state.zenGene)}`,
+      zenLinked: activeJob.zenBoosted,
+      at: Date.now()
+    };
+    state.labSynthesis = null;
+    trackAction("lab_recipe_claimed", {
+      recipeId: finishedRecipe.id,
+      effectType: finishedRecipe.effect?.type || "artifact",
+      artifact: state.artifact,
+      zenBoosted: activeJob.zenBoosted
+    });
+    triggerLabSceneCue(finishedRecipe.effect?.type === "catalyst" ? "rare" : "synth", {
+      accent: finishedRecipe.accent || "#7effde"
+    });
+    render();
+    scheduleBackendSync(true);
+    return;
+  }
+
   const recipe = labRecipe();
   const energyCost = labEnergyCost();
   const geneCost = labGeneCost();
@@ -5394,6 +5555,36 @@ function synthArtifact() {
     state.inventory.materials[entry.id] = Math.max(0, labMaterialCount(entry.id, state.inventory) - entry.amount);
   });
   state.inventory.geneStrands -= geneCost;
+  const durationMs = labRecipeDurationMs(recipe);
+  state.labSynthesis = {
+    id: `lab-${Date.now()}`,
+    recipeId: recipe.id,
+    startedAt: Date.now(),
+    durationMs,
+    zenBoosted,
+    serumTargets,
+    claimed: false
+  };
+  playTone("lab");
+  toast(`Synthesis started / ${labFormatClock(durationMs)}`);
+  trackAction("lab_recipe_synthesized", {
+    recipeId: recipe.id,
+    effectType: recipe.effect?.type || "artifact",
+    materials: recipe.materials,
+    geneCost,
+    energyCost,
+    seCost,
+    zenBoosted,
+    serumTargets,
+    durationMs,
+    artifact: state.artifact
+  });
+  triggerLabSceneCue("synth", {
+    accent: recipe.accent || "#7effde"
+  });
+  render();
+  scheduleBackendSync(true);
+  return;
   state.plantVariant = (state.plantVariant + 7 + activeDonorCapsule) % PLANT_VARIANTS.length;
   state.score += zenBoosted ? Math.max(14, Number(recipe.score || 8) + 6) : Math.max(8, Number(recipe.score || 8));
   state.resonance += zenBoosted ? Math.max(2, Number(recipe.resonance || 1) + 1) : Math.max(1, Number(recipe.resonance || 1));

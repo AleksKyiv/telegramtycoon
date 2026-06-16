@@ -1940,12 +1940,24 @@ function mergeFarmState(existing, incoming, context = {}) {
 }
 
 function safeLabState(value) {
+  const job = value?.job && typeof value.job === "object" ? value.job : null;
   return {
     uniqueMutations: Math.min(9999, safeNumber(value?.uniqueMutations)),
     rareUntil: safeTimestamp(value?.rareUntil),
     recipeId: typeof value?.recipeId === "string" && value.recipeId.trim()
       ? value.recipeId.trim().slice(0, 64)
-      : "starter_bio_fusion"
+      : "starter_bio_fusion",
+    job: job && !job.claimed
+      ? {
+        id: typeof job.id === "string" && job.id.trim() ? job.id.trim().slice(0, 80) : `lab-${Date.now()}`,
+        recipeId: typeof job.recipeId === "string" && job.recipeId.trim() ? job.recipeId.trim().slice(0, 64) : "starter_bio_fusion",
+        startedAt: safeTimestamp(job.startedAt) || Date.now(),
+        durationMs: Math.min(86_400_000, Math.max(45_000, safeNumber(job.durationMs))),
+        zenBoosted: job.zenBoosted === true,
+        serumTargets: Math.min(99, safeNumber(job.serumTargets)),
+        claimed: false
+      }
+      : null
   };
 }
 
@@ -1955,7 +1967,8 @@ function mergeLabState(existing, incoming) {
   return {
     uniqueMutations: Math.max(current.uniqueMutations, next.uniqueMutations),
     rareUntil: Math.max(current.rareUntil, next.rareUntil),
-    recipeId: next.recipeId || current.recipeId
+    recipeId: next.recipeId || current.recipeId,
+    job: next.job || current.job || null
   };
 }
 
