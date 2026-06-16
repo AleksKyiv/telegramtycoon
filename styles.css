@@ -15197,47 +15197,6 @@ button {
   pointer-events: none;
 }
 
-/* Lab reference backdrop: isolated visual layer for the Laboratory only. */
-.app.room-lab {
-  background:
-    linear-gradient(180deg, rgba(6, 22, 19, 0.98), rgba(2, 12, 11, 0.98));
-}
-
-.app.room-lab #labRoom {
-  position: relative;
-  isolation: isolate;
-  overflow: hidden;
-  border-radius: 28px;
-}
-
-.app.room-lab #labRoom::before,
-.app.room-lab #labRoom::after {
-  content: "";
-  position: absolute;
-  inset: -18px -12px 0;
-  border-radius: 0;
-  pointer-events: none;
-}
-
-.app.room-lab #labRoom::before {
-  z-index: 0;
-  display: block;
-  background: url("assets/lab-beam-backdrop.png") center top / cover no-repeat;
-  opacity: 0.82;
-}
-
-.app.room-lab #labRoom::after {
-  z-index: 1;
-  background:
-    radial-gradient(ellipse at 50% 30%, rgba(126, 255, 222, 0.16), transparent 42%),
-    linear-gradient(180deg, rgba(2, 12, 14, 0.2), rgba(2, 12, 14, 0.74) 72%, rgba(2, 12, 14, 0.94));
-}
-
-.app.room-lab #labRoom > * {
-  position: relative;
-  z-index: 2;
-}
-
 .app.room-lab .mutation-lab {
   background: transparent;
   box-shadow:
@@ -15674,16 +15633,6 @@ button {
   .app.room-lab .lab-formula-factors {
     gap: 3px;
   }
-}
-
-/* Lab backdrop clarity fix: remove the broad square haze over the reference art. */
-.app.room-lab #labRoom::after {
-  display: none !important;
-}
-
-.app.room-lab #labRoom::before {
-  opacity: 0.82;
-  filter: none !important;
 }
 
 .app.room-lab .mutation-lab {
