@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node server.mjs",
     "static": "npx http-server . -p 4173",
+    "balance:audit": "node scripts/balance-audit.mjs",
     "telegram:menu": "node scripts/configure-telegram-bot.mjs"
   }
 }

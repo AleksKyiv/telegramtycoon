@@ -27,6 +27,10 @@ flowchart LR
 
 ## Supporting Docs
 
+- [Value First Pivot](../VALUE_FIRST_PIVOT.md)
+- [Product Math Model](../PRODUCT_MATH_MODEL.md)
+- [Release 2 Mandate](../RELEASE_2_MANDATE.md)
+- [Release 2 Phase 0 Spec](../RELEASE_2_PHASE_0_SPEC.md)
 - [System Map](../SYSTEM_MAP.md)
 - [Decisions](../DECISIONS.md)
 - [Blueprint Adoption](../BLUEPRINT_ADOPTION.md)

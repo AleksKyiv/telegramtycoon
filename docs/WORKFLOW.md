@@ -17,9 +17,31 @@ Use these docs before large changes:
 1. `docs/SYSTEM_MAP.md` - system boundaries and routing.
 2. `docs/rooms/ROOM_INDEX.md` - room passports.
 3. `docs/BLUEPRINT_ADOPTION.md` - what we took from the detailed brainstorm.
-4. `docs/blueprint/` - archived detailed brainstorm documents.
+4. `docs/VALUE_FIRST_PIVOT.md` - Stars-native value and monetization authority.
+5. `docs/blueprint/` - archived detailed brainstorm documents.
 
 The `New project` visual code is not the source of truth. The useful part is the product documentation.
+
+## Stars Direction Rule
+
+If the product owner explicitly says that Stars are important, central, or should be used for a feature, Codex must treat that as a binding product direction.
+
+Codex should still protect the product from bad execution, but not argue against the Stars strategy itself.
+
+Correct behavior:
+
+- Convert the Stars direction into scope, UI, server, Admin, and verification steps.
+- Preserve confirmed payment handling.
+- Make paid value visible in Admin.
+- Call out trust or compliance risks briefly.
+- Continue implementing once the safe scope is clear.
+
+Incorrect behavior:
+
+- Demoting Stars to an afterthought.
+- Reframing the product as non-monetized.
+- Blocking Stars because monetization can be risky.
+- Building frontend-only paid rewards.
 
 ## Codex Must Do Before Implementing
 

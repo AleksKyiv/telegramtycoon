@@ -8,7 +8,7 @@ if ("scrollRestoration" in window.history) {
 
 window.addEventListener("load", () => window.scrollTo({ top: 0, left: 0 }));
 
-const { config: coreConfig = {}, state: coreState = {} } = window.CyberGreenCore || {};
+const { config: coreConfig = {}, state: coreState = {}, economy: economyCore = {}, farm: farmCore = {} } = window.CyberGreenCore || {};
 const {
   GROW_DURATION_MS,
   BOOST_MS,
@@ -26,7 +26,9 @@ const {
   FARM_SLOT_COUNT,
   FARM_STRAINS,
   LAB_RECIPES,
-  DRONE_SKINS
+  DRONE_SKINS,
+  FARM_PASS_CONFIG = {},
+  FIRST_CAPSULE_SLOT_UNLOCKS: CORE_FIRST_CAPSULE_SLOT_UNLOCKS = {}
 } = coreConfig;
 const { createInitialState, normalizeState, normalizeInventory, normalizeMissionState, normalizeFarmSlots, farmStrainById, defaultFarmStrainForSlot } = coreState;
 const normalizeZenSound = (value = state.zenSound) => coreState.normalizeZenSound(value);
@@ -40,12 +42,12 @@ const EXACT_DONOR_MODE = true;
 const SINGLE_CAPSULE_MODE = false;
 const DONOR_RING_CIRCUMFERENCE = 251;
 const DONOR_CAPSULE_COUNT = 3;
-const FARM_PASS_PRODUCT_ID = "farm_pass_30";
-const FARM_PASS_DAYS = 30;
-const FARM_PASS_PRICE_STARS = 300;
-const FARM_PASS_DAILY_CRC = 300;
-const FARM_PASS_DAILY_SE = 3;
-const FARM_PASS_UNIQUE_FLOWER_ID = "pass_quantum_flower";
+const FARM_PASS_PRODUCT_ID = FARM_PASS_CONFIG.productId || "farm_pass_30";
+const FARM_PASS_DAYS = Math.max(1, Math.floor(Number(FARM_PASS_CONFIG.days) || 30));
+const FARM_PASS_PRICE_STARS = Math.max(1, Math.floor(Number(FARM_PASS_CONFIG.stars) || 300));
+const FARM_PASS_DAILY_CRC = Math.max(0, Math.floor(Number(FARM_PASS_CONFIG.dailyCrc) || 300));
+const FARM_PASS_DAILY_SE = Math.max(0, Math.floor(Number(FARM_PASS_CONFIG.dailySe) || 3));
+const FARM_PASS_UNIQUE_FLOWER_ID = FARM_PASS_CONFIG.uniqueFlower || "pass_quantum_flower";
 const LEAGUE_TIERS = [
   { id: "seed", name: "Seed League", min: 1_000, max: 40_000, tone: "green" },
   { id: "sprout", name: "Sprout League", min: 40_000, max: 105_000, tone: "cyan" },
@@ -89,6 +91,9 @@ const FIRST_CAPSULE_SLOT_UNLOCKS = {
     className: "premium-star premium-elite"
   }
 };
+const CAPSULE_SLOT_UNLOCKS = Object.keys(CORE_FIRST_CAPSULE_SLOT_UNLOCKS || {}).length
+  ? CORE_FIRST_CAPSULE_SLOT_UNLOCKS
+  : FIRST_CAPSULE_SLOT_UNLOCKS;
 const FARM_EVENT_REWARDS = [
   { id: "crc_1", icon: "ϟ", label: "CRC", value: "+60", accent: "crc", apply: () => { state.energy += 60; } },
   { id: "main_2", icon: "◈", label: "Core", value: "+100", accent: "main", apply: () => { state.score += 100; } },
@@ -1381,12 +1386,11 @@ function activeFarmSlot() {
 }
 
 function farmSlotProgress(slot) {
-  if (!slot?.strain || !slot.plantedAt) return 0;
-  return clamp(((Date.now() - slot.plantedAt) / slot.growthDuration) * 100, 0, 100);
+  return farmCore.slotProgress(slot);
 }
 
 function farmSlotReady(slot) {
-  return Boolean(slot?.strain && farmSlotProgress(slot) >= 100);
+  return farmCore.slotReady(slot);
 }
 
 function readyFarmSlots() {
@@ -1423,7 +1427,7 @@ function isCapsuleSlotUnlocked(capsuleIndex, slotIndex) {
 }
 
 function firstCapsuleUnlockMeta(index) {
-  return FIRST_CAPSULE_SLOT_UNLOCKS[index] || null;
+  return CAPSULE_SLOT_UNLOCKS[index] || null;
 }
 
 function unlockSlot(index) {
@@ -1488,16 +1492,37 @@ function strainLabMaterialLabel(strain) {
 }
 
 function canAffordPlant(strain) {
-  if (!strain) return false;
-  const inventory = normalizeInventory(state.inventory);
-  const inventoryKey = strain.inventoryKey || strain.id;
-  const enoughInventory = strain.requiresInventory
-    ? Math.max(0, Math.floor(Number(inventory.strains[inventoryKey]) || 0)) > 0
-    : true;
-  const enoughMain = strain.plantCostMain ? state.score >= strain.plantCostMain : true;
-  const enoughScore = strain.plantCostScore ? state.energy >= strain.plantCostScore : true;
-  const enoughResonance = strain.plantCostResonance ? state.resonance >= strain.plantCostResonance : true;
-  return enoughInventory && enoughMain && enoughScore && enoughResonance;
+  return plantAffordanceFor(strain).ok;
+}
+
+function plantAffordanceFor(strain) {
+  return farmCore.plantAffordance(strain, {
+    score: state.score,
+    energy: state.energy,
+    resonance: state.resonance,
+    inventory: normalizeInventory(state.inventory)
+  });
+}
+
+function spendPlantCostFor(strain) {
+  const spent = farmCore.spendPlantCost(strain, {
+    score: state.score,
+    energy: state.energy,
+    resonance: state.resonance,
+    inventory: normalizeInventory(state.inventory)
+  });
+  state.score = spent.score;
+  state.energy = spent.energy;
+  state.resonance = spent.resonance;
+  state.inventory = normalizeInventory(spent.inventory);
+  return spent.cost;
+}
+
+function plantBlockedCostLabel(reason, strain) {
+  if (reason === "main") return `${strain.plantCostMain}`;
+  if (reason === "crc") return `${strain.plantCostScore} CRC`;
+  if (reason === "resonance") return `${strain.plantCostResonance} ZEN`;
+  return donorPlantCostLabel(strain);
 }
 
 function donorPlantStatus(slot, strain) {
@@ -1729,37 +1754,17 @@ function claimFarmEventReward(index = farmEventSnapshot().nextClaimIndex) {
 }
 
 function farmPassDayKey(time = Date.now()) {
-  const date = new Date(time);
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  return economyCore.farmPassDayKey(time);
 }
 
 function normalizeFarmPass(value = state.farmPass) {
-  const pass = value && typeof value === "object" ? value : {};
-  const claimedDays = Array.isArray(pass.claimedDays)
-    ? pass.claimedDays.map((day) => String(day)).filter(Boolean)
-    : [];
-  return {
-    activeUntil: Math.max(0, Number(pass.activeUntil) || 0),
-    purchasedAt: Math.max(0, Number(pass.purchasedAt) || 0),
-    claimedDays: [...new Set(claimedDays)].slice(-FARM_PASS_DAYS),
-    uniqueFlowerClaimed: Boolean(pass.uniqueFlowerClaimed)
-  };
+  return economyCore.normalizeFarmPass(value, FARM_PASS_DAYS);
 }
 
 function farmPassSnapshot() {
-  state.farmPass = normalizeFarmPass(state.farmPass);
-  const now = Date.now();
-  const active = state.farmPass.activeUntil > now;
-  const today = farmPassDayKey(now);
-  const claimedToday = state.farmPass.claimedDays.includes(today);
-  const remainingMs = Math.max(0, state.farmPass.activeUntil - now);
-  return {
-    active,
-    today,
-    claimedToday,
-    remainingDays: active ? Math.max(1, Math.ceil(remainingMs / 86_400_000)) : 0,
-    claimedCount: state.farmPass.claimedDays.length
-  };
+  const snapshot = economyCore.farmPassSnapshot(state.farmPass);
+  state.farmPass = snapshot.pass;
+  return snapshot;
 }
 
 function grantFarmPassUniqueFlower() {
@@ -2570,7 +2575,7 @@ function zenEnergyBalance() {
 }
 
 function farmBiomassGain(harvest) {
-  return 2 + Math.floor(Math.max(0, Number(harvest) || 0) / 16) + Math.min(4, Math.floor(state.artifact / 2));
+  return farmCore.biomassGain(harvest, state.artifact);
 }
 
 function labBiomassCost() {
@@ -2579,7 +2584,9 @@ function labBiomassCost() {
 
 function labEnergyCost() {
   const recipe = labRecipe();
-  return zenEnergyBalance() > 0 ? Math.max(1, recipe.energy - 1) : recipe.energy;
+  const base = Math.max(0, Math.floor(Number(recipe.energy) || 0));
+  if (base <= 0) return 0;
+  return zenEnergyBalance() > 0 ? Math.max(0, base - 1) : base;
 }
 
 function labGeneCost() {
@@ -2616,7 +2623,7 @@ function labRecipe() {
     accent: "#7effde",
     materials: [],
     geneStrands: 2,
-    energy: 5,
+    energy: 0,
     se: 1,
     score: 8,
     resonance: 1,
@@ -2723,11 +2730,11 @@ function labSynthState(recipe = labRecipe(), inventory = normalizeInventory(stat
       detail: `Collect ${labGeneCost()} GS to stabilize the synthesis.`
     };
   }
-  if (state.energy < labEnergyCost()) {
+  if (labEnergyCost() > 0 && state.energy < labEnergyCost()) {
     return {
       ok: false,
-      label: "Need CRC",
-      detail: `Store ${labEnergyCost()} CRC before you start the capsule.`
+      label: "Need charge",
+      detail: `Store ${labEnergyCost()} charge before you start the capsule.`
     };
   }
   if (state.seed < labSeCost()) {
@@ -2763,29 +2770,29 @@ function labRequirementItems(recipe = labRecipe(), inventory = normalizeInventor
       color: material?.color || recipe.accent || "#7effde"
     };
   });
-  items.push(
-    {
-      label: "GS",
-      name: "Gene strands",
-      value: `${Math.max(0, Math.floor(Number(inventory.geneStrands) || 0))}/${labGeneCost()}`,
-      ready: inventory.geneStrands >= labGeneCost(),
-      color: "#b48eff"
-    },
-    {
+  items.push({
+    label: "GS",
+    name: "Gene strands",
+    value: `${Math.max(0, Math.floor(Number(inventory.geneStrands) || 0))}/${labGeneCost()}`,
+    ready: inventory.geneStrands >= labGeneCost(),
+    color: "#b48eff"
+  });
+  if (labEnergyCost() > 0) {
+    items.push({
       label: "CRC",
       name: "Capsule energy",
       value: `${Math.max(0, Math.floor(Number(state.energy) || 0))}/${labEnergyCost()}`,
       ready: state.energy >= labEnergyCost(),
       color: "#7effde"
-    },
-    {
-      label: "SE",
-      name: "Seed enzyme",
-      value: `${Math.max(0, Math.floor(Number(state.seed) || 0))}/${labSeCost()}`,
-      ready: state.seed >= labSeCost(),
-      color: "#ffd670"
-    }
-  );
+    });
+  }
+  items.push({
+    label: "SE",
+    name: "Seed enzyme",
+    value: `${Math.max(0, Math.floor(Number(state.seed) || 0))}/${labSeCost()}`,
+    ready: state.seed >= labSeCost(),
+    color: "#ffd670"
+  });
   if ((recipe.effect?.type || "artifact") === "serum") {
     const targets = labGrowingTargets().length;
     items.push({
@@ -3133,8 +3140,11 @@ function normalizeServerFarm(value = {}) {
 }
 
 function farmProgressFor(plantedAt, growthDuration) {
-  if (!plantedAt) return 0;
-  return clamp(((Date.now() - plantedAt) / growthDuration) * 100, 0, 100);
+  return farmCore.slotProgress({
+    strain: plantedAt ? "legacy" : null,
+    plantedAt,
+    growthDuration
+  });
 }
 
 function applyServerPlayerState(player = {}) {
@@ -3903,12 +3913,12 @@ function renderMutationLab(progress) {
     99
   );
   const formulaFactors = [
-    {
+    ...(labEnergyCost() > 0 ? [{
       type: "crc",
       label: "A1 CRC",
       value: `${Math.min(state.energy, labEnergyCost())}/${labEnergyCost()}`,
       power: clamp(Math.round((state.energy / Math.max(1, labEnergyCost())) * 100), 0, 100)
-    },
+    }] : []),
     {
       type: "se",
       label: "A2 SE",
@@ -3933,7 +3943,7 @@ function renderMutationLab(progress) {
   const readyRequirements = requirements.filter((item) => item.ready).length;
   const synthCosts = [
     `${labGeneCost()} GS`,
-    `${labEnergyCost()} CRC`,
+    ...(labEnergyCost() > 0 ? [`${labEnergyCost()} CRC`] : []),
     `${labSeCost()} SE`,
     ...(zenEnergyBalance() > 0 ? ["1 ZEN"] : [])
   ];
@@ -3974,7 +3984,7 @@ function renderMutationLab(progress) {
   setText("#synthCostLabel", `${recipe.result} · ${recipe.output || "Lab output"}`);
   setHTML("#synthBoostLabel", resourceCostListHtml([
     { type: "gs", value: labGeneCost() },
-    { type: "crc", value: labEnergyCost() },
+    ...(labEnergyCost() > 0 ? [{ type: "crc", value: labEnergyCost() }] : []),
     { type: "se", value: labSeCost() },
     ...(zenEnergyBalance() > 0 ? [{ type: "zen", value: 1 }] : [])
   ]));
@@ -4695,17 +4705,11 @@ function farmAction() {
 }
 
 function farmRewardTier() {
-  const roll = Math.random();
-  if (roll > 0.94) return { multiplier: 4, label: "Quantum", color: "#ffb800" };
-  if (roll > 0.77) return { multiplier: 1.8, label: "Enhanced", color: "#7effde" };
-  if (roll > 0.45) return { multiplier: 1, label: "Stable", color: "#74ffda" };
-  return { multiplier: 0.6, label: "Light", color: "#9aa8b8" };
+  return farmCore.rewardTier();
 }
 
 function farmSlotHarvestBonus(index) {
-  if (index === 4) return { multiplier: 3, seGain: 0, label: "x3" };
-  if (index === 5) return { multiplier: 5, seGain: 5, label: "x5 +5 SE" };
-  return { multiplier: 1, seGain: 0, label: "" };
+  return farmCore.slotHarvestBonus(index);
 }
 
 function plantFarmSlot(index = state.activeSlot, strainId = null) {
@@ -4719,37 +4723,28 @@ function plantFarmSlot(index = state.activeSlot, strainId = null) {
   if (slot.strain) return false;
   const strain = farmStrainById(strainId) || farmStrainById(defaultFarmStrainForSlot(index));
   if (!strain) return false;
-  if (strain.plantCostMain && state.score < strain.plantCostMain) {
-    toast(`Need ${strain.plantCostMain}`);
-    trackAction("farm_blocked_no_cost", { slot: index + 1, action: "plant", cost: "main", need: strain.plantCostMain });
-    return false;
-  }
-  if (strain.plantCostScore && state.energy < strain.plantCostScore) {
-    toast(`Need ${strain.plantCostScore} CRC`);
-    trackAction("farm_blocked_no_cost", { slot: index + 1, action: "plant", cost: "score", need: strain.plantCostScore });
-    return false;
-  }
-  if (strain.plantCostResonance && state.resonance < strain.plantCostResonance) {
-    toast(`Need ${strain.plantCostResonance} ZEN`);
-    trackAction("farm_blocked_no_cost", { slot: index + 1, action: "plant", cost: "resonance", need: strain.plantCostResonance });
+  const affordance = plantAffordanceFor(strain);
+  if (!affordance.ok) {
+    toast(`Need ${plantBlockedCostLabel(affordance.reason, strain)}`);
+    trackAction("farm_blocked_no_cost", {
+      slot: index + 1,
+      action: "plant",
+      cost: affordance.reason === "crc" ? "score" : affordance.reason,
+      need: affordance.need || 0
+    });
     return false;
   }
 
   const zenBoosted = consumeZenBoost();
-  if (strain.requiresInventory) {
-    state.inventory = normalizeInventory(state.inventory);
-    const inventoryKey = strain.inventoryKey || strain.id;
-    state.inventory.strains[inventoryKey] = Math.max(0, Math.floor(Number(state.inventory.strains[inventoryKey]) || 0) - 1);
-  }
-  if (strain.plantCostMain) state.score -= strain.plantCostMain;
-  if (strain.plantCostScore) state.energy -= strain.plantCostScore;
-  if (strain.plantCostResonance) state.resonance -= strain.plantCostResonance;
+  const cost = spendPlantCostFor(strain);
   slot.strain = strain.id;
   slot.plantedAt = Date.now();
-  slot.growthDuration = Math.max(
-    9_000,
-    Math.round((strain.durationMs - state.artifact * 1_200 - droneSpeedBonus()) * (zenBoosted ? 0.78 : 1))
-  );
+  slot.growthDuration = farmCore.growthDuration({
+    strain,
+    artifact: state.artifact,
+    droneSpeedBonus: droneSpeedBonus(),
+    zenBoosted
+  });
   slot.plantVariant = (state.plantVariant + strain.variantShift + index * 11 + state.artifact) % PLANT_VARIANTS.length;
   slot.boostUntil = 0;
   slot.readyNotified = false;
@@ -4761,9 +4756,9 @@ function plantFarmSlot(index = state.activeSlot, strainId = null) {
     slot: index + 1,
     strain: strain.id,
     growthDuration: slot.growthDuration,
-    costMain: strain.plantCostMain || 0,
-    costScore: strain.plantCostScore || 0,
-    costResonance: strain.plantCostResonance || 0,
+    costMain: cost.main,
+    costScore: cost.crc,
+    costResonance: cost.resonance,
     zenBoosted,
     zenEnergyLeft: zenEnergyBalance()
   });
@@ -4782,31 +4777,30 @@ function plantCapsuleSlot(index, strainId = null, capsuleIndex = activeDonorCaps
   if (slot.strain) return false;
   const strain = capsuleStrainById(strainId, capsuleIndex) || capsuleStrainChoices(capsuleIndex)[0];
   if (!strain) return false;
-  if (!canAffordPlant(strain)) {
-    toast(`Need ${donorPlantCostLabel(strain)}`);
+  const affordance = plantAffordanceFor(strain);
+  if (!affordance.ok) {
+    toast(`Need ${plantBlockedCostLabel(affordance.reason, strain)}`);
     trackAction("capsule_blocked_no_cost", {
       capsule: capsuleIndex + 1,
       slot: index + 1,
-      strain: strain.id
+      strain: strain.id,
+      cost: affordance.reason,
+      need: affordance.need || 0
     });
     return false;
   }
 
   const zenBoosted = consumeZenBoost();
-  if (strain.requiresInventory) {
-    state.inventory = normalizeInventory(state.inventory);
-    const inventoryKey = strain.inventoryKey || strain.id;
-    state.inventory.strains[inventoryKey] = Math.max(0, Math.floor(Number(state.inventory.strains[inventoryKey]) || 0) - 1);
-  }
-  if (strain.plantCostMain) state.score -= strain.plantCostMain;
-  if (strain.plantCostScore) state.energy -= strain.plantCostScore;
-  if (strain.plantCostResonance) state.resonance -= strain.plantCostResonance;
+  const cost = spendPlantCostFor(strain);
   slot.strain = strain.id;
   slot.plantedAt = Date.now();
-  slot.growthDuration = Math.max(
-    9_000,
-    Math.round((strain.durationMs - state.artifact * 1_000 - droneSpeedBonus()) * (zenBoosted ? 0.82 : 1))
-  );
+  slot.growthDuration = farmCore.growthDuration({
+    strain,
+    artifact: state.artifact,
+    droneSpeedBonus: droneSpeedBonus(),
+    zenBoosted,
+    capsuleIndex
+  });
   slot.plantVariant = (state.plantVariant + strain.variantShift + index * 7 + capsuleIndex * 17) % PLANT_VARIANTS.length;
   slot.boostUntil = 0;
   slot.readyNotified = false;
@@ -4817,9 +4811,9 @@ function plantCapsuleSlot(index, strainId = null, capsuleIndex = activeDonorCaps
     slot: index + 1,
     strain: strain.id,
     growthDuration: slot.growthDuration,
-    costMain: strain.plantCostMain || 0,
-    costScore: strain.plantCostScore || 0,
-    costResonance: strain.plantCostResonance || 0,
+    costMain: cost.main,
+    costScore: cost.crc,
+    costResonance: cost.resonance,
     zenBoosted,
     zenEnergyLeft: zenEnergyBalance()
   });
@@ -4834,10 +4828,14 @@ function collectCapsuleSlot(index, capsuleIndex = activeDonorCapsule, shouldRend
 
   const strain = capsuleStrainById(slot.strain, capsuleIndex) || capsuleStrainChoices(capsuleIndex)[0];
   const material = strain.labMaterial || null;
-  const tier = farmRewardTier();
-  const harvest = Math.round((strain.score + state.artifact * 3 + droneHarvestBonus()) * tier.multiplier);
-  const biomassGain = strain.biomass + farmBiomassGain(harvest);
-  const geneGain = strain.geneStrands;
+  const { tier, slotBonus, harvest, biomassGain, geneGain } = farmCore.harvestReward({
+    strain,
+    artifact: state.artifact,
+    droneHarvestBonus: droneHarvestBonus(),
+    slotIndex: index,
+    artifactFactor: 3,
+    includeSlotBonus: false
+  });
   state.score += harvest;
   state.biomass = safeBiomass() + biomassGain;
   state.resonance += state.artifact > 0 ? 1 : 0;
@@ -4912,11 +4910,13 @@ function collectHarvestV2(auto = false, index = state.activeSlot, shouldRender =
 
   const strain = farmStrainById(slot.strain) || FARM_STRAINS[0];
   const material = strain.labMaterial || null;
-  const tier = farmRewardTier();
-  const slotBonus = farmSlotHarvestBonus(index);
-  const harvest = Math.round((strain.score + state.artifact * 4 + droneHarvestBonus()) * tier.multiplier * slotBonus.multiplier);
-  const biomassGain = strain.biomass + farmBiomassGain(harvest);
-  const geneGain = strain.geneStrands;
+  const reward = farmCore.harvestReward({
+    strain,
+    artifact: state.artifact,
+    droneHarvestBonus: droneHarvestBonus(),
+    slotIndex: index
+  });
+  const { tier, slotBonus, harvest, biomassGain, geneGain } = reward;
   state.score += harvest;
   state.biomass = safeBiomass() + biomassGain;
   state.seed += slotBonus.seGain;
@@ -4999,6 +4999,13 @@ async function farmActionV2() {
 }
 
 function applyStarsReward(product = {}) {
+  const catalogProduct = economyCore.starsProductById(product.id);
+  product = {
+    ...(catalogProduct || {}),
+    ...product,
+    reward: product.reward || catalogProduct?.reward || {}
+  };
+
   if (product.id === FARM_PASS_PRODUCT_ID || product.reward?.farmPassDays) {
     activateFarmPass(product);
     return;
@@ -5032,50 +5039,12 @@ function applyStarsReward(product = {}) {
 }
 
 function mockStarsBuy(productId = "energy_pack_10") {
-  if (productId === FARM_PASS_PRODUCT_ID) {
-    applyStarsReward({
-      id: FARM_PASS_PRODUCT_ID,
-      reward: {
-        farmPassDays: FARM_PASS_DAYS,
-        dailyCrc: FARM_PASS_DAILY_CRC,
-        dailySe: FARM_PASS_DAILY_SE,
-        uniqueFlower: FARM_PASS_UNIQUE_FLOWER_ID
-      }
-    });
+  const product = economyCore.starsProductById(productId);
+  if (product) {
+    applyStarsReward(product);
     trackAction("stars_preview_mock", {
-      stars: FARM_PASS_PRICE_STARS,
-      productId,
-      farmPassDays: FARM_PASS_DAYS,
-      mode: "preview"
-    });
-    return;
-  }
-
-  if (productId === "farm_slot_4" || productId === "farm_slot_6") {
-    const slot = productId === "farm_slot_6" ? 5 : 3;
-    const stars = productId === "farm_slot_6" ? 100 : 10;
-    applyStarsReward({
-      id: productId,
-      reward: { slot }
-    });
-    trackAction("stars_preview_mock", {
-      stars,
-      productId,
-      slot: slot + 1,
-      mode: "preview"
-    });
-    return;
-  }
-
-  if (productId === "unique_mutation_10") {
-    applyStarsReward({
-      id: "unique_mutation_10",
-      reward: { uniqueMutation: 1, artifact: 2, resonance: 3, score: 24, se: 1 }
-    });
-    trackAction("stars_preview_mock", {
-      stars: 10,
-      productId,
-      uniqueMutation: 1,
+      stars: product.stars,
+      productId: product.id,
       mode: "preview"
     });
     return;
@@ -5095,11 +5064,7 @@ function mockStarsBuy(productId = "energy_pack_10") {
 
 async function buyStarsProduct(productId = "energy_pack_10") {
   const platform = telegramPlatform();
-  const stars = productId === FARM_PASS_PRODUCT_ID
-    ? FARM_PASS_PRICE_STARS
-    : productId === "farm_slot_6"
-      ? 100
-      : 10;
+  const stars = economyCore.starsAmountForProduct(productId, 10);
   trackAction("stars_button_clicked", {
     stars,
     productId,
@@ -5290,7 +5255,7 @@ function synthArtifact() {
     });
     return;
   }
-  if (state.energy < energyCost) {
+  if (energyCost > 0 && state.energy < energyCost) {
     toast(`Need ${energyCost} \u26a1`);
     trackAction("lab_blocked_no_energy", {
       energy: state.energy,
@@ -5368,7 +5333,7 @@ function synthArtifact() {
     });
     return;
   }
-  if (state.energy < energyCost) {
+  if (energyCost > 0 && state.energy < energyCost) {
     toast(`Need ${energyCost} CRC`);
     triggerLabSceneCue("reject", {
       accent: "#ff6b7d"

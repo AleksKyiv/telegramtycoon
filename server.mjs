@@ -31,12 +31,12 @@ const farmStrains = [
   {
     id: "neon_basil",
     shortName: "BASIL",
-    durationMs: 5 * 60_000,
-    score: 22,
-    biomass: 3,
+    durationMs: 35_000,
+    score: 14,
+    biomass: 2,
     geneStrands: 0,
     variantShift: 0,
-    plantCostScore: 10,
+    plantCostScore: 1,
     labMaterial: { id: "bio_leaf", short: "Leaf", amount: 1 }
   },
   {
@@ -109,10 +109,10 @@ const starsProducts = {
   energy_pack_10: {
     id: "energy_pack_10",
     title: "Energy Pack",
-    description: "Adds 12 energy to your Green Farm capsule.",
-    label: "12 Energy",
+    description: "Adds 120 CRC to your Green Farm capsule.",
+    label: "120 CRC",
     stars: 10,
-    reward: { energy: 12 }
+    reward: { energy: 120 }
   },
   farm_slot_4: {
     id: "farm_slot_4",
@@ -877,7 +877,7 @@ async function handleFarmHarvest(request, response) {
 
   slot.strain = null;
   slot.plantedAt = 0;
-  slot.growthDuration = 32_000;
+  slot.growthDuration = 30_000;
   slot.boostUntil = 0;
   slot.readyNotified = false;
 
@@ -1878,7 +1878,7 @@ function safeFarmSlot(value, index = 0) {
     id: index,
     strain,
     plantedAt: strain ? safeTimestamp(value?.plantedAt) : 0,
-    growthDuration: safeDuration(value?.growthDuration, 32_000, 8_000, 86_400_000),
+    growthDuration: safeDuration(value?.growthDuration, 30_000, 8_000, 86_400_000),
     plantVariant: safePlantVariant(value?.plantVariant),
     boostUntil: safeTimestamp(value?.boostUntil),
     readyNotified: safeBoolean(value?.readyNotified)
@@ -1894,7 +1894,7 @@ function safeFarmState(value) {
   const plantedAt = safeTimestamp(value?.plantedAt);
   return {
     plantedAt,
-    growthDuration: safeDuration(value?.growthDuration, 32_000, 8_000, 86_400_000),
+    growthDuration: safeDuration(value?.growthDuration, 30_000, 8_000, 86_400_000),
     plantVariant: safePlantVariant(value?.plantVariant),
     boostUntil: safeTimestamp(value?.boostUntil),
     autoCollect: safeBoolean(value?.autoCollect),

@@ -7,7 +7,7 @@ Prove the technical payment path before rebuilding the whole product:
 1. Open the game as a Telegram Mini App.
 2. Read Telegram user identity.
 3. Accept a small Telegram Stars payment.
-4. Credit an internal resource in the game.
+4. Credit an internal CRC resource in the game.
 5. Understand the owner payout path from earned Stars to TON, then optionally to USDT.
 
 ## Important Clarification
@@ -87,13 +87,13 @@ Result:
 - Mini App opens the invoice with `Telegram.WebApp.openInvoice`;
 - backend answers `pre_checkout_query` through the Telegram webhook;
 - backend receives `successful_payment`;
-- backend credits the player's internal energy;
+- backend credits the player's internal CRC balance;
 - frontend syncs updated balance.
 
 Minimal test product:
 
 ```txt
-Product: +12 Energy
+Product: +120 CRC
 Price: 10 Stars for test
 Currency: XTR
 ```

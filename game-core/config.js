@@ -73,13 +73,13 @@
         id: "neon_basil",
         name: "NEON BASIL",
         shortName: "BASIL",
-        type: "common",
-        durationMs: 5 * 60_000,
-        score: 22,
-        biomass: 3,
+        type: "starter",
+        durationMs: 35_000,
+        score: 14,
+        biomass: 2,
         geneStrands: 0,
         variantShift: 0,
-        plantCostScore: 10,
+        plantCostScore: 1,
         labMaterial: {
           id: "bio_leaf",
           name: "Bio Leaf",
@@ -199,7 +199,7 @@
           { id: "solar_pollen", amount: 1 }
         ],
         geneStrands: 2,
-        energy: 5,
+        energy: 0,
         se: 1,
         score: 12,
         resonance: 1,
@@ -222,7 +222,7 @@
           { id: "mint_flux", amount: 1 }
         ],
         geneStrands: 3,
-        energy: 6,
+        energy: 0,
         se: 1,
         score: 18,
         resonance: 1,
@@ -246,7 +246,7 @@
           { id: "mint_flux", amount: 1 }
         ],
         geneStrands: 4,
-        energy: 8,
+        energy: 0,
         se: 2,
         score: 24,
         resonance: 2,
@@ -295,6 +295,92 @@
   };
 
   config.FARM_STRAIN_IDS = config.FARM_STRAINS.map((strain) => strain.id);
+  config.FARM_PASS_CONFIG = {
+    productId: "farm_pass_30",
+    days: 30,
+    stars: 300,
+    dailyCrc: 300,
+    dailySe: 3,
+    uniqueFlower: "pass_quantum_flower"
+  };
+  config.STARS_PRODUCTS = {
+    energy_pack_10: {
+      id: "energy_pack_10",
+      title: "Energy Pack",
+      description: "Adds 120 CRC to your Green Farm capsule.",
+      label: "120 CRC",
+      stars: 10,
+      reward: { energy: 120 }
+    },
+    farm_slot_4: {
+      id: "farm_slot_4",
+      title: "Farm Chamber Slot",
+      description: "Unlocks the fourth growth chamber in your Green Farm capsule.",
+      label: "Chamber Slot",
+      stars: 10,
+      reward: { slot: 3 }
+    },
+    farm_slot_6: {
+      id: "farm_slot_6",
+      title: "Elite Farm Chamber",
+      description: "Unlocks the sixth chamber with x5 harvest and guaranteed +5 SE on harvest.",
+      label: "Elite Chamber",
+      stars: 100,
+      reward: { slot: 5 }
+    },
+    farm_pass_30: {
+      id: "farm_pass_30",
+      title: "Daily Nano Pass",
+      description: "30 days of daily +300 CRC, +3 SE, and one unique flower on activation.",
+      label: "30 Day Pass",
+      stars: config.FARM_PASS_CONFIG.stars,
+      reward: {
+        farmPassDays: config.FARM_PASS_CONFIG.days,
+        dailyCrc: config.FARM_PASS_CONFIG.dailyCrc,
+        dailySe: config.FARM_PASS_CONFIG.dailySe,
+        uniqueFlower: config.FARM_PASS_CONFIG.uniqueFlower
+      }
+    },
+    unique_mutation_10: {
+      id: "unique_mutation_10",
+      title: "Unique Mutation",
+      description: "Creates a rare lab mutation and boosts your artifact core.",
+      label: "Unique Mutation",
+      stars: 10,
+      reward: { uniqueMutation: 1, artifact: 2, resonance: 3, score: 24, se: 1 }
+    }
+  };
+  config.FIRST_CAPSULE_SLOT_UNLOCKS = {
+    3: {
+      state: "paid",
+      icon: "★",
+      title: "UNLOCK",
+      cost: "10 STARS",
+      bonus: "OPEN SLOT",
+      productId: "farm_slot_4",
+      stars: 10,
+      className: "premium-star"
+    },
+    4: {
+      state: "se-paid",
+      icon: "SE",
+      title: "x3 SLOT",
+      cost: "10 SE",
+      bonus: "HARVEST x3",
+      seedCost: 10,
+      className: "premium-se"
+    },
+    5: {
+      state: "paid",
+      icon: "★",
+      title: "x5 SLOT",
+      cost: "100 STARS",
+      bonus: "100% +5 SE",
+      productId: "farm_slot_6",
+      stars: 100,
+      className: "premium-star premium-elite"
+    }
+  };
 
   const core = window.CyberGreenCore || (window.CyberGreenCore = {});
   core.config = config;
