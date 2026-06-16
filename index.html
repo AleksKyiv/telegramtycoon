@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Exo+2:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=181">
+    <link rel="stylesheet" href="styles.css?v=183">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="game-core/config.js?v=8" defer></script>
     <script src="game-core/state.js?v=7" defer></script>
@@ -17,7 +17,7 @@
     <script src="game-core/lab.js?v=1" defer></script>
     <script src="game-core/zen.js?v=1" defer></script>
     <script src="game-core/telemetry.js?v=1" defer></script>
-    <script src="app.js?v=104" defer></script>
+    <script src="app.js?v=105" defer></script>
   </head>
   <body>
     <main class="app room-farm" aria-label="Green Farm Tycoon MVP">
@@ -387,8 +387,26 @@
 
       <section class="room" id="labRoom" aria-label="Lab mutation room">
         <div class="room-title"><span>Lab</span><strong id="artifactLabel">Empty</strong></div>
-        <section class="lab-blank-stage" aria-label="Lab room">
+        <section class="lab-blank-stage nano-lab-stage" aria-label="Lab room">
+          <div class="nano-lab-ambience" aria-hidden="true">
+            <i></i><i></i><i></i><i></i><i></i>
+          </div>
+          <div class="lab-glass-wall left" aria-hidden="true"></div>
+          <div class="lab-glass-wall right" aria-hidden="true"></div>
           <div class="lab-shell">
+            <header class="nano-lab-head" aria-label="Lab status">
+              <div class="nano-lab-title">
+                <span>nano atelier</span>
+                <strong>Artifact Reactor</strong>
+                <em>materials -> synthesis -> claim</em>
+              </div>
+              <div class="nano-lab-metrics" aria-hidden="true">
+                <b id="nanoReactorLevel">R1</b>
+                <b id="nanoChamberState">1/3</b>
+                <b id="nanoStarsState">ST</b>
+              </div>
+            </header>
+
             <section class="lab-top-inventory" aria-label="Lab inventory">
               <div class="lab-top-inventory-head">
                 <span>Inventory</span>
@@ -437,8 +455,14 @@
                         <path class="upgrade-arrow" d="M22 29V16m0 0-6 6m6-6 6 6"></path>
                       </svg>
                     </span>
-                    <b>L1</b>
+                    <b id="nanoUpgradeLevel">L1</b>
                   </button>
+                </div>
+
+                <div class="nano-reactor-field" aria-hidden="true">
+                  <span></span>
+                  <i></i>
+                  <b></b>
                 </div>
 
                 <div class="lab-chamber-stack" aria-label="Parallel synthesis chambers">

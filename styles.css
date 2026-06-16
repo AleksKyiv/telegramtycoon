@@ -18118,3 +18118,621 @@ button {
     padding: 3px 4px;
   }
 }
+
+/* Nano Lab exclusive pass: one modern high-tech room, tuned for Telegram mobile. */
+.app.room-lab #labRoom {
+  --nano-bg: #03100f;
+  --nano-panel: rgba(3, 18, 17, 0.78);
+  --nano-line: rgba(132, 255, 211, 0.18);
+  --nano-line-strong: rgba(132, 255, 211, 0.42);
+  --nano-text: #e9fff5;
+  --nano-soft: rgba(195, 226, 214, 0.68);
+  --nano-accent: var(--lab-accent, #80ffd7);
+  isolation: isolate;
+  padding-inline: 8px;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(111, 255, 189, 0.22), transparent 42%),
+    radial-gradient(circle at 12% 38%, rgba(39, 208, 162, 0.13), transparent 34%),
+    linear-gradient(180deg, #020807 0%, #041211 45%, #020807 100%);
+}
+
+.app.room-lab #labRoom .room-title {
+  margin: 2px 2px 8px;
+  padding: 0 2px;
+}
+
+.app.room-lab #labRoom .room-title span {
+  color: rgba(213, 255, 238, 0.72);
+  font-family: "Exo 2", sans-serif;
+  font-weight: 300;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+}
+
+.app.room-lab #labRoom .room-title strong {
+  color: #dffff3;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.app.room-lab .nano-lab-stage {
+  position: relative;
+  min-height: min(76vh, 720px);
+  overflow: hidden;
+  border: 1px solid rgba(132, 255, 211, 0.16);
+  border-radius: 30px;
+  background:
+    linear-gradient(90deg, rgba(132, 255, 211, 0.07) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(132, 255, 211, 0.045) 1px, transparent 1px),
+    radial-gradient(circle at 50% 30%, rgba(113, 255, 200, 0.2), transparent 36%),
+    linear-gradient(180deg, rgba(5, 29, 25, 0.92), rgba(2, 9, 10, 0.96));
+  background-size: 34px 34px, 34px 34px, auto, auto;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -40px 90px rgba(0, 0, 0, 0.42),
+    0 28px 70px rgba(0, 0, 0, 0.32);
+}
+
+.app.room-lab .nano-lab-stage::before {
+  content: "";
+  position: absolute;
+  inset: -20% 18% auto;
+  height: 64%;
+  background:
+    linear-gradient(90deg, transparent, rgba(158, 255, 205, 0.16), transparent),
+    radial-gradient(ellipse at center, rgba(180, 255, 205, 0.24), transparent 64%);
+  filter: blur(18px);
+  transform: perspective(380px) rotateX(58deg);
+  pointer-events: none;
+  animation: nano-light-breathe 7s ease-in-out infinite;
+}
+
+.app.room-lab .nano-lab-stage::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 50% 92%, rgba(180, 255, 165, 0.2), transparent 22%),
+    linear-gradient(180deg, transparent 0 62%, rgba(3, 30, 22, 0.48) 100%);
+  pointer-events: none;
+}
+
+.app.room-lab .nano-lab-ambience {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.app.room-lab .nano-lab-ambience i {
+  position: absolute;
+  width: 1px;
+  height: 44%;
+  top: -8%;
+  left: calc(12% + var(--i, 0) * 18%);
+  background: linear-gradient(180deg, transparent, rgba(146, 255, 210, 0.28), transparent);
+  filter: blur(0.4px);
+  opacity: 0.46;
+  animation: nano-rain 5.8s linear infinite;
+}
+
+.app.room-lab .nano-lab-ambience i:nth-child(1) { --i: 0; animation-delay: -1.2s; }
+.app.room-lab .nano-lab-ambience i:nth-child(2) { --i: 1; animation-delay: -3.7s; }
+.app.room-lab .nano-lab-ambience i:nth-child(3) { --i: 2; animation-delay: -0.8s; }
+.app.room-lab .nano-lab-ambience i:nth-child(4) { --i: 3; animation-delay: -4.4s; }
+.app.room-lab .nano-lab-ambience i:nth-child(5) { --i: 4; animation-delay: -2.3s; }
+
+.app.room-lab .nano-lab-stage .lab-glass-wall {
+  display: block;
+  top: 12px;
+  bottom: 12px;
+  width: 62px;
+  border-radius: 24px;
+  border-color: rgba(153, 255, 210, 0.14);
+  background:
+    linear-gradient(180deg, rgba(153, 255, 210, 0.11), rgba(153, 255, 210, 0.02)),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.08), transparent);
+  opacity: 0.62;
+}
+
+.app.room-lab .nano-lab-stage .lab-shell {
+  position: relative;
+  z-index: 2;
+  min-height: inherit;
+  display: grid;
+  grid-template-rows: auto auto minmax(158px, 1fr) auto;
+  gap: 9px;
+  padding: 10px;
+}
+
+.app.room-lab .nano-lab-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(210, 255, 232, 0.12);
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 8% 20%, rgba(132, 255, 211, 0.18), transparent 38%),
+    linear-gradient(180deg, rgba(5, 24, 22, 0.72), rgba(2, 12, 12, 0.72));
+  backdrop-filter: blur(13px) saturate(1.08);
+  -webkit-backdrop-filter: blur(13px) saturate(1.08);
+}
+
+.app.room-lab .nano-lab-title {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.app.room-lab .nano-lab-title span,
+.app.room-lab .nano-lab-title em,
+.app.room-lab .nano-lab-metrics b {
+  color: var(--nano-soft);
+  font-family: "JetBrains Mono", monospace;
+  font-style: normal;
+  font-weight: 400;
+}
+
+.app.room-lab .nano-lab-title span {
+  font-size: 8px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+}
+
+.app.room-lab .nano-lab-title strong {
+  color: var(--nano-text);
+  font-family: "Exo 2", sans-serif;
+  font-size: clamp(17px, 5.2vw, 25px);
+  font-weight: 300;
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
+.app.room-lab .nano-lab-title em {
+  font-size: 9px;
+  opacity: 0.72;
+}
+
+.app.room-lab .nano-lab-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, 24px);
+  gap: 5px;
+}
+
+.app.room-lab .nano-lab-metrics b {
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(132, 255, 211, 0.18);
+  border-radius: 9px;
+  background: rgba(1, 10, 10, 0.54);
+  color: rgba(218, 255, 238, 0.88);
+  font-size: 9px;
+}
+
+.app.room-lab .nano-lab-stage .lab-top-inventory,
+.app.room-lab .nano-lab-stage .lab-inventory-drawer,
+.app.room-lab .nano-lab-stage .lab-load-rack,
+.app.room-lab .nano-lab-stage .lab-reactor-shell,
+.app.room-lab .nano-lab-stage .lab-synthesis-panel {
+  border-color: rgba(132, 255, 211, 0.14);
+  background:
+    linear-gradient(180deg, rgba(7, 27, 24, 0.74), rgba(2, 10, 11, 0.82)),
+    rgba(2, 10, 11, 0.82);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.055),
+    0 14px 34px rgba(0, 0, 0, 0.2);
+}
+
+.app.room-lab .nano-lab-stage .lab-top-inventory {
+  padding: 7px;
+  border-radius: 18px;
+}
+
+.app.room-lab .nano-lab-stage .lab-segment-chip {
+  position: relative;
+  overflow: hidden;
+  min-height: 34px;
+  border-radius: 11px;
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.app.room-lab .nano-lab-stage .lab-segment-chip::after {
+  content: "";
+  position: absolute;
+  inset: auto 8px 4px;
+  height: 1px;
+  background: color-mix(in srgb, var(--segment-accent, #7effde) 50%, transparent);
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+
+.app.room-lab .nano-lab-stage .lab-segment-chip.active {
+  transform: translateY(-1px);
+}
+
+.app.room-lab .nano-lab-stage .lab-segment-chip.active::after {
+  opacity: 1;
+}
+
+.app.room-lab .nano-lab-stage .lab-inventory-drawer-grid {
+  grid-auto-columns: minmax(72px, 0.32fr);
+}
+
+.app.room-lab .nano-lab-stage .lab-sample-card {
+  min-height: 52px;
+  border-radius: 12px;
+}
+
+.app.room-lab .nano-lab-stage .lab-workbench {
+  grid-template-columns: 78px minmax(0, 1fr);
+  gap: 8px;
+  min-height: 184px;
+}
+
+.app.room-lab .nano-lab-stage .lab-load-rack {
+  position: relative;
+  grid-template-columns: 1fr;
+  gap: 6px;
+  padding: 6px;
+  border-radius: 18px;
+}
+
+.app.room-lab .nano-lab-stage .lab-load-rack::before {
+  content: "";
+  position: absolute;
+  inset: 12px auto 12px 50%;
+  width: 1px;
+  background: linear-gradient(180deg, transparent, rgba(132, 255, 211, 0.34), transparent);
+  opacity: 0.5;
+}
+
+.app.room-lab .nano-lab-stage .lab-load-slot {
+  min-height: 36px;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  place-items: center start;
+  border-radius: 12px;
+  background:
+    linear-gradient(90deg, rgba(132, 255, 211, 0.08), rgba(2, 12, 13, 0.52)),
+    rgba(2, 12, 13, 0.52);
+}
+
+.app.room-lab .nano-lab-stage .lab-load-slot.active {
+  border-color: rgba(132, 255, 211, 0.42);
+  box-shadow: 0 0 18px rgba(132, 255, 211, 0.12);
+}
+
+.app.room-lab .nano-lab-stage .lab-load-slot b {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 8px;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+}
+
+.app.room-lab .nano-lab-stage .lab-reactor-shell {
+  position: relative;
+  overflow: hidden;
+  grid-template-rows: 24px minmax(76px, 1fr) 62px 36px;
+  border-radius: 22px;
+  padding: 8px;
+  background:
+    radial-gradient(circle at 72% 24%, rgba(180, 255, 160, 0.16), transparent 34%),
+    linear-gradient(180deg, rgba(6, 29, 26, 0.86), rgba(1, 9, 10, 0.92));
+}
+
+.app.room-lab .nano-lab-stage .lab-reactor-shell::before {
+  content: "";
+  position: absolute;
+  inset: 32px 14px 46px;
+  border-radius: 28px;
+  background:
+    radial-gradient(ellipse at center, rgba(134, 255, 197, 0.24), transparent 48%),
+    repeating-linear-gradient(90deg, transparent 0 16px, rgba(132, 255, 211, 0.055) 16px 17px);
+  opacity: 0.86;
+  pointer-events: none;
+}
+
+.app.room-lab .nano-lab-stage .nano-reactor-field {
+  position: relative;
+  z-index: 1;
+  min-height: 76px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(132, 255, 211, 0.1);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(191, 255, 171, 0.36), rgba(92, 255, 190, 0.14) 34%, transparent 62%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0));
+}
+
+.app.room-lab .nano-lab-stage .nano-reactor-field span,
+.app.room-lab .nano-lab-stage .nano-reactor-field i,
+.app.room-lab .nano-lab-stage .nano-reactor-field b {
+  position: absolute;
+  border-radius: 999px;
+  pointer-events: none;
+}
+
+.app.room-lab .nano-lab-stage .nano-reactor-field span {
+  width: 84px;
+  height: 84px;
+  border: 1px solid rgba(188, 255, 173, 0.42);
+  box-shadow:
+    inset 0 0 18px rgba(132, 255, 211, 0.18),
+    0 0 28px rgba(132, 255, 211, 0.16);
+  animation: nano-orbit 8s linear infinite;
+}
+
+.app.room-lab .nano-lab-stage .nano-reactor-field i {
+  width: 48px;
+  height: 48px;
+  background: radial-gradient(circle, rgba(229, 255, 167, 0.92), rgba(132, 255, 211, 0.3) 45%, transparent 70%);
+  filter: blur(0.4px);
+  animation: nano-core-pulse 2.8s ease-in-out infinite;
+}
+
+.app.room-lab .nano-lab-stage .nano-reactor-field b {
+  width: 122px;
+  height: 28px;
+  border: 1px solid rgba(132, 255, 211, 0.2);
+  transform: rotateX(64deg);
+  opacity: 0.9;
+}
+
+.app.room-lab .nano-lab-stage .nano-reactor-field::after {
+  content: "";
+  position: absolute;
+  inset: 12px 18%;
+  border-radius: 999px;
+  border-top: 1px solid rgba(218, 255, 226, 0.18);
+  border-bottom: 1px solid rgba(132, 255, 211, 0.12);
+  opacity: 0.64;
+  transform: rotate(-8deg);
+  animation: nano-scan 3.4s ease-in-out infinite;
+}
+
+.app.room-lab #labRoom.synth-ready .nano-reactor-field {
+  border-color: color-mix(in srgb, var(--lab-accent, #80ffd7) 42%, transparent);
+  box-shadow:
+    inset 0 0 28px color-mix(in srgb, var(--lab-accent, #80ffd7) 12%, transparent),
+    0 0 36px color-mix(in srgb, var(--lab-accent, #80ffd7) 16%, transparent);
+}
+
+.app.room-lab #labRoom.synth-ready .nano-reactor-field i {
+  background: radial-gradient(circle, #f1ffac, color-mix(in srgb, var(--lab-accent, #80ffd7) 58%, transparent) 48%, transparent 72%);
+}
+
+.app.room-lab #labRoom.synth-blocked .nano-reactor-field {
+  filter: saturate(0.78);
+  opacity: 0.86;
+}
+
+.app.room-lab #labRoom[data-lab-mode="serum"] .nano-reactor-field span {
+  border-radius: 36% 64% 58% 42%;
+}
+
+.app.room-lab #labRoom[data-lab-mode="catalyst"] .nano-reactor-field span {
+  border-style: dashed;
+  animation-duration: 4.8s;
+}
+
+.app.room-lab .nano-lab-stage .lab-chamber-stack {
+  position: relative;
+  z-index: 1;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.app.room-lab .nano-lab-stage .lab-chamber {
+  min-height: 58px;
+  border-radius: 15px;
+  background:
+    radial-gradient(circle at 50% 18%, rgba(132, 255, 211, 0.18), transparent 42%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(2, 12, 13, 0.72));
+}
+
+.app.room-lab .nano-lab-stage .lab-chamber.active {
+  border-color: rgba(197, 255, 170, 0.52);
+}
+
+.app.room-lab .nano-lab-stage .lab-chamber i {
+  width: 22px;
+  height: 22px;
+  background: radial-gradient(circle, rgba(210, 255, 166, 0.92), rgba(132, 255, 211, 0.16) 62%, transparent 70%);
+}
+
+.app.room-lab .nano-lab-stage .lab-chamber b {
+  color: rgba(237, 255, 244, 0.86);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 9px;
+  font-weight: 400;
+}
+
+.app.room-lab .nano-lab-stage .lab-reactor-upgrade,
+.app.room-lab .nano-lab-stage .lab-synth-cta {
+  position: relative;
+  z-index: 1;
+  border-color: rgba(197, 255, 170, 0.34);
+  background:
+    linear-gradient(135deg, rgba(197, 255, 170, 0.18), rgba(132, 255, 211, 0.08)),
+    rgba(4, 18, 16, 0.74);
+}
+
+.app.room-lab .nano-lab-stage .lab-synth-cta {
+  min-height: 36px;
+  justify-content: center;
+  border-radius: 14px;
+  box-shadow: 0 0 24px rgba(132, 255, 211, 0.12);
+}
+
+.app.room-lab .nano-lab-stage .lab-synth-cta:not(:disabled) {
+  animation: nano-button-ready 2.6s ease-in-out infinite;
+}
+
+.app.room-lab .nano-lab-stage .lab-synth-cta span {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: radial-gradient(circle, #e8ffaa, rgba(132, 255, 211, 0.24) 70%);
+}
+
+.app.room-lab .nano-lab-stage .lab-synth-cta b {
+  color: #effff7;
+  font-family: "Exo 2", sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.app.room-lab .nano-lab-stage .lab-synthesis-panel {
+  position: relative;
+  z-index: 2;
+  min-height: 52px;
+  grid-template-columns: minmax(0, 1fr) 58px minmax(60px, 0.2fr);
+  border-radius: 18px;
+  padding: 6px;
+}
+
+.app.room-lab .nano-lab-stage .lab-need-cell {
+  width: 34px;
+  height: 34px;
+  min-height: 34px;
+  border-color: rgba(132, 255, 211, 0.22);
+  background:
+    radial-gradient(circle at 50% 20%, rgba(132, 255, 211, 0.16), transparent 52%),
+    rgba(2, 11, 12, 0.58);
+}
+
+.app.room-lab .nano-lab-stage .lab-need-cell.ready {
+  border-color: color-mix(in srgb, var(--need-color, #80ffd7) 56%, transparent);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--need-color, #80ffd7) 18%, transparent);
+}
+
+.app.room-lab .nano-lab-stage .lab-synthesis-output {
+  display: grid;
+  place-items: center;
+  gap: 2px;
+}
+
+.app.room-lab .nano-lab-stage .lab-synthesis-output strong,
+.app.room-lab .nano-lab-stage .lab-synthesis-state span,
+.app.room-lab .nano-lab-stage .lab-synthesis-state b {
+  color: rgba(236, 255, 246, 0.86);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 8px;
+  font-weight: 400;
+}
+
+@keyframes nano-light-breathe {
+  0%, 100% { opacity: 0.52; transform: perspective(380px) rotateX(58deg) scaleX(0.9); }
+  50% { opacity: 0.86; transform: perspective(380px) rotateX(58deg) scaleX(1.08); }
+}
+
+@keyframes nano-rain {
+  0% { transform: translateY(-20%); opacity: 0; }
+  16% { opacity: 0.5; }
+  100% { transform: translateY(190%); opacity: 0; }
+}
+
+@keyframes nano-orbit {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes nano-core-pulse {
+  0%, 100% { transform: scale(0.86); opacity: 0.72; }
+  50% { transform: scale(1.08); opacity: 1; }
+}
+
+@keyframes nano-scan {
+  0%, 100% { transform: translateY(-7px) rotate(-8deg) scaleX(0.78); opacity: 0.32; }
+  50% { transform: translateY(7px) rotate(8deg) scaleX(1.04); opacity: 0.82; }
+}
+
+@keyframes nano-button-ready {
+  0%, 100% { box-shadow: 0 0 18px rgba(132, 255, 211, 0.12); }
+  50% { box-shadow: 0 0 34px rgba(188, 255, 171, 0.24); }
+}
+
+@media (max-width: 480px), (max-height: 760px) {
+  .app.room-lab .nano-lab-stage {
+    min-height: min(72vh, 660px);
+    border-radius: 24px;
+  }
+
+  .app.room-lab .nano-lab-stage .lab-shell {
+    grid-template-rows: auto auto minmax(144px, 1fr) auto;
+    gap: 7px;
+    padding: 8px;
+  }
+
+  .app.room-lab .nano-lab-head {
+    padding: 8px;
+    border-radius: 16px;
+  }
+
+  .app.room-lab .nano-lab-title strong {
+    font-size: 17px;
+  }
+
+  .app.room-lab .nano-lab-title em {
+    display: none;
+  }
+
+  .app.room-lab .nano-lab-metrics {
+    grid-template-columns: repeat(3, 20px);
+  }
+
+  .app.room-lab .nano-lab-metrics b {
+    height: 20px;
+    font-size: 8px;
+  }
+
+  .app.room-lab .nano-lab-stage .lab-workbench {
+    grid-template-columns: 62px minmax(0, 1fr);
+    min-height: 158px;
+    gap: 6px;
+  }
+
+  .app.room-lab .nano-lab-stage .lab-load-slot {
+    min-height: 30px;
+    grid-template-columns: 15px minmax(0, 1fr);
+  }
+
+  .app.room-lab .nano-lab-stage .lab-reactor-shell {
+    grid-template-rows: 22px minmax(64px, 1fr) 50px 32px;
+    border-radius: 18px;
+  }
+
+  .app.room-lab .nano-lab-stage .nano-reactor-field {
+    min-height: 64px;
+  }
+
+  .app.room-lab .nano-lab-stage .nano-reactor-field span {
+    width: 68px;
+    height: 68px;
+  }
+
+  .app.room-lab .nano-lab-stage .nano-reactor-field i {
+    width: 38px;
+    height: 38px;
+  }
+
+  .app.room-lab .nano-lab-stage .lab-chamber {
+    min-height: 48px;
+  }
+
+  .app.room-lab .nano-lab-stage .lab-synthesis-panel {
+    min-height: 44px;
+    grid-template-columns: minmax(0, 1fr) 46px 44px;
+  }
+
+  .app.room-lab .nano-lab-stage .lab-need-cell {
+    width: 28px;
+    height: 28px;
+    min-height: 28px;
+  }
+}

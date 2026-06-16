@@ -3806,6 +3806,10 @@ function renderMutationLab(progress) {
   setText("#mutationTier", tier);
   setText("#labLevelValue", labLevel);
   setText("#labUpgradeLevelValue", labLevel);
+  setText("#nanoReactorLevel", `R${labLevel}`);
+  setText("#nanoUpgradeLevel", `L${labLevel}`);
+  setText("#nanoChamberState", "1/3");
+  setText("#nanoStarsState", zenEnergyBalance() > 0 ? "ZEN" : "ST");
   setText("#mutationAutoState", state.mutationAuto ? "On" : "Off");
   setText("#uniqueMutationCount", `${uniqueCount} rare cores`);
   setText("#labActionState", synthState.label);
@@ -3958,6 +3962,10 @@ function renderMutationLab(progress) {
   setText("#labFormulaSync", `SYNC ${formulaSync}%`);
   setText("#labLevelValue", labLevel);
   setText("#labUpgradeLevelValue", labLevel);
+  setText("#nanoReactorLevel", `R${labLevel}`);
+  setText("#nanoUpgradeLevel", `L${labLevel}`);
+  setText("#nanoChamberState", "1/3");
+  setText("#nanoStarsState", zenEnergyBalance() > 0 ? "ZEN" : "ST");
   setText("#mutationAutoState", state.mutationAuto ? "On" : "Off");
   setText("#uniqueMutationCount", `${uniqueCount} rare cores`);
   setText("#labActionState", synthState.label);
@@ -3995,7 +4003,11 @@ function renderMutationLab(progress) {
   setText("#synthActionHint", `Cost: ${synthCosts.join(" · ")}`);
   setClass("#mutationAutoBtn", "active", state.mutationAuto);
   setClass("#labRoom", "rare-active", rareActive);
+  setClass("#labRoom", "synth-ready", canSynth);
+  setClass("#labRoom", "synth-blocked", !canSynth);
   setStyle("#labRoom", "--lab-accent", recipe.accent || "#7effde");
+  const labRoom = $("#labRoom");
+  if (labRoom) labRoom.dataset.labMode = recipe.effect?.type || "artifact";
   renderLabInventoryBar(inventory, uniqueCount);
   renderLabSynthesisPanel(recipe, inventory);
   renderLabInventory(recipe, inventory, uniqueCount);
