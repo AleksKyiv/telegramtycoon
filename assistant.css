@@ -1,0 +1,319 @@
+:root {
+  color-scheme: dark;
+  --bg: #04080e;
+  --ink: #eefafa;
+  --muted: #91aab3;
+  --cyan: #57e5da;
+  --teal: #8afff1;
+  --lime: #b4ff67;
+  --amber: #ffd36b;
+  --danger: #ff6f86;
+  --glass: rgba(8, 16, 25, 0.58);
+  --line: rgba(132, 190, 205, 0.18);
+  --line-strong: rgba(132, 190, 205, 0.34);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 24%, rgba(87, 229, 218, 0.14), transparent 28%),
+    radial-gradient(circle at 78% 68%, rgba(180, 255, 103, 0.08), transparent 22%),
+    linear-gradient(180deg, #07111a, var(--bg));
+  color: var(--ink);
+  font-family: Inter, "Segoe UI", system-ui, sans-serif;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  border: 0;
+  cursor: pointer;
+}
+
+.assistant-studio {
+  position: relative;
+  min-height: 100vh;
+  min-height: 100dvh;
+  isolation: isolate;
+}
+
+.scene-shell {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+}
+
+.studio-canvas,
+.studio-reference {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.studio-canvas {
+  z-index: 1;
+  display: block;
+}
+
+.studio-reference {
+  z-index: 2;
+  object-fit: cover;
+  object-position: center 28%;
+  opacity: 0;
+  transform: scale(1.02);
+  transition: opacity 320ms ease, transform 320ms ease;
+}
+
+.assistant-studio.reference-mode .studio-reference {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.assistant-studio.reference-mode .studio-canvas {
+  opacity: 0;
+}
+
+.scene-vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(4, 8, 14, 0.5), transparent 22%, rgba(4, 8, 14, 0.7)),
+    radial-gradient(circle at 50% 46%, transparent 20%, rgba(4, 8, 14, 0.28) 58%, rgba(4, 8, 14, 0.86));
+}
+
+.energy-ring {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  top: 52%;
+  border: 1px solid rgba(87, 229, 218, 0.16);
+  border-radius: 50%;
+  pointer-events: none;
+  transform: translate(-50%, -50%) rotateX(72deg);
+  animation: ringDrift 9s linear infinite;
+}
+
+.ring-a {
+  width: 62vw;
+  max-width: 680px;
+  aspect-ratio: 1;
+}
+
+.ring-b {
+  width: 44vw;
+  max-width: 480px;
+  aspect-ratio: 1;
+  border-color: rgba(180, 255, 103, 0.14);
+  animation-direction: reverse;
+}
+
+.ring-c {
+  width: 26vw;
+  max-width: 300px;
+  aspect-ratio: 1;
+  border-color: rgba(255, 211, 107, 0.12);
+}
+
+.studio-topbar,
+.mode-panel,
+.dialog-panel,
+.floating-actions {
+  position: fixed;
+  z-index: 10;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.07), transparent 42%),
+    var(--glass);
+  backdrop-filter: blur(18px);
+  box-shadow:
+    0 18px 48px rgba(0, 0, 0, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.studio-topbar {
+  left: max(14px, env(safe-area-inset-left));
+  right: max(14px, env(safe-area-inset-right));
+  top: max(12px, env(safe-area-inset-top));
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  padding: 12px;
+}
+
+.back-link,
+.status-pill,
+.mode-button,
+.action-chip,
+.prompt-row button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  padding: 0 12px;
+  border-radius: 7px;
+  color: var(--ink);
+  text-decoration: none;
+  background: rgba(7, 14, 23, 0.66);
+  border: 1px solid var(--line);
+  font-weight: 800;
+  font-size: 0.78rem;
+}
+
+.status-pill {
+  color: #061014;
+  background: linear-gradient(135deg, var(--cyan), var(--lime));
+  border-color: transparent;
+}
+
+.eyebrow {
+  margin: 0 0 4px;
+  color: var(--cyan);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+h1 {
+  margin: 0;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.mode-panel {
+  top: 92px;
+  right: max(14px, env(safe-area-inset-right));
+  display: grid;
+  gap: 8px;
+  width: min(180px, calc(100vw - 28px));
+  padding: 8px;
+}
+
+.mode-button.active,
+.action-chip.active {
+  color: #061014;
+  background: linear-gradient(135deg, var(--cyan), var(--lime));
+  border-color: transparent;
+}
+
+.dialog-panel {
+  left: max(14px, env(safe-area-inset-left));
+  right: max(14px, env(safe-area-inset-right));
+  bottom: max(14px, env(safe-area-inset-bottom));
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+}
+
+.assistant-line {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+}
+
+.assistant-line p {
+  margin: 0;
+  color: var(--ink);
+  line-height: 1.45;
+}
+
+.line-dot {
+  width: 10px;
+  height: 10px;
+  margin-top: 6px;
+  border-radius: 50%;
+  background: var(--lime);
+  box-shadow: 0 0 18px rgba(180, 255, 103, 0.64);
+}
+
+.prompt-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+.prompt-row input {
+  min-height: 44px;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--ink);
+  background: rgba(7, 14, 23, 0.78);
+  padding: 0 12px;
+}
+
+.prompt-row button {
+  color: #061014;
+  background: linear-gradient(135deg, var(--cyan), var(--lime));
+  border-color: transparent;
+}
+
+.floating-actions {
+  left: max(14px, env(safe-area-inset-left));
+  top: 92px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  width: min(260px, calc(100vw - 28px));
+  padding: 8px;
+}
+
+@keyframes ringDrift {
+  from {
+    transform: translate(-50%, -50%) rotateX(72deg) rotateZ(0deg);
+  }
+
+  to {
+    transform: translate(-50%, -50%) rotateX(72deg) rotateZ(360deg);
+  }
+}
+
+@media (max-width: 720px) {
+  .mode-panel,
+  .floating-actions {
+    top: auto;
+    bottom: 142px;
+  }
+
+  .mode-panel {
+    right: max(12px, env(safe-area-inset-right));
+    width: 150px;
+  }
+
+  .floating-actions {
+    left: max(12px, env(safe-area-inset-left));
+    width: calc(100vw - 188px);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .action-chip,
+  .mode-button {
+    padding: 0 8px;
+    font-size: 0.68rem;
+  }
+
+  .studio-topbar {
+    gap: 8px;
+  }
+
+  .back-link,
+  .status-pill {
+    padding: 0 9px;
+  }
+}

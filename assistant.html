@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#04080e">
+    <title>LabOS Assistant Studio</title>
+    <link rel="stylesheet" href="assistant.css">
+  </head>
+  <body>
+    <main class="assistant-studio">
+      <section class="scene-shell" aria-label="Assistant 3D studio">
+        <canvas id="assistantStudioCanvas" class="studio-canvas"></canvas>
+        <img class="studio-reference" id="studioReference" src="assets/assistant-reference.png" alt="">
+
+        <div class="scene-vignette" aria-hidden="true"></div>
+        <div class="energy-ring ring-a" aria-hidden="true"></div>
+        <div class="energy-ring ring-b" aria-hidden="true"></div>
+        <div class="energy-ring ring-c" aria-hidden="true"></div>
+      </section>
+
+      <header class="studio-topbar">
+        <a class="back-link" href="operator.html">Operator</a>
+        <div>
+          <p class="eyebrow">Assistant Studio</p>
+          <h1>Calm Systems Guide</h1>
+        </div>
+        <span class="status-pill">Online</span>
+      </header>
+
+      <aside class="mode-panel">
+        <button class="mode-button active" type="button" data-studio-mode="3d">3D Prototype</button>
+        <button class="mode-button" type="button" data-studio-mode="reference">Reference</button>
+      </aside>
+
+      <section class="dialog-panel">
+        <div class="assistant-line">
+          <span class="line-dot"></span>
+          <p>I am ready. Ask me what needs your attention in the system.</p>
+        </div>
+        <div class="prompt-row">
+          <input type="text" value="What changed in the system today?" aria-label="Assistant prompt">
+          <button type="button">Ask</button>
+        </div>
+      </section>
+
+      <nav class="floating-actions" aria-label="Assistant states">
+        <button class="action-chip active" type="button" data-state="idle">Idle</button>
+        <button class="action-chip" type="button" data-state="listening">Listening</button>
+        <button class="action-chip" type="button" data-state="thinking">Thinking</button>
+        <button class="action-chip" type="button" data-state="alert">Alert</button>
+      </nav>
+    </main>
+
+    <script src="assistant.js" type="module"></script>
+  </body>
+</html>
