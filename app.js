@@ -2360,6 +2360,8 @@ function labFormatClock(ms = 0) {
 function labApplyFinishedRecipe(recipe = labRecipe(), job = {}) {
   if (recipe.effect?.type === "artifact") {
     state.artifact += Math.max(1, Number(recipe.artifact || 1));
+  } else if (recipe.effect?.type === "serum") {
+    applyLabSerum(Math.max(60_000, Number(recipe.effect?.boostMs) || BOOST_MS));
   } else if (recipe.effect?.type === "catalyst") {
     const rareMs = Math.max(60_000, Number(recipe.effect?.rareMs) || 0);
     state.labRareUntil = Math.max(Date.now(), Number(state.labRareUntil) || 0) + rareMs;
@@ -2587,13 +2589,14 @@ function renderLabSynthesisPanel(recipe = labRecipe(), inventory = normalizeInve
     }
   ].slice(0, 6);
 
-  const readyCount = items.filter((item) => item.have >= item.need).length;
-  const isReady = readyCount === items.length && items.length > 0;
   const jobState = labJobProgress(job);
   const outputRecipe = job ? labRecipeById(job.recipeId) || recipe : recipe;
+  const visualItems = job ? items.map((item) => ({ ...item, have: item.need })) : items;
+  const readyCount = visualItems.filter((item) => item.have >= item.need).length;
+  const isReady = readyCount === visualItems.length && visualItems.length > 0;
 
-  inputs.innerHTML = items.map((item) => `
-    <article class="lab-need-cell ${item.have >= item.need ? "ready" : "missing"}" style="--need-accent:${escapeHtml(item.accent)}">
+  inputs.innerHTML = visualItems.map((item) => `
+    <article class="lab-need-cell ${item.have >= item.need ? "ready" : "missing"} ${job ? "loaded" : ""}" style="--need-accent:${escapeHtml(item.accent)}">
       <span>${item.glyph}</span>
       <b>${escapeHtml(item.label)}</b>
       <em>${Math.min(item.have, item.need)}/${item.need}</em>
@@ -3847,7 +3850,7 @@ function renderTokenFlow(progress, secondsLeft) {
   setResourceNumber("#tokenZenValue", state.resonance);
 }
 
-function renderMutationLab(progress) {
+function renderMutationLabLegacyUnused(progress) {
   const variant = currentPlantVariant();
   const recipe = labRecipe();
   const inventory = normalizeInventory(state.inventory);
@@ -4102,6 +4105,13 @@ function renderMutationLab(progress) {
     const label = synthButton.querySelector("b");
     if (label) label.textContent = activeJob ? (jobState.ready ? "Claim" : "Synthesizing") : "Synthesize";
   }
+
+  document.querySelectorAll(".lab-chamber").forEach((chamber, index) => {
+    const isPrimary = index === 0;
+    chamber.classList.toggle("running", isPrimary && Boolean(activeJob && !jobState.ready));
+    chamber.classList.toggle("claim", isPrimary && Boolean(jobState.ready));
+    chamber.classList.toggle("active", isPrimary && !activeJob);
+  });
 
   const strip = $("#labHarvestStrip");
   if (strip) {
@@ -5315,7 +5325,7 @@ function telegramPlatform() {
   return value || "web";
 }
 
-function synthArtifact() {
+function synthArtifactLegacyUnused() {
   const activeJob = labActiveJob();
   const activeState = labJobProgress(activeJob);
   if (activeJob && !activeState.ready) {
@@ -5533,7 +5543,7 @@ function synthArtifact() {
 
   let serumTargets = 0;
   if (recipe.effect?.type === "serum") {
-    serumTargets = applyLabSerum(Math.max(60_000, Number(recipe.effect?.boostMs) || BOOST_MS));
+    serumTargets = labGrowingTargets().length;
     if (!serumTargets) {
       toast("Need growing capsule");
       triggerLabSceneCue("reject", {

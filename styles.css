@@ -18572,6 +18572,16 @@ button {
   border-color: rgba(197, 255, 170, 0.52);
 }
 
+.app.room-lab .nano-lab-stage .lab-chamber.running {
+  border-color: color-mix(in srgb, var(--lab-accent, #80ffd7) 48%, transparent);
+  box-shadow: inset 0 0 18px rgba(132, 255, 211, 0.12), 0 0 20px rgba(132, 255, 211, 0.1);
+}
+
+.app.room-lab .nano-lab-stage .lab-chamber.claim {
+  border-color: rgba(234, 255, 159, 0.66);
+  box-shadow: inset 0 0 22px rgba(234, 255, 159, 0.14), 0 0 24px rgba(132, 255, 211, 0.18);
+}
+
 .app.room-lab .nano-lab-stage .lab-chamber i {
   width: 22px;
   height: 22px;
