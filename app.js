@@ -6020,8 +6020,6 @@ $("#farmEventDock")?.addEventListener("click", (event) => {
   if (!card) return;
   claimFarmEventReward(Number(card.dataset.farmEventStep));
 });
-$("#shopFarmSlotBtn")?.addEventListener("click", buyFarmSlot4);
-$("#shopMutationBtn")?.addEventListener("click", buyUniqueMutation);
 $("#shopPassBuyBtn")?.addEventListener("click", buyFarmPass30);
 $("#shopPassClaimBtn")?.addEventListener("click", claimFarmPassDaily);
 $("#specimenGrid")?.addEventListener("click", (event) => {
