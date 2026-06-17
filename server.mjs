@@ -17,6 +17,7 @@ const telegramWebhookSecret = process.env.TELEGRAM_WEBHOOK_SECRET || (botToken
   ? crypto.createHash("sha256").update(botToken).digest("hex")
   : "");
 const dataFile = join(root, ".data", "players.json");
+const operatorDataFile = join(root, ".data", "operator-state.json");
 const requestedDataBackend = String(process.env.DATA_BACKEND || "json").toLowerCase();
 const supabaseUrl = String(process.env.SUPABASE_URL || "").replace(/\/+$/, "");
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
@@ -150,6 +151,14 @@ const starsProducts = {
     label: "Unique Mutation",
     stars: 10,
     reward: { uniqueMutation: 1, artifact: 2, resonance: 3, score: 24, se: 1 }
+  },
+  drone_skin_tech_50: {
+    id: "drone_skin_tech_50",
+    title: "Quantum Sentinel Drone Skin",
+    description: "Unlocks the premium Quantum Sentinel drone shell forever.",
+    label: "Quantum Sentinel",
+    stars: 50,
+    reward: { droneSkin: "tech" }
   }
 };
 const STARS_WITHDRAWAL_HOLD_DAYS = 21;
@@ -169,11 +178,13 @@ const contentTypes = {
   ".jpeg": "image/jpeg",
   ".svg": "image/svg+xml"
 };
-const allowedDroneSkins = new Set(["bubbles", "smile", "aurora"]);
+const allowedDroneSkins = new Set(["bubbles", "smile", "aurora", "tech"]);
 const allowedZenSounds = new Set(["deep", "rain", "pulse"]);
 const allowedZenGenes = new Set(["sprout", "crystal", "aura"]);
 
 let db = await readDatabase();
+let operatorState = await readOperatorState();
+let operatorStatePersistError = "";
 
 const server = http.createServer(async (request, response) => {
   try {
@@ -193,6 +204,10 @@ const server = http.createServer(async (request, response) => {
 
     if (url.pathname === "/admin" || url.pathname === "/admin/") {
       return serveStatic("/admin.html", response);
+    }
+
+    if (url.pathname === "/operator" || url.pathname === "/operator/") {
+      return serveStatic("/operator.html", response);
     }
 
     return serveStatic(url.pathname, response);
@@ -253,6 +268,14 @@ async function handleApi(request, response, url) {
       { ok: true },
       { "Set-Cookie": clearAdminCookie(request) }
     );
+  }
+
+  if (url.pathname.startsWith("/api/operator/")) {
+    if (!canUseOperator(request)) {
+      return sendJson(response, 401, { error: "Operator login required." });
+    }
+
+    return handleOperatorApi(request, response, url);
   }
 
   if (url.pathname.startsWith("/api/admin/")) {
@@ -356,6 +379,120 @@ async function handleApi(request, response, url) {
   }
 
   return sendJson(response, 404, { error: "API route not found" });
+}
+
+function canUseOperator(request) {
+  return !adminPassword || isAdminAuthenticated(request);
+}
+
+async function handleOperatorApi(request, response, url) {
+  if (request.method === "GET" && url.pathname === "/api/operator/mirror") {
+    return sendJson(response, 200, operatorMirrorResponse());
+  }
+
+  if (request.method === "GET" && url.pathname === "/api/operator/release-gate") {
+    return sendJson(response, 200, operatorReleaseGate());
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/operator/release-gate/check") {
+    const gate = operatorReleaseGate();
+    operatorState.releaseGates.unshift(gate);
+    operatorState.releaseGates = operatorState.releaseGates.slice(0, 20);
+    await saveOperatorState();
+    return sendJson(response, 200, gate);
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/operator/session/start") {
+    const body = await readBody(request);
+    const moduleId = safeOperatorModuleId(body.moduleId);
+    const session = {
+      id: createOperatorId("chg"),
+      moduleId,
+      ownerRequest: safeOperatorText(body.ownerRequest, "Manual operator session"),
+      decodedGoal: safeOperatorText(body.decodedGoal, "Control scoped product change"),
+      layer: safeOperatorText(body.layer, operatorModuleById(moduleId).primaryLayer || "process"),
+      exactChange: safeOperatorText(body.exactChange, "Smallest safe change"),
+      doNotTouch: safeOperatorList(body.doNotTouch, operatorModuleById(moduleId).doNotTouch),
+      filesChanged: safeOperatorList(body.filesChanged),
+      status: "yellow",
+      visualStatus: "not_verified",
+      risk: safeOperatorText(body.risk, "Needs review before deploy"),
+      createdAt: new Date().toISOString(),
+      completedAt: null
+    };
+    operatorState.sessions.unshift(session);
+    operatorState.modules = operatorState.modules.map((item) => item.id === moduleId
+      ? { ...item, status: "yellow", updatedAt: session.createdAt }
+      : item);
+    await saveOperatorState();
+    return sendJson(response, 200, { ok: true, session, mirror: operatorMirrorResponse() });
+  }
+
+  const auditMatch = url.pathname.match(/^\/api\/operator\/session\/([^/]+)\/audit$/);
+  if (request.method === "POST" && auditMatch) {
+    const session = operatorSessionById(auditMatch[1]);
+    if (!session) return sendJson(response, 404, { error: "Operator session not found." });
+    const body = await readBody(request);
+    const audit = {
+      sessionId: session.id,
+      existingLayerFound: safeOperatorText(body.existingLayerFound, ""),
+      problemInsideLayer: safeOperatorText(body.problemInsideLayer, ""),
+      changeInsideLayer: safeOperatorText(body.changeInsideLayer, ""),
+      newLayerAdded: Boolean(body.newLayerAdded),
+      deadLayerRemoved: Boolean(body.deadLayerRemoved),
+      notes: safeOperatorText(body.notes, ""),
+      createdAt: new Date().toISOString()
+    };
+    operatorState.layerAudits.unshift(audit);
+    operatorState.layerAudits = operatorState.layerAudits.slice(0, 100);
+    await saveOperatorState();
+    return sendJson(response, 200, { ok: true, audit });
+  }
+
+  const completeMatch = url.pathname.match(/^\/api\/operator\/session\/([^/]+)\/complete$/);
+  if (request.method === "POST" && completeMatch) {
+    const session = operatorSessionById(completeMatch[1]);
+    if (!session) return sendJson(response, 404, { error: "Operator session not found." });
+    const body = await readBody(request);
+    const now = new Date().toISOString();
+    session.status = "blue";
+    session.visualStatus = safeOperatorText(body.visualStatus, session.visualStatus || "not_verified");
+    session.filesChanged = safeOperatorList(body.filesChanged, session.filesChanged);
+    session.risk = safeOperatorText(body.risk, session.risk || "Needs owner review");
+    session.completedAt = now;
+    operatorState.modules = operatorState.modules.map((item) => item.id === session.moduleId
+      ? { ...item, status: "blue", updatedAt: now }
+      : item);
+    await saveOperatorState();
+    return sendJson(response, 200, { ok: true, session, mirror: operatorMirrorResponse() });
+  }
+
+  const reviewMatch = url.pathname.match(/^\/api\/operator\/session\/([^/]+)\/review$/);
+  if (request.method === "POST" && reviewMatch) {
+    const session = operatorSessionById(reviewMatch[1]);
+    if (!session) return sendJson(response, 404, { error: "Operator session not found." });
+    const body = await readBody(request);
+    const decision = String(body.decision || "").toLowerCase() === "accept" ? "accept" : "reject";
+    const nextStatus = decision === "accept" ? "green" : "red";
+    const event = {
+      sessionId: session.id,
+      reviewer: safeOperatorText(body.reviewer, "owner"),
+      decision,
+      reason: safeOperatorText(body.reason, decision === "accept" ? "Accepted" : "Rejected"),
+      nextStatus,
+      createdAt: new Date().toISOString()
+    };
+    session.status = nextStatus;
+    operatorState.reviewEvents.unshift(event);
+    operatorState.reviewEvents = operatorState.reviewEvents.slice(0, 100);
+    operatorState.modules = operatorState.modules.map((item) => item.id === session.moduleId
+      ? { ...item, status: nextStatus, updatedAt: event.createdAt }
+      : item);
+    await saveOperatorState();
+    return sendJson(response, 200, { ok: true, event, mirror: operatorMirrorResponse() });
+  }
+
+  return sendJson(response, 404, { error: "Operator API route not found" });
 }
 
 async function createStarsInvoice(request, response) {
@@ -499,6 +636,7 @@ function createDefaultPlayerRecord({ id, user, verified }) {
     artifact: 0,
     droneLevel: 1,
     droneSkin: "bubbles",
+    ownedDroneSkins: safeOwnedDroneSkins(),
     dataModuleLevel: 1,
     missions: safeMissions(),
     unlockedSlots: safeUnlockedSlots({ 0: true, 1: true, 2: true }),
@@ -535,7 +673,9 @@ function ensurePlayerRecord({ clientId, user, verified }) {
   existing.sessions = safeNumber(existing.sessions);
   existing.artifact = safeNumber(existing.artifact);
   existing.droneLevel = safeDroneLevel(existing.droneLevel);
+  existing.ownedDroneSkins = safeOwnedDroneSkins(existing.ownedDroneSkins);
   existing.droneSkin = safeDroneSkin(existing.droneSkin);
+  if (!existing.ownedDroneSkins[existing.droneSkin]) existing.droneSkin = "bubbles";
   existing.dataModuleLevel = safeDataModuleLevel(existing.dataModuleLevel);
   existing.inventory = safeInventory(existing.inventory);
   existing.missions = safeMissions(existing.missions);
@@ -623,9 +763,14 @@ function upsertPlayer({ clientId, user, state, verified, eventType = "player_syn
   const droneLevel = state?.droneLevel === undefined
     ? safeDroneLevel(existing.droneLevel)
     : safeDroneLevel(state.droneLevel);
-  const droneSkin = state?.droneSkin === undefined
+  const ownedDroneSkins = safeOwnedDroneSkins({
+    ...safeOwnedDroneSkins(existing.ownedDroneSkins),
+    ...safeOwnedDroneSkins(state?.ownedDroneSkins)
+  });
+  const requestedDroneSkin = state?.droneSkin === undefined
     ? safeDroneSkin(existing.droneSkin)
     : safeDroneSkin(state.droneSkin);
+  const droneSkin = ownedDroneSkins[requestedDroneSkin] ? requestedDroneSkin : "bubbles";
   const dataModuleLevel = state?.dataModuleLevel === undefined
     ? safeDataModuleLevel(existing.dataModuleLevel)
     : safeDataModuleLevel(state.dataModuleLevel);
@@ -660,6 +805,7 @@ function upsertPlayer({ clientId, user, state, verified, eventType = "player_syn
     artifact,
     droneLevel,
     droneSkin,
+    ownedDroneSkins,
     dataModuleLevel,
     missions,
     unlockedSlots,
@@ -990,6 +1136,14 @@ function handleSuccessfulPayment(message) {
       const uniqueFlower = String(product.reward.uniqueFlower || farmPassConfig.uniqueFlower);
       player.inventory.strains[uniqueFlower] = safeNumber(player.inventory.strains?.[uniqueFlower]) + 1;
     }
+    if (product.reward.droneSkin !== undefined) {
+      const skin = safeDroneSkin(product.reward.droneSkin);
+      player.ownedDroneSkins = safeOwnedDroneSkins({
+        ...safeOwnedDroneSkins(player.ownedDroneSkins),
+        [skin]: true
+      });
+      player.droneSkin = skin;
+    }
     player.starsSpent = safeNumber(player.starsSpent) + product.stars;
     player.purchases = safeNumber(player.purchases) + 1;
     player.updatedAt = now;
@@ -1316,6 +1470,7 @@ async function adminOverview() {
       artifact: player.artifact,
       droneLevel: player.droneLevel,
       droneSkin: safeDroneSkin(player.droneSkin),
+      ownedDroneSkins: safeOwnedDroneSkins(player.ownedDroneSkins),
       dataModuleLevel: safeDataModuleLevel(player.dataModuleLevel),
       unlockedSlots: safeUnlockedSlots(player.unlockedSlots),
       missions: player.missions || { opened: {}, claimed: {} },
@@ -1375,6 +1530,231 @@ function dataStoreStatus() {
     schemaPath: "database/supabase-schema.sql",
     exportUrl: "/api/admin/export"
   };
+}
+
+function defaultOperatorModules() {
+  const now = new Date().toISOString();
+  return [
+    { id: "F01", room: "Farm", name: "Farm room shell", status: "yellow", primaryLayer: "visual / ux", role: "First 30-second product impression", doNotTouch: ["Lab", "Zen", "Shop", "Admin"], critical: true, updatedAt: now },
+    { id: "F02", room: "Farm", name: "Farm capsule slots", status: "yellow", primaryLayer: "gameplay / visual", role: "Planting, growing, harvesting", doNotTouch: ["economy math", "Stars", "drone skin"], critical: true, updatedAt: now },
+    { id: "F03", room: "Farm", name: "Drone rail", status: "red", primaryLayer: "visual", role: "Service drone inside farm scene", doNotTouch: ["beam", "skins", "capsule", "rewards"], critical: true, updatedAt: now },
+    { id: "F04", room: "Farm", name: "Drone skins", status: "blue", primaryLayer: "payment / persistence / visual", role: "Free skins plus paid 50 Stars skin", doNotTouch: ["drone rail position", "Farm rewards"], critical: true, updatedAt: now },
+    { id: "F05", room: "Farm", name: "Farm reward clarity", status: "yellow", primaryLayer: "ux / economy", role: "Show what plants produce without clutter", doNotTouch: ["Shop", "Lab formulas"], critical: true, updatedAt: now },
+    { id: "L01", room: "Lab", name: "Lab room shell", status: "gray", primaryLayer: "product / visual", role: "Future advanced crafting room", doNotTouch: ["Farm fast-start loop"], critical: false, updatedAt: now },
+    { id: "L02", room: "Lab", name: "Lab reactor", status: "gray", primaryLayer: "gameplay / visual", role: "Future artifact synthesis process", doNotTouch: ["Stars math until designed"], critical: false, updatedAt: now },
+    { id: "L03", room: "Lab", name: "Lab formulas", status: "gray", primaryLayer: "economy / ux", role: "Future artifact recipes from DNA/materials", doNotTouch: ["CRC formula cost"], critical: false, updatedAt: now },
+    { id: "Z01", room: "Zen", name: "Zen room", status: "green", primaryLayer: "emotional / visual", role: "Separate meditation state", doNotTouch: ["Farm core loop", "Stars"], critical: false, updatedAt: now },
+    { id: "S01", room: "Core", name: "Settings shell", status: "blue", primaryLayer: "ux", role: "Compact settings entry", doNotTouch: ["Farm layout"], critical: false, updatedAt: now },
+    { id: "S02", room: "Core", name: "Sound and vibration", status: "blue", primaryLayer: "audio / ux", role: "Sound panel inside settings", doNotTouch: ["TON wallet", "policy links"], critical: false, updatedAt: now },
+    { id: "S03", room: "Core", name: "TON wallet button", status: "blue", primaryLayer: "platform / ux", role: "Placeholder connect entry", doNotTouch: ["payment logic unless requested"], critical: false, updatedAt: now },
+    { id: "P01", room: "Core", name: "Stars products", status: "yellow", primaryLayer: "payment / economy", role: "Paid pass, slot, mutation, drone skin", doNotTouch: ["frontend-only rewards"], critical: true, updatedAt: now },
+    { id: "A01", room: "Admin", name: "Admin payments", status: "yellow", primaryLayer: "admin / payment", role: "Owner sees Stars operations", doNotTouch: ["game visuals"], critical: true, updatedAt: now },
+    { id: "A02", room: "Admin", name: "Admin users", status: "yellow", primaryLayer: "admin / analytics", role: "Owner sees unique users and locale", doNotTouch: ["payment rows"], critical: true, updatedAt: now },
+    { id: "C01", room: "Core", name: "Product docs and operator process", status: "yellow", primaryLayer: "process", role: "Prevent uncontrolled AI changes", doNotTouch: ["player runtime code unless requested"], critical: true, updatedAt: now }
+  ];
+}
+
+async function readOperatorState() {
+  try {
+    return normalizeOperatorState(JSON.parse(await readFile(operatorDataFile, "utf8")));
+  } catch {
+    return normalizeOperatorState({});
+  }
+}
+
+async function saveOperatorState() {
+  operatorState = normalizeOperatorState({ ...operatorState, updatedAt: new Date().toISOString() });
+  try {
+    await mkdir(dirname(operatorDataFile), { recursive: true });
+    await writeFile(operatorDataFile, JSON.stringify(operatorState, null, 2));
+    operatorStatePersistError = "";
+  } catch (error) {
+    operatorStatePersistError = safeOperatorText(error?.message || "Operator state was kept in memory only.");
+    console.error("Operator state persistence failed:", error);
+  }
+}
+
+function normalizeOperatorState(value = {}) {
+  const defaults = defaultOperatorModules();
+  const storedModules = Array.isArray(value.modules) ? value.modules : [];
+  const storedById = new Map(storedModules.map((item) => [String(item.id || ""), item]));
+  return {
+    modules: defaults.map((item) => normalizeOperatorModule({ ...item, ...(storedById.get(item.id) || {}) })),
+    sessions: Array.isArray(value.sessions) ? value.sessions.map(normalizeOperatorSession).slice(0, 100) : [],
+    layerAudits: Array.isArray(value.layerAudits) ? value.layerAudits.map(normalizeOperatorAudit).slice(0, 100) : [],
+    reviewEvents: Array.isArray(value.reviewEvents) ? value.reviewEvents.map(normalizeOperatorReview).slice(0, 100) : [],
+    releaseGates: Array.isArray(value.releaseGates) ? value.releaseGates.slice(0, 20) : [],
+    updatedAt: value.updatedAt || new Date().toISOString()
+  };
+}
+
+function operatorMirrorResponse() {
+  operatorState = normalizeOperatorState(operatorState);
+  const gate = operatorReleaseGate();
+  return {
+    ok: true,
+    generatedAt: new Date().toISOString(),
+    modules: operatorState.modules,
+    sessions: operatorState.sessions,
+    layerAudits: operatorState.layerAudits,
+    reviewEvents: operatorState.reviewEvents,
+    releaseGate: gate,
+    runtime: {
+      storage: operatorDataFile,
+      persisted: !operatorStatePersistError,
+      persistError: operatorStatePersistError
+    },
+    summary: operatorSummary(gate)
+  };
+}
+
+function operatorReleaseGate() {
+  operatorState = normalizeOperatorState(operatorState);
+  const blockers = [];
+  const warnings = [];
+
+  operatorState.modules.forEach((module) => {
+    if (module.critical && module.status === "red") {
+      blockers.push({ moduleId: module.id, status: module.status, reason: `${module.name} is disputed` });
+    } else if (module.critical && module.status === "blue") {
+      warnings.push({ moduleId: module.id, status: module.status, reason: `${module.name} needs owner review` });
+    } else if (module.critical && module.status === "yellow") {
+      warnings.push({ moduleId: module.id, status: module.status, reason: `${module.name} is still in work` });
+    }
+  });
+
+  operatorState.sessions.slice(0, 20).forEach((session) => {
+    if (session.status === "yellow") {
+      warnings.push({ sessionId: session.id, moduleId: session.moduleId, reason: "Active session is not completed" });
+    }
+    if (session.status === "blue" && session.visualStatus !== "verified") {
+      warnings.push({ sessionId: session.id, moduleId: session.moduleId, reason: "Visual verification missing" });
+    }
+  });
+
+  return {
+    id: createOperatorId("gate"),
+    target: "deploy",
+    blocked: blockers.length > 0,
+    blockers,
+    warnings,
+    checks: {
+      syntax: "manual",
+      diffCheck: "manual",
+      visual: warnings.some((item) => String(item.reason || "").includes("Visual")) ? "missing" : "manual",
+      balanceAudit: "manual"
+    },
+    createdAt: new Date().toISOString()
+  };
+}
+
+function operatorSummary(gate) {
+  const counts = operatorState.modules.reduce((acc, item) => {
+    acc[item.status] = (acc[item.status] || 0) + 1;
+    return acc;
+  }, {});
+  return {
+    modules: operatorState.modules.length,
+    red: counts.red || 0,
+    yellow: counts.yellow || 0,
+    blue: counts.blue || 0,
+    green: counts.green || 0,
+    gray: counts.gray || 0,
+    sessions: operatorState.sessions.length,
+    blocked: gate.blocked,
+    blockers: gate.blockers.length,
+    warnings: gate.warnings.length
+  };
+}
+
+function operatorModuleById(id) {
+  return operatorState.modules.find((item) => item.id === id) ||
+    defaultOperatorModules().find((item) => item.id === id) ||
+    defaultOperatorModules()[0];
+}
+
+function operatorSessionById(id) {
+  return operatorState.sessions.find((item) => item.id === String(id || ""));
+}
+
+function safeOperatorModuleId(value) {
+  const id = String(value || "").trim().toUpperCase();
+  return operatorState.modules.some((item) => item.id === id) ? id : "C01";
+}
+
+function normalizeOperatorModule(item = {}) {
+  return {
+    id: safeOperatorText(item.id, "C01").toUpperCase(),
+    room: safeOperatorText(item.room, "Core"),
+    name: safeOperatorText(item.name, "Operator module"),
+    status: safeOperatorStatus(item.status),
+    primaryLayer: safeOperatorText(item.primaryLayer, "process"),
+    role: safeOperatorText(item.role, "Product control"),
+    doNotTouch: safeOperatorList(item.doNotTouch),
+    critical: Boolean(item.critical),
+    updatedAt: safeOperatorText(item.updatedAt, new Date().toISOString())
+  };
+}
+
+function normalizeOperatorSession(item = {}) {
+  return {
+    id: safeOperatorText(item.id, createOperatorId("chg")),
+    moduleId: safeOperatorText(item.moduleId, "C01").toUpperCase(),
+    ownerRequest: safeOperatorText(item.ownerRequest, ""),
+    decodedGoal: safeOperatorText(item.decodedGoal, ""),
+    layer: safeOperatorText(item.layer, "process"),
+    exactChange: safeOperatorText(item.exactChange, ""),
+    doNotTouch: safeOperatorList(item.doNotTouch),
+    filesChanged: safeOperatorList(item.filesChanged),
+    status: safeOperatorStatus(item.status),
+    visualStatus: safeOperatorText(item.visualStatus, "not_verified"),
+    risk: safeOperatorText(item.risk, ""),
+    createdAt: safeOperatorText(item.createdAt, new Date().toISOString()),
+    completedAt: item.completedAt || null
+  };
+}
+
+function normalizeOperatorAudit(item = {}) {
+  return {
+    sessionId: safeOperatorText(item.sessionId, ""),
+    existingLayerFound: safeOperatorText(item.existingLayerFound, ""),
+    problemInsideLayer: safeOperatorText(item.problemInsideLayer, ""),
+    changeInsideLayer: safeOperatorText(item.changeInsideLayer, ""),
+    newLayerAdded: Boolean(item.newLayerAdded),
+    deadLayerRemoved: Boolean(item.deadLayerRemoved),
+    notes: safeOperatorText(item.notes, ""),
+    createdAt: safeOperatorText(item.createdAt, new Date().toISOString())
+  };
+}
+
+function normalizeOperatorReview(item = {}) {
+  return {
+    sessionId: safeOperatorText(item.sessionId, ""),
+    reviewer: safeOperatorText(item.reviewer, "owner"),
+    decision: String(item.decision || "").toLowerCase() === "accept" ? "accept" : "reject",
+    reason: safeOperatorText(item.reason, ""),
+    nextStatus: safeOperatorStatus(item.nextStatus),
+    createdAt: safeOperatorText(item.createdAt, new Date().toISOString())
+  };
+}
+
+function safeOperatorStatus(value) {
+  const status = String(value || "").toLowerCase();
+  return ["green", "yellow", "blue", "red", "gray"].includes(status) ? status : "yellow";
+}
+
+function safeOperatorText(value, fallback = "") {
+  const text = String(value ?? fallback).replace(/\s+/g, " ").trim();
+  return text.slice(0, 500);
+}
+
+function safeOperatorList(value, fallback = []) {
+  const source = Array.isArray(value) ? value : Array.isArray(fallback) ? fallback : [];
+  return source.map((item) => safeOperatorText(item)).filter(Boolean).slice(0, 12);
+}
+
+function createOperatorId(prefix) {
+  return `${prefix}_${Date.now().toString(36)}_${crypto.randomBytes(3).toString("hex")}`;
 }
 
 async function botStarsSnapshot() {
@@ -1817,6 +2197,16 @@ function safeDroneSkin(value) {
   return allowedDroneSkins.has(skin) ? skin : "bubbles";
 }
 
+function safeOwnedDroneSkins(value = {}) {
+  const owned = { bubbles: true, smile: true, aurora: true };
+  if (!value || typeof value !== "object") return owned;
+  Object.entries(value).forEach(([key, item]) => {
+    const skin = safeDroneSkin(key);
+    if (item) owned[skin] = true;
+  });
+  return owned;
+}
+
 function safeUnlockedSlots(value) {
   const slots = { "0": true, "1": true, "2": true };
   if (!value || typeof value !== "object") return slots;
@@ -2068,6 +2458,7 @@ function safeStateSummary(state) {
     artifact: safeNumber(state?.artifact),
     droneLevel: safeDroneLevel(state?.droneLevel),
     droneSkin: safeDroneSkin(state?.droneSkin),
+    ownedDroneSkins: safeOwnedDroneSkins(state?.ownedDroneSkins),
     dataModuleLevel: safeDataModuleLevel(state?.dataModuleLevel),
     unlockedSlots: safeUnlockedSlots(state?.unlockedSlots),
     farm: safeFarmState(state?.farm),
@@ -2306,6 +2697,7 @@ function playerToRow(player) {
       artifact: safeNumber(player.artifact),
       droneLevel: safeDroneLevel(player.droneLevel),
       droneSkin: safeDroneSkin(player.droneSkin),
+      ownedDroneSkins: safeOwnedDroneSkins(player.ownedDroneSkins),
       dataModuleLevel: safeDataModuleLevel(player.dataModuleLevel),
       locale: safeLocale(player.locale),
       unlockedSlots: safeUnlockedSlots(player.unlockedSlots),
@@ -2337,6 +2729,7 @@ function playerFromRow(row) {
     artifact: safeNumber(row.artifact),
     droneLevel: safeDroneLevel(row.state?.droneLevel),
     droneSkin: safeDroneSkin(row.state?.droneSkin),
+    ownedDroneSkins: safeOwnedDroneSkins(row.state?.ownedDroneSkins),
     dataModuleLevel: safeDataModuleLevel(row.state?.dataModuleLevel),
     unlockedSlots: safeUnlockedSlots(row.state?.unlockedSlots),
     farm: safeFarmState(row.state?.farm),

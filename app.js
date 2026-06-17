@@ -36,6 +36,7 @@ const normalizeZenGene = (value = state.zenGene) => coreState.normalizeZenGene(v
 const safeDroneLevel = (value = state.droneLevel) => coreState.safeDroneLevel(value);
 const droneSkinById = (value = state.droneSkin) => coreState.droneSkinById(value);
 const normalizeDroneSkin = (value = state.droneSkin) => coreState.normalizeDroneSkin(value);
+const normalizeOwnedDroneSkins = (value = state.ownedDroneSkins) => coreState.normalizeOwnedDroneSkins(value);
 const safeDataModuleLevel = (value = state.dataModuleLevel) => coreState.safeDataModuleLevel(value);
 const normalizeUnlockedSlots = (value = state.unlockedSlots) => coreState.normalizeUnlockedSlots(value);
 const EXACT_DONOR_MODE = true;
@@ -1976,8 +1977,6 @@ function renderDonorFarm() {
     const iconKey = strain.iconKey || donorIconKey(strain.id);
     const iconSize = iconKey === "sunflower" || iconKey === "wheat" || iconKey === "spirulina" || iconKey === "flowerRose" ? 52 : iconKey === "chroma" || iconKey === "flowerOrchid" || iconKey === "flowerTulip" ? 48 : 44;
     const ringId = `donor-ring-${capsuleIndex}-${index}`;
-    const tierClass = strain.type === "epic" ? "b-ep" : strain.type === "rare" ? "b-rr" : "b-cm";
-
     return `
       <button class="slot ${ready ? "ready" : "growing"}" type="button" data-donor-slot="${index}" data-slot-state="${ready ? "ready" : "growing"}" style="--sc:${escapeHtml(strain.color || "#00D870")}">
         <div class="slot-line"></div>
@@ -1999,13 +1998,9 @@ function renderDonorFarm() {
         </div>
         <div class="slot-prog"><div class="slot-prog-f" style="width:${pct}%"></div></div>
         <div class="slot-meta">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1px">
-            <span class="s-name" style="color:${escapeHtml(strain.color || "#00D870")};text-shadow:0 0 8px ${escapeHtml(`${strain.color || "#00D870"}40`)}">${escapeHtml(strain.name)}</span>
-            <span class="b-slot ${tierClass}">${escapeHtml(strain.type.toUpperCase())}</span>
-          </div>
           ${ready
-            ? `<span class="s-rdy">HARVEST</span><span class="s-earn" style="color:${escapeHtml(strain.color || "#00D870")};text-shadow:0 0 8px ${escapeHtml(`${strain.color || "#00D870"}60`)}">+${strain.score}</span>`
-            : `<span class="s-timer">${escapeHtml(donorProgressLabel(slot))}</span><span style="font-family:var(--mono);font-size:10px;color:var(--muted)">+${strain.score} · +${strain.geneStrands} GS</span>`}
+            ? `<span class="s-rdy" aria-label="Ready">◆</span><span class="s-earn" style="color:${escapeHtml(strain.color || "#00D870")};text-shadow:0 0 8px ${escapeHtml(`${strain.color || "#00D870"}60`)}">+${strain.score}</span>`
+            : `<span class="s-timer">${escapeHtml(donorProgressLabel(slot))}</span>`}
         </div>
       </button>
     `;
@@ -2986,6 +2981,7 @@ function serverStatePayload() {
     farmPass: normalizeFarmPass(state.farmPass),
     droneLevel: safeDroneLevel(),
     droneSkin: normalizeDroneSkin(),
+    ownedDroneSkins: normalizeOwnedDroneSkins(),
     dataModuleLevel: safeDataModuleLevel(),
     unlockedSlots: normalizeUnlockedSlots(),
     missions: state.missions,
@@ -3229,7 +3225,12 @@ function applyServerPlayerState(player = {}) {
   }
 
   state.droneLevel = Math.max(safeDroneLevel(), safeDroneLevel(player.droneLevel));
+  state.ownedDroneSkins = normalizeOwnedDroneSkins({
+    ...normalizeOwnedDroneSkins(player.ownedDroneSkins),
+    ...normalizeOwnedDroneSkins(state.ownedDroneSkins)
+  });
   if (player.droneSkin) state.droneSkin = normalizeDroneSkin(player.droneSkin);
+  if (!state.ownedDroneSkins[state.droneSkin]) state.droneSkin = "bubbles";
   state.dataModuleLevel = Math.max(safeDataModuleLevel(), safeDataModuleLevel(player.dataModuleLevel));
   state.missions = mergeMissionState(state.missions, player.missions);
   state.unlockedSlots = { ...normalizeUnlockedSlots(state.unlockedSlots), ...normalizeUnlockedSlots(player.unlockedSlots) };
@@ -4418,15 +4419,18 @@ function renderDrone() {
 function renderDroneSkins(activeId = normalizeDroneSkin()) {
   const grid = $("#droneSkinGrid");
   if (!grid) return;
+  const ownedSkins = normalizeOwnedDroneSkins();
 
   grid.innerHTML = DRONE_SKINS.map((skin) => {
     const active = skin.id === activeId;
+    const locked = Boolean(skin.premium && !ownedSkins[skin.id]);
+    const price = Math.max(1, Math.floor(Number(skin.stars) || 50));
     return `
-      <button class="drone-skin-card ${active ? "active" : ""}" type="button" data-drone-skin="${skin.id}" aria-pressed="${active ? "true" : "false"}">
+      <button class="drone-skin-card ${active ? "active" : ""} ${locked ? "locked premium" : ""}" type="button" data-drone-skin="${skin.id}" aria-pressed="${active ? "true" : "false"}">
         <span class="skin-swatch skin-${skin.id}" aria-hidden="true"><i></i><b></b></span>
         <strong>${escapeHtml(skin.name)}</strong>
-        <small>${escapeHtml(skin.route)}</small>
-        <em>${escapeHtml(skin.effect)}</em>
+        <small>${escapeHtml(locked ? `★ ${price}` : skin.route)}</small>
+        <em>${escapeHtml(locked ? "Unlock" : skin.effect)}</em>
       </button>
     `;
   }).join("");
@@ -4434,8 +4438,20 @@ function renderDroneSkins(activeId = normalizeDroneSkin()) {
 
 function selectDroneSkin(id) {
   const skin = droneSkinById(id);
+  const ownedSkins = normalizeOwnedDroneSkins();
+  if (skin.premium && !ownedSkins[skin.id]) {
+    playTone("stars");
+    toast(`${skin.name} / ★ ${skin.stars || 50}`);
+    trackAction("drone_skin_purchase_started", {
+      skin: skin.id,
+      productId: skin.productId || "drone_skin_tech_50",
+      stars: skin.stars || 50
+    });
+    buyStarsProduct(skin.productId || "drone_skin_tech_50");
+    return;
+  }
   state.droneSkin = skin.id;
-  playTone(skin.id === "aurora" ? "boost" : "tap");
+  playTone(skin.id === "aurora" || skin.id === "tech" ? "boost" : "tap");
   toast(`${skin.name} skin`);
   trackAction("drone_skin_selected", {
     skin: skin.id,
@@ -4713,6 +4729,18 @@ function render() {
   setInputValue("#vibrationLevel", settingPercent(state.vibrationLevel, 60));
   setClass("#soundBtn", "active", state.soundOn);
   setClass("#vibrationBtn", "active", state.vibrationOn);
+  const soundSettingsPanel = $("#soundSettingsPanel");
+  const soundSettingsSummary = state.soundOn && state.vibrationOn
+    ? "Sound / Vib"
+    : state.soundOn
+      ? "Sound"
+      : state.vibrationOn
+        ? "Vib"
+        : "Off";
+  setText("#soundSettingsIcon", state.soundOn ? "\u266a" : state.vibrationOn ? "\u25a6" : "\u2022");
+  setText("#soundSettingsState", soundSettingsSummary);
+  setClass("#soundSettingsBtn", "active", state.soundOn || state.vibrationOn);
+  $("#soundSettingsBtn")?.setAttribute("aria-expanded", soundSettingsPanel?.hidden ? "false" : "true");
   renderTelegramStatus();
   renderLeaderboard();
   scheduleBackendSync();
@@ -5122,6 +5150,25 @@ function applyStarsReward(product = {}) {
 
   if (product.id === "unique_mutation_10" || product.reward?.uniqueMutation) {
     applyUniqueMutationReward(product);
+    return;
+  }
+
+  if (product.reward?.droneSkin) {
+    const skin = droneSkinById(product.reward.droneSkin);
+    state.ownedDroneSkins = normalizeOwnedDroneSkins({
+      ...state.ownedDroneSkins,
+      [skin.id]: true
+    });
+    state.droneSkin = skin.id;
+    playTone("stars");
+    toast(`${skin.name} unlocked`);
+    trackAction("drone_skin_unlocked", {
+      productId: product.id || skin.productId || "drone_skin_tech_50",
+      skin: skin.id,
+      stars: product.stars || skin.stars || 50
+    });
+    render();
+    scheduleBackendSync(true);
     return;
   }
 
@@ -6088,6 +6135,24 @@ $("#settingsBtn")?.addEventListener("click", () => {
   openSheet("#settingsSheet");
   playTone("tap");
   trackAction("settings_opened");
+});
+$("#soundSettingsBtn")?.addEventListener("click", () => {
+  const panel = $("#soundSettingsPanel");
+  const button = $("#soundSettingsBtn");
+  if (!panel) return;
+  panel.hidden = !panel.hidden;
+  button?.setAttribute("aria-expanded", panel.hidden ? "false" : "true");
+  playTone("tap");
+  trackAction("settings_sound_panel_toggled", {
+    open: !panel.hidden
+  });
+});
+$("#tonWalletBtn")?.addEventListener("click", () => {
+  playTone("tap");
+  toast("TON wallet connect");
+  trackAction("ton_wallet_connect_clicked", {
+    source: "settings"
+  });
 });
 document.querySelectorAll("[data-close-sheet]").forEach((button) => {
   button.addEventListener("click", () => {

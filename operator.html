@@ -3,229 +3,117 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <meta name="theme-color" content="#071014">
-    <title>LabOS Operator</title>
+    <meta name="theme-color" content="#06110f">
+    <title>Operator Mirror</title>
     <link rel="stylesheet" href="operator.css">
   </head>
   <body>
     <main class="operator-shell">
-      <header class="operator-topbar">
-        <div class="brand-card panel">
-          <p class="eyebrow">Operator control</p>
-          <h1>LabOS Command Center</h1>
-          <p class="lede">Live systems overview</p>
+      <header class="operator-hero">
+        <div>
+          <p class="eyebrow">Operator Layer v1</p>
+          <h1>Product Mirror</h1>
+          <p class="lede">Server-backed control map for product modules, AI change sessions, review status, and release risk.</p>
         </div>
-
-        <div class="status-strip panel" id="statusStrip"></div>
+        <a class="admin-link" href="admin.html">Admin</a>
       </header>
 
-      <section class="hero-grid">
-        <section class="reactor-stage panel">
+      <section class="gate-panel panel" id="releaseGate">
+        <div>
+          <p class="eyebrow">Release gate</p>
+          <h2 id="gateTitle">Loading</h2>
+          <p id="gateText">Reading operator state...</p>
+        </div>
+        <button class="ghost-button" id="refreshBtn" type="button">Refresh</button>
+      </section>
+
+      <section class="summary-grid" id="summaryGrid" aria-label="Mirror summary"></section>
+
+      <section class="workspace-grid">
+        <section class="panel">
           <div class="panel-head">
             <div>
-              <p class="eyebrow">Core overview</p>
-              <h2>World Reactor</h2>
+              <p class="eyebrow">Mirror modules</p>
+              <h2>Product squares</h2>
             </div>
-            <span class="state-pill state-live">Live</span>
+            <span class="state-pill" id="moduleCount">0</span>
           </div>
-
-          <div class="reactor-stack" aria-hidden="true">
-            <div class="reactor-orbit orbit-outer"></div>
-            <div class="reactor-orbit orbit-mid"></div>
-            <div class="reactor-orbit orbit-inner"></div>
-            <div class="reactor-core">
-              <div class="reactor-pulse pulse-a"></div>
-              <div class="reactor-pulse pulse-b"></div>
-              <div class="reactor-kernel"></div>
-            </div>
-            <div class="reactor-node node-a"></div>
-            <div class="reactor-node node-b"></div>
-            <div class="reactor-node node-c"></div>
-          </div>
-
-          <div class="reactor-readout">
-            <article>
-              <span>Energy flow</span>
-              <strong>82%</strong>
-            </article>
-            <article>
-              <span>Rare state rate</span>
-              <strong>4.8%</strong>
-            </article>
-            <article>
-              <span>Operator load</span>
-              <strong>Normal</strong>
-            </article>
-          </div>
+          <div class="module-grid" id="moduleGrid"></div>
         </section>
 
-        <aside class="assistant-panel panel">
+        <aside class="panel">
           <div class="panel-head">
             <div>
-              <p class="eyebrow">Assistant</p>
-              <h2>Operator Copilot</h2>
+              <p class="eyebrow">Active detail</p>
+              <h2 id="detailTitle">Select module</h2>
             </div>
-            <a class="state-pill assistant-open-link" href="assistant.html">Open Studio</a>
+            <span class="state-pill" id="detailStatus">Idle</span>
           </div>
-
-          <div class="assistant-mode-switch" aria-label="Assistant visual mode">
-            <button class="assistant-mode active" type="button" data-assistant-mode="agent">3D Agent</button>
-            <button class="assistant-mode" type="button" data-assistant-mode="reference">Reference</button>
-          </div>
-
-          <div class="assistant-presence assistant-portrait-card">
-            <div class="assistant-figure" aria-hidden="true">
-              <img class="assistant-reference-image" src="assets/assistant-reference.png" alt="">
-              <canvas class="assistant-canvas" id="assistantCanvas"></canvas>
-              <span class="assistant-figure-sigil" id="assistantFigureSigil">Bloom</span>
-              <span class="figure-halo halo-a"></span>
-              <span class="figure-halo halo-b"></span>
-              <span class="figure-scan scan-a"></span>
-              <span class="figure-scan scan-b"></span>
-              <div class="figure-head">
-                <span class="figure-face-glow"></span>
-                <span class="figure-eye eye-left"></span>
-                <span class="figure-eye eye-right"></span>
-              </div>
-              <div class="figure-neck"></div>
-              <div class="figure-body">
-                <span class="figure-core"></span>
-                <span class="figure-line line-a"></span>
-                <span class="figure-line line-b"></span>
-                <span class="figure-line line-c"></span>
-              </div>
-              <div class="assistant-figure-locket" id="assistantFigureLocket">
-                <span class="assistant-figure-locket-core"></span>
-              </div>
-            </div>
-            <div class="assistant-copy">
-              <span class="assistant-status" id="assistantStatusLabel">online / bloom oracle</span>
-              <strong id="assistantTitleLabel">Bloom Oracle</strong>
-              <p id="assistantSummaryLabel">I am tracking soft growth signals, safe payment flow and the next premium pulse.</p>
-            </div>
-          </div>
-
-          <div class="assistant-form-strip" id="assistantFormStrip" aria-label="Assistant forms"></div>
-
-          <div class="assistant-signal-grid">
-            <article class="assistant-signal-card">
-              <span class="assistant-signal-kicker">Current mood</span>
-              <strong id="assistantMoodLabel">Warm empathy</strong>
-              <p id="assistantSignalText">Watching plant rhythm and healthy user progress.</p>
-            </article>
-
-            <article class="assistant-locket" id="assistantLocket" data-state="sealed" aria-label="Assistant locket">
-              <div class="assistant-locket-visual" aria-hidden="true">
-                <span class="assistant-locket-core"></span>
-              </div>
-              <div class="assistant-locket-copy">
-                <span class="assistant-signal-kicker">Locket</span>
-                <strong id="assistantLocketLabel">Sealed</strong>
-                <p id="assistantLocketText">No reward pulse has surfaced yet.</p>
-              </div>
-            </article>
-          </div>
-
-          <div class="assistant-quick" id="assistantQuick"></div>
-
-          <label class="assistant-input">
-            <span>Ask the operator assistant</span>
-            <textarea rows="4" placeholder="What needs my attention right now?"></textarea>
-          </label>
-
-          <div class="assistant-actions">
-            <button class="primary-button" type="button">Get summary</button>
-            <button class="ghost-button" type="button">Open alerts</button>
+          <div class="detail-card" id="moduleDetail">
+            <p>Pick a square to inspect role, protected boundaries, and current risk.</p>
           </div>
         </aside>
       </section>
 
-      <nav class="operator-dock" aria-label="Operator sections">
-        <button class="dock-item active" type="button">Core</button>
-        <button class="dock-item" type="button">Players</button>
-        <button class="dock-item" type="button">Economy</button>
-        <button class="dock-item" type="button">Health</button>
-      </nav>
-
-      <section class="dashboard-grid">
-        <section class="panel panel-card">
+      <section class="workspace-grid">
+        <section class="panel">
           <div class="panel-head">
             <div>
-              <p class="eyebrow">Realtime</p>
-              <h2>Economy Monitor</h2>
+              <p class="eyebrow">Change sessions</p>
+              <h2>Review queue</h2>
             </div>
-            <span class="state-pill">Balanced</span>
+            <span class="state-pill" id="sessionCount">0</span>
           </div>
-          <div class="metric-grid" id="economyGrid"></div>
-          <div class="spark-grid">
-            <div class="spark-card">
-              <span>Mint vs spend</span>
-              <div class="sparkline mint-spend" aria-hidden="true"></div>
-            </div>
-            <div class="spark-card">
-              <span>Meditation share</span>
-              <div class="sparkline calm-flow" aria-hidden="true"></div>
-            </div>
-          </div>
+          <div class="session-list" id="sessionList"></div>
         </section>
 
-        <section class="panel panel-card">
+        <section class="panel">
           <div class="panel-head">
             <div>
-              <p class="eyebrow">Players</p>
-              <h2>Watchlist</h2>
+              <p class="eyebrow">Start controlled work</p>
+              <h2>Session packet</h2>
             </div>
-            <button class="ghost-button" type="button">Open users</button>
           </div>
-          <div class="watchlist" id="watchlist"></div>
+          <form class="session-form" id="sessionForm">
+            <label>
+              <span>Mirror ID</span>
+              <select id="sessionModule"></select>
+            </label>
+            <label>
+              <span>Owner request</span>
+              <textarea id="sessionRequest" rows="3" placeholder="Natural request from owner"></textarea>
+            </label>
+            <label>
+              <span>Decoded goal</span>
+              <textarea id="sessionGoal" rows="3" placeholder="What Codex is actually allowed to solve"></textarea>
+            </label>
+            <div class="form-grid">
+              <label>
+                <span>Layer</span>
+                <input id="sessionLayer" type="text" placeholder="visual / ux / payment">
+              </label>
+              <label>
+                <span>Risk</span>
+                <input id="sessionRisk" type="text" placeholder="Needs visual review">
+              </label>
+            </div>
+            <button class="primary-button" type="submit">Start session</button>
+          </form>
         </section>
+      </section>
 
-        <section class="panel panel-card">
-          <div class="panel-head">
-            <div>
-              <p class="eyebrow">Live ops</p>
-              <h2>Active Experiments</h2>
-            </div>
-            <button class="ghost-button" type="button">Tune rates</button>
+      <section class="panel">
+        <div class="panel-head">
+          <div>
+            <p class="eyebrow">Layer audits</p>
+            <h2>Anti layer-over-layer ledger</h2>
           </div>
-          <div class="experiment-list" id="experimentList"></div>
-        </section>
-
-        <section class="panel panel-card">
-          <div class="panel-head">
-            <div>
-              <p class="eyebrow">Payments</p>
-              <h2>Stars Flow</h2>
-            </div>
-            <span class="state-pill state-soft">Mock</span>
-          </div>
-          <div class="payment-list" id="paymentList"></div>
-        </section>
-
-        <section class="panel panel-card">
-          <div class="panel-head">
-            <div>
-              <p class="eyebrow">System</p>
-              <h2>Alerts</h2>
-            </div>
-            <button class="ghost-button" type="button">View all</button>
-          </div>
-          <div class="alert-list" id="alertList"></div>
-        </section>
-
-        <section class="panel panel-card">
-          <div class="panel-head">
-            <div>
-              <p class="eyebrow">Recovery</p>
-              <h2>Backups and Health</h2>
-            </div>
-            <span class="state-pill state-live">Healthy</span>
-          </div>
-          <div class="backup-list" id="backupList"></div>
-        </section>
+        </div>
+        <div class="audit-list" id="auditList"></div>
       </section>
     </main>
 
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="operator.js" type="module"></script>
   </body>
 </html>

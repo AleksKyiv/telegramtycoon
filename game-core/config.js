@@ -285,11 +285,14 @@
       },
       {
         id: "tech",
-        name: "Tech Sentinel",
-        tag: "Lab tech",
-        route: "Lab",
-        note: "A plated service shell with sensor rails and a slower precision patrol.",
-        effect: "Slow scan"
+        name: "Quantum Sentinel",
+        tag: "Premium",
+        route: "★ 50",
+        note: "Paid quantum shell with gold rails, prism core, and a precision patrol aura.",
+        effect: "Premium scan",
+        premium: true,
+        productId: "drone_skin_tech_50",
+        stars: 50
       }
     ]
   };
@@ -348,6 +351,14 @@
       label: "Unique Mutation",
       stars: 10,
       reward: { uniqueMutation: 1, artifact: 2, resonance: 3, score: 24, se: 1 }
+    },
+    drone_skin_tech_50: {
+      id: "drone_skin_tech_50",
+      title: "Quantum Sentinel Drone Skin",
+      description: "Unlocks the premium Quantum Sentinel drone shell forever.",
+      label: "Quantum Sentinel",
+      stars: 50,
+      reward: { droneSkin: "tech" }
     }
   };
   config.FIRST_CAPSULE_SLOT_UNLOCKS = {

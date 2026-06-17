@@ -52,6 +52,17 @@
     return droneSkinById(String(value || "")).id;
   }
 
+  function normalizeOwnedDroneSkins(value = {}) {
+    const owned = { bubbles: true, smile: true, aurora: true };
+    if (value && typeof value === "object") {
+      Object.entries(value).forEach(([key, item]) => {
+        const skin = normalizeDroneSkin(key);
+        if (item) owned[skin] = true;
+      });
+    }
+    return owned;
+  }
+
   function safeDataModuleLevel(value = 1) {
     const level = Math.floor(Number(value) || 1);
     return clamp(level, 1, 9);
@@ -176,6 +187,7 @@
       playerName: "You",
       droneLevel: 1,
       droneSkin: "bubbles",
+      ownedDroneSkins: normalizeOwnedDroneSkins(),
       dataModuleLevel: 1,
       unlockedSlots: { "0": true, "1": true, "2": true },
       missions: {
@@ -236,7 +248,9 @@
       }
       : null;
     restored.droneLevel = safeDroneLevel(restored.droneLevel);
+    restored.ownedDroneSkins = normalizeOwnedDroneSkins(restored.ownedDroneSkins);
     restored.droneSkin = normalizeDroneSkin(restored.droneSkin);
+    if (!restored.ownedDroneSkins[restored.droneSkin]) restored.droneSkin = "bubbles";
     restored.dataModuleLevel = safeDataModuleLevel(restored.dataModuleLevel);
     restored.unlockedSlots = normalizeUnlockedSlots(restored.unlockedSlots);
     restored.inventory = normalizeInventory(restored.inventory);
@@ -260,6 +274,7 @@
     safeDroneLevel,
     droneSkinById,
     normalizeDroneSkin,
+    normalizeOwnedDroneSkins,
     safeDataModuleLevel,
     normalizeUnlockedSlots,
     farmStrainById,

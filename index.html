@@ -8,16 +8,16 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Exo+2:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css?v=185">
+    <link rel="stylesheet" href="styles.css?v=196">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <script src="game-core/config.js?v=8" defer></script>
-    <script src="game-core/state.js?v=8" defer></script>
+    <script src="game-core/config.js?v=9" defer></script>
+    <script src="game-core/state.js?v=9" defer></script>
     <script src="game-core/economy.js?v=2" defer></script>
     <script src="game-core/farm.js?v=1" defer></script>
     <script src="game-core/lab.js?v=1" defer></script>
     <script src="game-core/zen.js?v=1" defer></script>
     <script src="game-core/telemetry.js?v=1" defer></script>
-    <script src="app.js?v=107" defer></script>
+    <script src="app.js?v=114" defer></script>
   </head>
   <body>
     <main class="app room-farm" aria-label="Green Farm Tycoon MVP">
@@ -123,11 +123,6 @@
                 <b id="donorDroneLevelBadge">L1</b>
               </span>
               <span class="drone-wing right" aria-hidden="true"></span>
-              <span class="drone-arm left" aria-hidden="true"></span>
-              <span class="drone-arm right" aria-hidden="true"></span>
-              <span class="drone-node node-a" aria-hidden="true"></span>
-              <span class="drone-node node-b" aria-hidden="true"></span>
-              <span class="drone-tail" aria-hidden="true"></span>
             </button>
           </div>
           <div class="donor-capsule-stage" aria-label="Capsule stage">
@@ -206,11 +201,6 @@
               <b id="droneLevelBadge">L1</b>
             </span>
             <span class="drone-wing right" aria-hidden="true"></span>
-            <span class="drone-arm left" aria-hidden="true"></span>
-            <span class="drone-arm right" aria-hidden="true"></span>
-            <span class="drone-node node-a" aria-hidden="true"></span>
-            <span class="drone-node node-b" aria-hidden="true"></span>
-            <span class="drone-tail" aria-hidden="true"></span>
           </button>
           <div class="plant" id="plantVisual" aria-hidden="true">
             <i class="stem"></i>
@@ -765,30 +755,44 @@
             </div>
             <button class="sheet-close" type="button" data-close-sheet aria-label="Close">×</button>
           </header>
-          <button class="settings-row" id="soundBtn" type="button" aria-label="Toggle sound">
-            <span id="soundIcon">♪</span>
-            <strong>Sound</strong>
-            <b id="soundState">On</b>
-          </button>
-          <label class="settings-slider" for="soundVolume">
-            <span>
-              <strong>Sound volume</strong>
-              <b id="soundVolumeValue">70%</b>
-            </span>
-            <input id="soundVolume" type="range" min="0" max="100" step="5" value="70">
-          </label>
-          <button class="settings-row" id="vibrationBtn" type="button" aria-label="Toggle vibration">
-            <span id="vibrationIcon">▦</span>
-            <strong>Vibration</strong>
-            <b id="vibrationState">On</b>
-          </button>
-          <label class="settings-slider" for="vibrationLevel">
-            <span>
-              <strong>Vibration power</strong>
-              <b id="vibrationValue">60%</b>
-            </span>
-            <input id="vibrationLevel" type="range" min="0" max="100" step="5" value="60">
-          </label>
+          <div class="settings-menu-grid" aria-label="Settings modules">
+            <button class="settings-row settings-menu-item settings-audio-toggle" id="soundSettingsBtn" type="button" aria-label="Open sound settings" aria-expanded="false">
+              <span id="soundSettingsIcon">♪</span>
+              <strong>Sound</strong>
+              <b id="soundSettingsState">On / Vib</b>
+            </button>
+            <button class="settings-row settings-menu-item settings-ton-wallet" id="tonWalletBtn" type="button" aria-label="Connect TON wallet">
+              <span>◇</span>
+              <strong>TON wallet</strong>
+              <b>Connect</b>
+            </button>
+          </div>
+          <div class="settings-audio-panel" id="soundSettingsPanel" hidden>
+            <button class="settings-row" id="soundBtn" type="button" aria-label="Toggle sound">
+              <span id="soundIcon">♪</span>
+              <strong>Sound</strong>
+              <b id="soundState">On</b>
+            </button>
+            <label class="settings-slider" for="soundVolume">
+              <span>
+                <strong>Sound volume</strong>
+                <b id="soundVolumeValue">70%</b>
+              </span>
+              <input id="soundVolume" type="range" min="0" max="100" step="5" value="70">
+            </label>
+            <button class="settings-row" id="vibrationBtn" type="button" aria-label="Toggle vibration">
+              <span id="vibrationIcon">▦</span>
+              <strong>Vibration</strong>
+              <b id="vibrationState">On</b>
+            </button>
+            <label class="settings-slider" for="vibrationLevel">
+              <span>
+                <strong>Vibration power</strong>
+                <b id="vibrationValue">60%</b>
+              </span>
+              <input id="vibrationLevel" type="range" min="0" max="100" step="5" value="60">
+            </label>
+          </div>
           <div class="policy-actions" aria-label="Legal policy links">
             <a class="policy-link" href="privacy.html" target="_blank" rel="noopener">
               <span>Privacy</span>

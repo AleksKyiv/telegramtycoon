@@ -19,6 +19,10 @@ Use these docs before large changes:
 3. `docs/BLUEPRINT_ADOPTION.md` - what we took from the detailed brainstorm.
 4. `docs/VALUE_FIRST_PIVOT.md` - Stars-native value and monetization authority.
 5. `docs/blueprint/` - archived detailed brainstorm documents.
+6. `docs/AI_CHANGE_GUARDRAILS.md` - scope lock rules for Codex changes.
+7. `docs/PRODUCT_MIRROR.md` - operator map of product modules, statuses, layers, and protected boundaries.
+8. `docs/AI_OPERATOR_PROTOCOL.md` - exact behavior Codex must follow before and after changes.
+9. `docs/AAA_OPERATOR_LAYER_TECH_PACKAGE.md` - full technical package for external review of the product/control architecture.
 
 The `New project` visual code is not the source of truth. The useful part is the product documentation.
 
@@ -54,6 +58,12 @@ For every user idea, Codex should silently run this filter:
 5. Protect stable parts of the app.
 6. Implement the smallest version that proves the result.
 7. Verify and explain what changed in simple words.
+
+For concrete UI/gameplay requests, `docs/AI_CHANGE_GUARDRAILS.md` overrides the "improve the idea" instinct. Codex must lock scope first and must not change adjacent systems without confirmation.
+
+For complex or repeated refinement work, `docs/PRODUCT_MIRROR.md` and `docs/AI_OPERATOR_PROTOCOL.md` are mandatory. Codex must map the request to a mirror ID, name the layer, avoid new layers unless justified, and report the result using the mirror format.
+
+Before asking the owner to refresh or inspect a local page, Codex must follow the Server Visibility Gate in `docs/AI_OPERATOR_PROTOCOL.md`: prove `localhost:4173` is alive, `/api/health` returns ok, and the target route returns its expected marker.
 
 ## Task Packet
 
